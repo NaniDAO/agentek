@@ -3,19 +3,24 @@ import { tool } from "ai";
 import { z } from "zod";
 import {
   type BaseTool,
-  createNaniClient,
-  type NaniClient,
+  createAgentekClient,
+  type AgentekClient,
 } from "../shared/client";
 
-export default function NaniTool(
-  naniClient: NaniClient,
+export default function AgentekTool(
+  agentekClient: AgentekClient,
   baseTool: BaseTool,
 ): CoreTool {
   return tool({
     description: baseTool.description,
     parameters: baseTool.parameters,
     execute: (args: z.infer<typeof baseTool.parameters>) => {
-      return naniClient.execute(baseTool.name, args);
+      try {
+        return agentekClient.execute(baseTool.name, args);
+      } catch (e) {
+        console.error(e);
+        return e.message ?? "Unknown error";
+      }
     },
   });
 }

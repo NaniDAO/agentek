@@ -15,25 +15,24 @@ export interface BaseTool {
   name: string;
   description: string;
   parameters: z.ZodObject<any, any, any, any>;
-  execute: (client: NaniClient, args: any) => Promise<any>;
+  execute: (client: AgentekClient, args: any) => Promise<any>;
   supportedChains?: Chain[];
 }
 
-// Configuration for creating a NaniClient
-export interface NaniClientConfig {
+export interface AgentekClientConfig {
   transports: Transport[];
   chains: Chain[];
   accountOrAddress: Account | Address;
   tools: BaseTool[];
 }
 
-export class NaniClient {
+export class AgentekClient {
   private publicClients: Map<number, PublicClient>;
   private walletClients: Map<number, WalletClient>;
   private tools: Map<string, BaseTool>;
   private chains: Chain[];
 
-  constructor(config: NaniClientConfig) {
+  constructor(config: AgentekClientConfig) {
     this.publicClients = new Map();
     this.walletClients = new Map();
     this.chains = config.chains;
@@ -132,8 +131,10 @@ export class NaniClient {
   }
 }
 
-export function createNaniClient(config: NaniClientConfig): NaniClient {
-  return new NaniClient(config);
+export function createAgentekClient(
+  config: AgentekClientConfig,
+): AgentekClient {
+  return new AgentekClient(config);
 }
 
 // Tool creation helper remains the same but includes supportedChains
@@ -147,7 +148,7 @@ export function createTool<T extends z.ZodObject<any, any, any, any>>({
   name: string;
   description: string;
   parameters: T;
-  execute: (client: NaniClient, args: z.infer<T>) => Promise<any>;
+  execute: (client: AgentekClient, args: z.infer<T>) => Promise<any>;
   supportedChains?: Chain[];
 }): BaseTool {
   return {

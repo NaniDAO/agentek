@@ -1,36 +1,37 @@
 import {
   type BaseTool,
-  createNaniClient,
-  type NaniClient,
+  createAgentekClient,
+  type AgentekClient,
 } from "../shared/client";
 import type { CoreTool } from "ai";
-import NaniTool from "./tool";
+import AgentekTool from "./tool";
+import { Account, Chain, Transport } from "viem";
 
-class NaniAgentToolkit {
-  private _nani: NaniClient;
+class AgentekToolkit {
+  private _agent: AgentekClient;
   tools: { [key: string]: CoreTool };
 
   constructor({
     accountOrAddress,
-    chain,
-    transport,
+    chains,
+    transports,
     tools,
   }: {
     accountOrAddress: Account;
-    chain: Chain;
-    transport: Transport;
+    chains: Chain[];
+    transports: Transport[];
     tools: BaseTool[];
   }) {
-    this._nani = createNaniClient({
+    this._agent = createAgentekClient({
       accountOrAddress,
-      chain,
-      transport,
+      chains,
+      transports,
       tools,
     });
 
     this.tools = {};
     tools.forEach((tool) => {
-      this.tools[tool.name] = NaniTool(this._nani, tool);
+      this.tools[tool.name] = AgentekTool(this._agent, tool);
     });
   }
 
@@ -39,4 +40,4 @@ class NaniAgentToolkit {
   }
 }
 
-export default NaniAgentToolkit;
+export default AgentekToolkit;
