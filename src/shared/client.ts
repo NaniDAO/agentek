@@ -31,11 +31,13 @@ export class AgentekClient {
   private walletClients: Map<number, WalletClient>;
   private tools: Map<string, BaseTool>;
   private chains: Chain[];
+  private accountOrAddress: Account | Address;
 
   constructor(config: AgentekClientConfig) {
     this.publicClients = new Map();
     this.walletClients = new Map();
     this.chains = config.chains;
+    this.accountOrAddress = config.accountOrAddress;
 
     config.chains.forEach((chain, index) => {
       const transport = config.transports[index] || config.transports[0];
@@ -45,7 +47,6 @@ export class AgentekClient {
         createPublicClient({
           transport,
           chain,
-          account: config.accountOrAddress,
           batch: {
             multicall: true,
           },
@@ -65,6 +66,14 @@ export class AgentekClient {
     });
 
     this.tools = new Map(config.tools.map((tool) => [tool.name, tool]));
+  }
+
+  // Get address
+  public async getAddress(): Promise<Address> {
+    if (typeof this.accountOrAddress === "string") {
+      return this.accountOrAddress;
+    }
+    return this.accountOrAddress.address;
   }
 
   // Get public client for specific chain

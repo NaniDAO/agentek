@@ -1,11 +1,7 @@
 import type { CoreTool } from "ai";
 import { tool } from "ai";
 import { z } from "zod";
-import {
-  type BaseTool,
-  createAgentekClient,
-  type AgentekClient,
-} from "../shared/client";
+import { type BaseTool, type AgentekClient } from "../shared/client";
 
 export default function AgentekTool(
   agentekClient: AgentekClient,
