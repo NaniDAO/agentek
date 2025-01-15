@@ -1,36 +1,36 @@
-import NaniClient from "../shared/client";
-import tools from "../shared/tools";
-import { isToolAllowed, type Configuration } from "../shared/configuration";
+import {
+  type BaseTool,
+  createNaniClient,
+  type NaniClient,
+} from "../shared/client";
 import type { CoreTool } from "ai";
 import NaniTool from "./tool";
 
 class NaniAgentToolkit {
   private _nani: NaniClient;
-
   tools: { [key: string]: CoreTool };
 
   constructor({
-    account,
-    transports,
+    accountOrAddress,
+    chain,
+    transport,
+    tools,
   }: {
-    account: Account;
-    transports: Transport;
+    accountOrAddress: Account;
+    chain: Chain;
+    transport: Transport;
+    tools: BaseTool[];
   }) {
-    this._nani = new NaniClient(account, transport);
+    this._nani = createNaniClient({
+      accountOrAddress,
+      chain,
+      transport,
+      tools,
+    });
+
     this.tools = {};
-
-    const filteredTools = tools.filter((tool) =>
-      isToolAllowed(tool, configuration),
-    );
-
-    filteredTools.forEach((tool) => {
-      // @ts-ignore
-      this.tools[tool.method] = NaniTool(
-        this._nani,
-        tool.method,
-        tool.description,
-        tool.parameters,
-      );
+    tools.forEach((tool) => {
+      this.tools[tool.name] = NaniTool(this._nani, tool);
     });
   }
 

@@ -18,6 +18,9 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
     devDependencies:
+      '@types/node':
+        specifier: ^22.10.6
+        version: 22.10.6
       typescript:
         specifier: ^5.7.3
         version: 5.7.3
@@ -88,6 +91,9 @@ packages:
 
   '@types/diff-match-patch@1.0.36':
     resolution: {integrity: sha512-xFdR6tkm0MWvBfO8xXCSsinYxHcqkQUlcHeSpMC2ukzOb6lwQAfDmW+Qt0AvlGd8HpsS28qKsB+oPeJn9I39jg==}
+
+  '@types/node@22.10.6':
+    resolution: {integrity: sha512-qNiuwC4ZDAUNcY47xgaSuS92cjf8JbSUoaKS77bmLG1rU7MlATVSiw/IlrjtIyyskXBZ8KkNfjK/P5na7rgXbQ==}
 
   abitype@1.0.7:
     resolution: {integrity: sha512-ZfYYSktDQUwc2eduYu8C4wOs+RDPmnRYMh7zNfzeMtGGgb0U+6tLGjixUic6mXf5xKKCcgT5Qp6cv39tOARVFw==}
@@ -176,6 +182,9 @@ packages:
     resolution: {integrity: sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==}
     engines: {node: '>=14.17'}
     hasBin: true
+
+  undici-types@6.20.0:
+    resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
 
   use-sync-external-store@1.4.0:
     resolution: {integrity: sha512-9WXSPC5fMv61vaupRkCKCxsPxBocVnwakBEkMIHHpkTTg6icbJtg6jzgtLDm4bl3cSHAca52rYWih0k4K3PfHw==}
@@ -273,6 +282,10 @@ snapshots:
 
   '@types/diff-match-patch@1.0.36': {}
 
+  '@types/node@22.10.6':
+    dependencies:
+      undici-types: 6.20.0
+
   abitype@1.0.7(typescript@5.7.3)(zod@3.24.1):
     optionalDependencies:
       typescript: 5.7.3
@@ -341,6 +354,8 @@ snapshots:
   throttleit@2.1.0: {}
 
   typescript@5.7.3: {}
+
+  undici-types@6.20.0: {}
 
   use-sync-external-store@1.4.0(react@19.0.0):
     dependencies:
