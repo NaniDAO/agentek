@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AgentekClient, createTool } from "../client";
-import { arbitrum, base, corn, mainnet } from "viem/chains";
+import { arbitrum, base, corn, mainnet, sepolia } from "viem/chains";
 import {
   Address,
   encodeFunctionData,
@@ -9,7 +9,7 @@ import {
   PublicClient,
 } from "viem";
 
-const intentTransferChains = [mainnet, arbitrum, base];
+const intentTransferChains = [mainnet, arbitrum, base, sepolia];
 const intentTransferParameters = z.object({
   token: z.string().describe("The token address"),
   amount: z.string().describe("The amount to transfer"),
@@ -176,7 +176,7 @@ const intentTransferFromParameters = z.object({
   chainId: z.number().optional().describe("Optional specific chain to use"),
 });
 
-const intentTransferFromChains = [mainnet, arbitrum, base];
+const intentTransferFromChains = [mainnet, arbitrum, base, sepolia];
 
 export const intentTransferFromTool = createTool({
   name: "intentTransferFrom",
@@ -252,7 +252,7 @@ export const intentTransferFromTool = createTool({
     } else {
       ops.push({
         target: token,
-        value: 0n,
+        value: "0",
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: "transferFrom",
@@ -282,7 +282,7 @@ export const intentTransferFromTool = createTool({
         intent: `send ${amount.toString()} ${token} from ${from} to ${to}`,
         ops,
         chain: cheapestChain.chain.id,
-        receipt,
+        hash: hash,
       };
     }
   },

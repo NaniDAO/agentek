@@ -1,5 +1,5 @@
 import { Hex, http } from "viem";
-import { base, mainnet, arbitrum } from "viem/chains";
+import { base, mainnet, arbitrum, sepolia } from "viem/chains";
 import { ensTools } from "../src/shared/ens";
 import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -21,9 +21,16 @@ async function main() {
 
   const account = privateKeyToAccount(privateKey as Hex);
 
+  const chains = [mainnet, sepolia];
+  console.log("ACCOUNT:", account.address);
+  console.log(
+    "CHAINS:",
+    chains.map((chain) => chain.id),
+  );
+
   const toolkit = new AgentekToolkit({
     transports: [http(), http(), http()],
-    chains: [mainnet, arbitrum, base],
+    chains,
     accountOrAddress: account,
     tools: [...ensTools(), ...transferTools()],
   });
@@ -36,7 +43,7 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content: "Send 13 eth to shivanshi",
+      content: "Send 0.01 eth to shivanshi on Sepolia",
     },
   ] as CoreMessage[];
 
