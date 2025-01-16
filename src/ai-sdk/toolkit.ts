@@ -5,7 +5,7 @@ import {
 } from "../shared/client";
 import type { CoreTool } from "ai";
 import AgentekTool from "./tool";
-import { Account, Chain, Transport } from "viem";
+import { Account, Address, Chain, Transport } from "viem";
 
 class AgentekToolkit {
   private _agent: AgentekClient;
@@ -17,7 +17,7 @@ class AgentekToolkit {
     transports,
     tools,
   }: {
-    accountOrAddress: Account;
+    accountOrAddress: Account | Address;
     chains: Chain[];
     transports: Transport[];
     tools: BaseTool[];

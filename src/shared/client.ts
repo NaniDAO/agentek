@@ -109,6 +109,24 @@ export class AgentekClient {
     return this.chains;
   }
 
+  // Method to filter supported chains
+  public filterSupportedChains(
+    supportedChains: Chain[],
+    chainId?: number,
+  ): Chain[] {
+    let chains = this.getChains();
+    chains = chains.filter((chain) =>
+      supportedChains.map((c) => c.id).includes(chain.id),
+    );
+    if (chainId !== undefined) {
+      chains = chains.filter((chain) => chain.id === chainId);
+      if (chains.length === 0) {
+        throw new Error(`Chain ${chainId} is not supported`);
+      }
+    }
+    return chains;
+  }
+
   // Method to add new tools
   public addTools(tools: BaseTool[]): void {
     tools.forEach((tool) => {
@@ -116,26 +134,22 @@ export class AgentekClient {
     });
   }
 
-  // Method to execute a tool
   public async execute(method: string, args: any): Promise<any> {
     const tool = this.tools.get(method);
     if (!tool) {
       throw new Error(`Tool ${method} not found`);
     }
 
-    // If chainId is specified, validate it's supported
-    if (args.chainId && tool.supportedChains) {
-      if (!tool.supportedChains.includes(args.chainId)) {
-        throw new Error(
-          `Chain ${args.chainId} not supported by tool ${method}`,
-        );
-      }
-    }
+    // if (args.chainId && tool.supportedChains) {
+    //   if (!tool.supportedChains.includes(args.chainId)) {
+    //     throw new Error(
+    //       `Chain ${args.chainId} not supported by tool ${method}`,
+    //     );
+    //   }
+    // }
 
-    // Validate args against tool's schema
     const validatedArgs = tool.parameters.parse(args);
 
-    // Execute the tool - letting it handle its own chain selection logic
     return tool.execute(this, validatedArgs);
   }
 }

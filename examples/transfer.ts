@@ -5,6 +5,7 @@ import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
+import { transferTools } from "../src/shared/transfer";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -24,7 +25,7 @@ async function main() {
     transports: [http(), http(), http()],
     chains: [mainnet, arbitrum, base],
     accountOrAddress: account,
-    tools: [...ensTools()],
+    tools: [...ensTools(), ...transferTools()],
   });
 
   const tools = toolkit.getTools();
@@ -35,7 +36,7 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content: "What is the ENS name for shivanshi.eth?",
+      content: "Send 13 eth to shivanshi",
     },
   ] as CoreMessage[];
 

@@ -14,8 +14,8 @@ export default function AgentekTool(
       try {
         return agentekClient.execute(baseTool.name, args);
       } catch (e) {
-        console.error(e);
-        return e.message ?? "Unknown error";
+        console.error("Execution error:", e);
+        return e.message.toString() ?? "Unknown error";
       }
     },
   });
