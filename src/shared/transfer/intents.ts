@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { AgentekClient, createTool } from "../client";
-import { arbitrum, base, corn, mainnet, sepolia } from "viem/chains";
+import { AgentekClient, createTool, Intent } from "../client";
+import { arbitrum, base, mainnet, sepolia } from "viem/chains";
 import {
   Address,
   encodeFunctionData,
@@ -62,7 +62,7 @@ export const intentTransferTool = createTool({
   execute: async (
     client: AgentekClient,
     args: z.infer<typeof intentTransferParameters>,
-  ) => {
+  ): Promise<Intent> => {
     const { token, amount, to, chainId } = args;
     const chains = client.filterSupportedChains(intentTransferChains, chainId);
     const from = await client.getAddress();
@@ -126,13 +126,13 @@ export const intentTransferTool = createTool({
     if (token === ETH_ADDRESS) {
       ops.push({
         target: to,
-        value: cheapestChain.amount,
+        value: cheapestChain.amount.toString(),
         data: undefined,
       });
     } else {
       ops.push({
         target: token,
-        value: 0n,
+        value: "0",
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: "transfer",
@@ -150,19 +150,15 @@ export const intentTransferTool = createTool({
     } else {
       const hash = await walletClient.sendTransaction({
         to: ops[0].target,
-        value: ops[0].value,
+        value: BigInt(ops[0].value),
         data: ops[0].data,
       });
 
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash,
-      });
-
       return {
-        intent: `send ${amount.toString()} ${token} to ${to}`,
+        intent: `send ${amount.toString()} ${token} from ${from} to ${to}`,
         ops,
         chain: cheapestChain.chain.id,
-        receipt,
+        hash: hash,
       };
     }
   },
@@ -186,7 +182,7 @@ export const intentTransferFromTool = createTool({
   execute: async (
     client: AgentekClient,
     args: z.infer<typeof intentTransferFromParameters>,
-  ) => {
+  ): Promise<Intent> => {
     const { token, amount, to, from, chainId } = args;
     const chains = client.filterSupportedChains(intentTransferChains, chainId);
 
@@ -272,10 +268,6 @@ export const intentTransferFromTool = createTool({
         to: ops[0].target,
         value: ops[0].value,
         data: ops[0].data,
-      });
-
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash,
       });
 
       return {

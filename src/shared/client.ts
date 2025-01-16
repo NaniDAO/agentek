@@ -7,6 +7,7 @@ import {
   createPublicClient,
   createWalletClient,
   Address,
+  Hex,
 } from "viem";
 import { z } from "zod";
 
@@ -18,6 +19,29 @@ export interface BaseTool {
   execute: (client: AgentekClient, args: any) => Promise<any>;
   supportedChains?: Chain[];
 }
+
+interface Op {
+  target: Address;
+  value: string; // wei encoded
+  data: Hex;
+}
+
+// RequestIntent - this structure matches what we consume on nani.ooo
+// You can extend it to include hash when saving if approved by user
+interface RequestIntent {
+  intent: string;
+  ops: Op[];
+  chain: number;
+}
+
+interface CompletedIntent {
+  intent: string;
+  ops: Op[];
+  chain: number;
+  hash: string;
+}
+
+export type Intent = RequestIntent | CompletedIntent;
 
 export interface AgentekClientConfig {
   transports: Transport[];

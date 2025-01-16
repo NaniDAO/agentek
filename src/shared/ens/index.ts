@@ -11,8 +11,9 @@ const resolveENSTool = createTool({
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(1);
+    const ensName = args.name.endsWith(".eth") ? args.name : `${args.name}.eth`;
     const address = await publicClient.getEnsAddress({
-      name: args.name,
+      name: ensName,
     });
 
     if (address === null) {
