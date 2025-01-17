@@ -15,11 +15,27 @@ const getBalance = createTool({
     formatEth: z.boolean().optional(),
   }),
   execute: async (client, args) => {
-    const publicClient = client.getPublicClient(args.chainId);
-    const balance = await publicClient.getBalance({
-      address: args.address as Address,
-    });
-    return args.formatEth ? formatEther(balance) : balance.toString();
+    if (args.chainId) {
+      const publicClient = client.getPublicClient(args.chainId);
+      const balance = await publicClient.getBalance({
+        address: args.address as Address,
+      });
+      return args.formatEth ? formatEther(balance) : balance.toString();
+    }
+
+    const results = await Promise.all(
+      supportedChains.map(async (chain) => {
+        const publicClient = client.getPublicClient(chain.id);
+        const balance = await publicClient.getBalance({
+          address: args.address as Address,
+        });
+        return {
+          chainId: chain.id,
+          balance: args.formatEth ? formatEther(balance) : balance.toString(),
+        };
+      }),
+    );
+    return results;
   },
 });
 
@@ -32,8 +48,24 @@ const getCode = createTool({
     chainId: z.number().optional(),
   }),
   execute: async (client, args) => {
-    const publicClient = client.getPublicClient(args.chainId);
-    return publicClient.getCode({ address: args.address as Address });
+    if (args.chainId) {
+      const publicClient = client.getPublicClient(args.chainId);
+      return publicClient.getCode({ address: args.address as Address });
+    }
+
+    const results = await Promise.all(
+      supportedChains.map(async (chain) => {
+        const publicClient = client.getPublicClient(chain.id);
+        const code = await publicClient.getCode({
+          address: args.address as Address,
+        });
+        return {
+          chainId: chain.id,
+          code,
+        };
+      }),
+    );
+    return results;
   },
 });
 
@@ -46,10 +78,26 @@ const getTransactionCount = createTool({
     chainId: z.number().optional(),
   }),
   execute: async (client, args) => {
-    const publicClient = client.getPublicClient(args.chainId);
-    return publicClient.getTransactionCount({
-      address: args.address as Address,
-    });
+    if (args.chainId) {
+      const publicClient = client.getPublicClient(args.chainId);
+      return publicClient.getTransactionCount({
+        address: args.address as Address,
+      });
+    }
+
+    const results = await Promise.all(
+      supportedChains.map(async (chain) => {
+        const publicClient = client.getPublicClient(chain.id);
+        const count = await publicClient.getTransactionCount({
+          address: args.address as Address,
+        });
+        return {
+          chainId: chain.id,
+          count,
+        };
+      }),
+    );
+    return results;
   },
 });
 
@@ -87,8 +135,22 @@ const getBlockNumber = createTool({
     chainId: z.number().optional(),
   }),
   execute: async (client, args) => {
-    const publicClient = client.getPublicClient(args.chainId);
-    return publicClient.getBlockNumber();
+    if (args.chainId) {
+      const publicClient = client.getPublicClient(args.chainId);
+      return publicClient.getBlockNumber();
+    }
+
+    const results = await Promise.all(
+      supportedChains.map(async (chain) => {
+        const publicClient = client.getPublicClient(chain.id);
+        const blockNumber = await publicClient.getBlockNumber();
+        return {
+          chainId: chain.id,
+          blockNumber,
+        };
+      }),
+    );
+    return results;
   },
 });
 
@@ -102,9 +164,25 @@ const getGasPrice = createTool({
     formatGwei: z.boolean().optional(),
   }),
   execute: async (client, args) => {
-    const publicClient = client.getPublicClient(args.chainId);
-    const gasPrice = await publicClient.getGasPrice();
-    return args.formatGwei ? formatUnits(gasPrice, 9) : gasPrice.toString();
+    if (args.chainId) {
+      const publicClient = client.getPublicClient(args.chainId);
+      const gasPrice = await publicClient.getGasPrice();
+      return args.formatGwei ? formatUnits(gasPrice, 9) : gasPrice.toString();
+    }
+
+    const results = await Promise.all(
+      supportedChains.map(async (chain) => {
+        const publicClient = client.getPublicClient(chain.id);
+        const gasPrice = await publicClient.getGasPrice();
+        return {
+          chainId: chain.id,
+          gasPrice: args.formatGwei
+            ? formatUnits(gasPrice, 9)
+            : gasPrice.toString(),
+        };
+      }),
+    );
+    return results;
   },
 });
 
@@ -119,14 +197,34 @@ const estimateGas = createTool({
     chainId: z.number().optional(),
   }),
   execute: async (client, args) => {
-    const publicClient = client.getPublicClient(args.chainId);
+    if (args.chainId) {
+      const publicClient = client.getPublicClient(args.chainId);
+      const from = await client.getAddress();
+      return publicClient.estimateGas({
+        account: from,
+        to: args.to,
+        value: args.value ? parseEther(args.value) : undefined,
+        data: args.data as `0x${string}` | undefined,
+      });
+    }
+
     const from = await client.getAddress();
-    return publicClient.estimateGas({
-      account: from,
-      to: args.to,
-      value: args.value ? parseEther(args.value) : undefined,
-      data: args.data as `0x${string}` | undefined,
-    });
+    const results = await Promise.all(
+      supportedChains.map(async (chain) => {
+        const publicClient = client.getPublicClient(chain.id);
+        const gas = await publicClient.estimateGas({
+          account: from,
+          to: args.to,
+          value: args.value ? parseEther(args.value) : undefined,
+          data: args.data as `0x${string}` | undefined,
+        });
+        return {
+          chainId: chain.id,
+          gas,
+        };
+      }),
+    );
+    return results;
   },
 });
 
