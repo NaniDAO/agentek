@@ -1,11 +1,13 @@
 import { Hex, http } from "viem";
-import { base, mainnet, arbitrum, sepolia } from "viem/chains";
+import { base, mainnet, arbitrum, sepolia, mode } from "viem/chains";
 import { ensTools } from "../src/shared/ens";
 import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
 import { transferTools } from "../src/shared/transfer";
+import { dexscreenerTools } from "../src/shared/dexscreener";
+import { rpcTools } from "../src/shared/rpc";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -21,7 +23,7 @@ async function main() {
 
   const account = privateKeyToAccount(privateKey as Hex);
 
-  const chains = [mainnet, sepolia];
+  const chains = [mainnet, mode, arbitrum, base, sepolia];
   console.log("ACCOUNT:", account.address);
   console.log(
     "CHAINS:",
@@ -29,10 +31,16 @@ async function main() {
   );
 
   const toolkit = new AgentekToolkit({
-    transports: [http(), http(), http()],
+    transports: [
+      http(),
+      http("https://mainnet.mode.network"),
+      http(),
+      http(),
+      http(),
+    ],
     chains,
     accountOrAddress: account,
-    tools: [...ensTools(), ...transferTools()],
+    tools: [...rpcTools(), ...ensTools()],
   });
 
   const tools = toolkit.getTools();
@@ -43,7 +51,8 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content: "Send 0.01 eth to shivanshi on Sepolia",
+      content:
+        "Which chain is the cheapest ? How many txs has vitalik.eth done on mode?",
     },
   ] as CoreMessage[];
 
@@ -54,7 +63,18 @@ async function main() {
 
   const response = await generateText({
     model: openrouter("openai/gpt-4o-mini"),
-    system: "",
+    system: `You are an intelligent crypto analytics agent that employs Step-by-Step Reasoning.
+
+Approach problems by:
+1. Understanding the goal of the user's request
+2. Breaking down the problem into discrete analysis steps
+3. Using available tools and data to gather relevant information
+4. Comparing and evaluating the data logically
+5. Drawing data-backed conclusions
+
+Available chains: ${chains.map((chain) => `name:${chain.name} and id:${chain.id}, `)}
+
+Let's solve this problem through careful analysis and reasoning.`,
     messages,
     maxSteps: 5,
     tools: tools as Record<string, CoreTool<any, any>>,

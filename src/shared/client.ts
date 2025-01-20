@@ -148,6 +148,7 @@ export class AgentekClient {
         throw new Error(`Chain ${chainId} is not supported`);
       }
     }
+
     return chains;
   }
 
@@ -164,17 +165,21 @@ export class AgentekClient {
       throw new Error(`Tool ${method} not found`);
     }
 
-    // if (args.chainId && tool.supportedChains) {
-    //   if (!tool.supportedChains.includes(args.chainId)) {
-    //     throw new Error(
-    //       `Chain ${args.chainId} not supported by tool ${method}`,
-    //     );
-    //   }
-    // }
+    if (args.chainId && tool.supportedChains) {
+      if (!tool.supportedChains.map((c) => c.id).includes(args.chainId)) {
+        throw new Error(
+          `Chain ${args.chainId} not supported by tool ${method}`,
+        );
+      }
+    }
 
-    const validatedArgs = tool.parameters.parse(args);
+    const validatedArgs = tool.parameters.safeParse(args);
 
-    return tool.execute(this, validatedArgs);
+    if (!validatedArgs.success) {
+      throw new Error(JSON.stringify(validatedArgs.error));
+    }
+
+    return tool.execute(this, validatedArgs.data);
   }
 }
 
