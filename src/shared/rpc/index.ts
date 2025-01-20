@@ -7,6 +7,9 @@ import {
   getBlockNumber,
   getGasPrice,
   estimateGas,
+  getFeeHistory,
+  getTransaction,
+  getTransactionReceipt,
 } from "./tools";
 
 export function rpcTools(): BaseTool[] {
@@ -18,5 +21,8 @@ export function rpcTools(): BaseTool[] {
     getBlockNumber,
     getGasPrice,
     estimateGas,
+    getFeeHistory,
+    getTransaction,
+    getTransactionReceipt,
   ]);
 }

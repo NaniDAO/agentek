@@ -10,6 +10,7 @@ import {
   polygon,
   sepolia,
 } from "viem/chains";
+import { clean } from "../utils";
 
 const supportedChains = [
   mainnet,
@@ -153,7 +154,12 @@ const getBlockNumber = createTool({
   execute: async (client, args) => {
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
-      return publicClient.getBlockNumber();
+      const blockNumber = await publicClient.getBlockNumber();
+
+      return {
+        chainId: args.chainId,
+        blockNumber: blockNumber.toString(),
+      };
     }
 
     const results = await Promise.all(
@@ -162,10 +168,11 @@ const getBlockNumber = createTool({
         const blockNumber = await publicClient.getBlockNumber();
         return {
           chainId: chain.id,
-          blockNumber,
+          blockNumber: blockNumber.toString(),
         };
       }),
     );
+
     return results;
   },
 });
@@ -186,7 +193,12 @@ const getGasPrice = createTool({
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
       const gasPrice = await publicClient.getGasPrice();
-      return args.formatGwei ? formatUnits(gasPrice, 9) : gasPrice.toString();
+      return {
+        chainId: args.chainId,
+        gasPrice: args.formatGwei
+          ? formatUnits(gasPrice, 9)
+          : gasPrice.toString(),
+      };
     }
 
     const results = await Promise.all(
@@ -201,6 +213,7 @@ const getGasPrice = createTool({
         };
       }),
     );
+
     return results;
   },
 });
@@ -219,12 +232,17 @@ const estimateGas = createTool({
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
       const from = await client.getAddress();
-      return publicClient.estimateGas({
+      const gas = publicClient.estimateGas({
         account: from,
         to: args.to,
         value: args.value ? parseEther(args.value) : undefined,
         data: args.data as `0x${string}` | undefined,
       });
+
+      return {
+        chainId: args.chainId,
+        gas: gas.toString(),
+      };
     }
 
     const from = await client.getAddress();
@@ -239,11 +257,75 @@ const estimateGas = createTool({
         });
         return {
           chainId: chain.id,
-          gas,
+          gas: gas.toString(),
         };
       }),
     );
+
     return results;
+  },
+});
+
+const getFeeHistory = createTool({
+  name: "getFeeHistory",
+  description: "Get historical gas fee info",
+  supportedChains,
+  parameters: z.object({
+    blockCount: z
+      .number()
+      .describe(
+        "Number of blocks in the requested range. Between 1 and 1024 blocks can be requested in a single query. Less than requested may be returned if not all blocks are available.",
+      ),
+    rewardPercentiles: z
+      .array(z.number())
+      .optional()
+      .describe(
+        "A monotonically increasing list of percentile values to sample from each block's effective priority fees per gas in ascending order, weighted by gas used.",
+      ),
+    chainId: z.number(),
+  }),
+  execute: async (client, args) => {
+    const publicClient = client.getPublicClient(args.chainId);
+    return publicClient.getFeeHistory({
+      blockCount: args.blockCount,
+      rewardPercentiles: args.rewardPercentiles,
+    });
+  },
+});
+
+const getTransaction = createTool({
+  name: "getTransaction",
+  description: "Get details about a transaction",
+  supportedChains,
+  parameters: z.object({
+    hash: z.string(),
+    chainId: z.number(),
+  }),
+  execute: async (client, args) => {
+    const publicClient = client.getPublicClient(args.chainId);
+    const tx = publicClient.getTransaction({
+      hash: args.hash as Hex,
+    });
+
+    return clean(tx);
+  },
+});
+
+const getTransactionReceipt = createTool({
+  name: "getTransactionReceipt",
+  description: "Get the receipt of a transaction",
+  supportedChains,
+  parameters: z.object({
+    hash: z.string(),
+    chainId: z.number(),
+  }),
+  execute: async (client, args) => {
+    const publicClient = client.getPublicClient(args.chainId);
+    let receipt = await publicClient.getTransactionReceipt({
+      hash: args.hash as Hex,
+    });
+
+    return clean(receipt);
   },
 });
 
@@ -255,4 +337,7 @@ export {
   getBlockNumber,
   getGasPrice,
   estimateGas,
+  getFeeHistory,
+  getTransaction,
+  getTransactionReceipt,
 };

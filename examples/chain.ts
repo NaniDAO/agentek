@@ -52,7 +52,7 @@ async function main() {
     {
       role: "user",
       content:
-        "Which chain is the cheapest ? How many txs has vitalik.eth done on mode?",
+        "Get receipt for 0xa8d2e7503b44041cea85c310a25f6eca3d7ef57980d1bd54c771e456fd972fe9 on base",
     },
   ] as CoreMessage[];
 
@@ -93,7 +93,7 @@ Let's solve this problem through careful analysis and reasoning.`,
           console.log(`[Tool:${content.toolName}]`);
           console.log(`${JSON.stringify(content.args, null, 2)}`);
         } else if (content.type === "tool-result") {
-          console.log(`\n---\n${content.result}`);
+          console.log(`\n---\n${JSON.stringify(content.result)}`);
         }
       });
     }
