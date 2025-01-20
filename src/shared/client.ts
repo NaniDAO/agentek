@@ -148,6 +148,7 @@ export class AgentekClient {
         throw new Error(`Chain ${chainId} is not supported`);
       }
     }
+
     return chains;
   }
 
@@ -172,9 +173,13 @@ export class AgentekClient {
     //   }
     // }
 
-    const validatedArgs = tool.parameters.parse(args);
+    const validatedArgs = tool.parameters.safeParse(args);
 
-    return tool.execute(this, validatedArgs);
+    if (!validatedArgs.success) {
+      throw new Error(JSON.stringify(validatedArgs.error));
+    }
+
+    return tool.execute(this, validatedArgs.data);
   }
 }
 

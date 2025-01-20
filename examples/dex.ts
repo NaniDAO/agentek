@@ -5,7 +5,6 @@ import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { transferTools } from "../src/shared/transfer";
 import { dexscreenerTools } from "../src/shared/dexscreener";
 
 async function main() {
@@ -54,7 +53,7 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("anthropic/claude-3.5-sonnet"),
+    model: openrouter("openai/gpt-4o-mini"),
     system: "",
     messages,
     maxSteps: 5,

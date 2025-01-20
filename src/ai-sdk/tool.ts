@@ -11,12 +11,9 @@ export default function AgentekTool(
     description: baseTool.description,
     parameters: baseTool.parameters,
     execute: (args: z.infer<typeof baseTool.parameters>) => {
-      try {
-        return agentekClient.execute(baseTool.name, args);
-      } catch (e) {
-        console.error("Execution error:", e);
-        return e.message.toString() ?? "Unknown error";
-      }
+      return agentekClient.execute(baseTool.name, args).catch((e) => {
+        return e.message || "Could not process this function";
+      });
     },
   });
 }

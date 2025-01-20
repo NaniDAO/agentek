@@ -1,9 +1,25 @@
 import { z } from "zod";
 import { createTool } from "../client";
 import { Address, formatEther, Hex, formatUnits, parseEther } from "viem";
-import { arbitrum, base, mainnet, optimism } from "viem/chains";
+import {
+  arbitrum,
+  base,
+  mainnet,
+  mode,
+  optimism,
+  polygon,
+  sepolia,
+} from "viem/chains";
 
-const supportedChains = [mainnet, base, arbitrum];
+const supportedChains = [
+  mainnet,
+  base,
+  arbitrum,
+  polygon,
+  optimism,
+  mode,
+  sepolia,
+];
 
 const getBalance = createTool({
   name: "getBalance",
@@ -24,7 +40,7 @@ const getBalance = createTool({
     }
 
     const results = await Promise.all(
-      supportedChains.map(async (chain) => {
+      client.filterSupportedChains(supportedChains).map(async (chain) => {
         const publicClient = client.getPublicClient(chain.id);
         const balance = await publicClient.getBalance({
           address: args.address as Address,
@@ -54,7 +70,7 @@ const getCode = createTool({
     }
 
     const results = await Promise.all(
-      supportedChains.map(async (chain) => {
+      client.filterSupportedChains(supportedChains).map(async (chain) => {
         const publicClient = client.getPublicClient(chain.id);
         const code = await publicClient.getCode({
           address: args.address as Address,
@@ -86,7 +102,7 @@ const getTransactionCount = createTool({
     }
 
     const results = await Promise.all(
-      supportedChains.map(async (chain) => {
+      client.filterSupportedChains(supportedChains).map(async (chain) => {
         const publicClient = client.getPublicClient(chain.id);
         const count = await publicClient.getTransactionCount({
           address: args.address as Address,
@@ -141,7 +157,7 @@ const getBlockNumber = createTool({
     }
 
     const results = await Promise.all(
-      supportedChains.map(async (chain) => {
+      client.filterSupportedChains(supportedChains).map(async (chain) => {
         const publicClient = client.getPublicClient(chain.id);
         const blockNumber = await publicClient.getBlockNumber();
         return {
@@ -157,13 +173,16 @@ const getBlockNumber = createTool({
 // Gas Tools
 const getGasPrice = createTool({
   name: "getGasPrice",
-  description: "Get the current gas price",
+  description:
+    "Get the current gas price. If chainId is not specified, will return gas price for all supported chains.",
   supportedChains,
   parameters: z.object({
     chainId: z.number().optional(),
     formatGwei: z.boolean().optional(),
   }),
   execute: async (client, args) => {
+    const chains = client.filterSupportedChains(supportedChains, args.chainId);
+
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
       const gasPrice = await publicClient.getGasPrice();
@@ -171,7 +190,7 @@ const getGasPrice = createTool({
     }
 
     const results = await Promise.all(
-      supportedChains.map(async (chain) => {
+      chains.map(async (chain) => {
         const publicClient = client.getPublicClient(chain.id);
         const gasPrice = await publicClient.getGasPrice();
         return {
@@ -210,7 +229,7 @@ const estimateGas = createTool({
 
     const from = await client.getAddress();
     const results = await Promise.all(
-      supportedChains.map(async (chain) => {
+      client.filterSupportedChains(supportedChains).map(async (chain) => {
         const publicClient = client.getPublicClient(chain.id);
         const gas = await publicClient.estimateGas({
           account: from,
