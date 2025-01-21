@@ -42,8 +42,12 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content:
-        "Get info about 0xb1ccea7c214f8848b5ae7f86218e25563f557bb3 on base",
+      content: `Get me user positions of 0xCB0592589602B841BE035e1e64C2A5b1Ef006aa2 on mainnet n base
+
+      # SUPPORTED CHAINS
+      ${chains.map((c) => `${c.name} [ ${c.id} ]\n`)}
+          `,
+      // "Tell me info of pool 0x58cf91c080f7052f6da209bf605d6cf1cefd65f3 on mainnet and fee ? And also tell me about position 1723108 on base. And tell me whether I should LP more in my base position.",
     },
   ] as CoreMessage[];
 
@@ -73,7 +77,7 @@ async function main() {
           console.log(`[Tool:${content.toolName}]`);
           console.log(`${JSON.stringify(content.args, null, 2)}`);
         } else if (content.type === "tool-result") {
-          console.log(`\n---\n${content.result}`);
+          console.log(`\n---\n${JSON.stringify(content.result, null, 2)}`);
         }
       });
     }

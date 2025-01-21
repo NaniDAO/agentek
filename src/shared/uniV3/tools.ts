@@ -1,26 +1,13 @@
 import { z } from "zod";
 import { createTool } from "../client";
-import {
-  arbitrum,
-  base,
-  mainnet,
-  mode,
-  optimism,
-  polygon,
-  sepolia,
-} from "viem/chains";
 import { clean } from "../utils";
-import { Address, encodeFunctionData, erc721Abi, maxUint128 } from "viem";
-
-const supportedChains = [
-  mainnet,
-  base,
-  arbitrum,
-  polygon,
-  optimism,
-  mode,
-  sepolia,
-];
+import {
+  nonfungiblePositionManagerAbi,
+  POSITION_MANAGER_ADDRESS,
+  supportedChains,
+  uniV3poolAbi,
+} from "./constants";
+import { Address, erc721Abi } from "viem";
 
 const getUniV3Pool = createTool({
   name: "getUniV3Pool",
@@ -33,27 +20,9 @@ const getUniV3Pool = createTool({
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
 
-    const poolAbi = [
-      {
-        inputs: [],
-        name: "slot0",
-        outputs: [
-          { type: "uint160", name: "sqrtPriceX96" },
-          { type: "int24", name: "tick" },
-          { type: "uint16", name: "observationIndex" },
-          { type: "uint16", name: "observationCardinality" },
-          { type: "uint16", name: "observationCardinalityNext" },
-          { type: "uint8", name: "feeProtocol" },
-          { type: "bool", name: "unlocked" },
-        ],
-        stateMutability: "view",
-        type: "function",
-      },
-    ];
-
     const poolData = await publicClient.readContract({
       address: args.poolAddress as Address,
-      abi: poolAbi,
+      abi: uniV3poolAbi,
       functionName: "slot0",
     });
 
@@ -65,438 +34,145 @@ const getUniV3Pool = createTool({
   },
 });
 
-const NONFUNGIBLE_POSITION_MANAGER_ABI = [
-  {
-    inputs: [
-      {
-        components: [
-          { name: "token0", type: "address" },
-          { name: "token1", type: "address" },
-          { name: "fee", type: "uint24" },
-          { name: "tickLower", type: "int24" },
-          { name: "tickUpper", type: "int24" },
-          { name: "amount0Desired", type: "uint256" },
-          { name: "amount1Desired", type: "uint256" },
-          { name: "amount0Min", type: "uint256" },
-          { name: "amount1Min", type: "uint256" },
-          { name: "recipient", type: "address" },
-          { name: "deadline", type: "uint256" },
-        ],
-        name: "params",
-        type: "tuple",
-      },
-    ],
-    name: "mint",
-    outputs: [
-      { name: "tokenId", type: "uint256" },
-      { name: "liquidity", type: "uint128" },
-      { name: "amount0", type: "uint256" },
-      { name: "amount1", type: "uint256" },
-    ],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        components: [
-          { name: "tokenId", type: "uint256" },
-          { name: "liquidity", type: "uint128" },
-          { name: "amount0Min", type: "uint256" },
-          { name: "amount1Min", type: "uint256" },
-          { name: "deadline", type: "uint256" },
-        ],
-        name: "params",
-        type: "tuple",
-      },
-    ],
-    name: "decreaseLiquidity",
-    outputs: [
-      { name: "amount0", type: "uint256" },
-      { name: "amount1", type: "uint256" },
-    ],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        components: [
-          { name: "tokenId", type: "uint256" },
-          { name: "amount0Desired", type: "uint256" },
-          { name: "amount1Desired", type: "uint256" },
-          { name: "amount0Min", type: "uint256" },
-          { name: "amount1Min", type: "uint256" },
-          { name: "deadline", type: "uint256" },
-        ],
-        name: "params",
-        type: "tuple",
-      },
-    ],
-    name: "increaseLiquidity",
-    outputs: [
-      { name: "liquidity", type: "uint128" },
-      { name: "amount0", type: "uint256" },
-      { name: "amount1", type: "uint256" },
-    ],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        components: [
-          { name: "tokenId", type: "uint256" },
-          { name: "recipient", type: "address" },
-          { name: "amount0Max", type: "uint256" },
-          { name: "amount1Max", type: "uint256" },
-        ],
-        name: "params",
-        type: "tuple",
-      },
-    ],
-    name: "collect",
-    outputs: [
-      { name: "amount0", type: "uint256" },
-      { name: "amount1", type: "uint256" },
-    ],
-    stateMutability: "payable",
-    type: "function",
-  },
-];
-
-const POSITION_MANAGER_ADDRESS =
-  "0xC36442b4a4522E871399CD717aBDD847Ab11FE88" as Address;
-
-const intentMintPosition = createTool({
-  name: "intentMintPosition",
-  description: "Creates a new Uniswap V3 liquidity position",
+const getPositionDetails = createTool({
+  name: "getPositionDetails",
+  description: "Gets detailed information about a specific LP position",
   supportedChains,
   parameters: z.object({
-    token0: z.string(),
-    token1: z.string(),
-    fee: z.number(),
-    tickLower: z.number(),
-    tickUpper: z.number(),
-    amount0Desired: z.string(),
-    amount1Desired: z.string(),
-    slippageTolerance: z.number().default(0.5),
-    recipient: z.string().optional(),
-    deadline: z.number().optional(),
+    tokenId: z.string(),
     chainId: z.number(),
   }),
-  execute: async (client, args) => {
-    const publicClient = client.getPublicClient(args.chainId);
-    const user = await client.getAddress();
-    const deadline = args.deadline || Math.floor(Date.now() / 1000) + 1200;
+  execute: async (client, { tokenId, chainId }) => {
+    const publicClient = client.getPublicClient(chainId);
 
-    const amount0Desired = BigInt(args.amount0Desired);
-    const amount1Desired = BigInt(args.amount1Desired);
-    const amount0Min =
-      (amount0Desired * (10000n - BigInt(args.slippageTolerance * 100))) /
-      10000n;
-    const amount1Min =
-      (amount1Desired * (10000n - BigInt(args.slippageTolerance * 100))) /
-      10000n;
-
-    const data = encodeFunctionData({
-      abi: NONFUNGIBLE_POSITION_MANAGER_ABI,
-      functionName: "mint",
-      args: [
+    const data = await publicClient.multicall({
+      contracts: [
         {
-          token0: args.token0 as Address,
-          token1: args.token1 as Address,
-          fee: args.fee,
-          tickLower: args.tickLower,
-          tickUpper: args.tickUpper,
-          amount0Desired,
-          amount1Desired,
-          amount0Min,
-          amount1Min,
-          recipient: (args.recipient as Address) || user,
-          deadline: BigInt(deadline),
+          address: POSITION_MANAGER_ADDRESS[chainId],
+          abi: nonfungiblePositionManagerAbi,
+          functionName: "positions",
+          args: [BigInt(tokenId)],
+        },
+        {
+          address: POSITION_MANAGER_ADDRESS[chainId],
+          abi: erc721Abi,
+          functionName: "ownerOf",
+          args: [BigInt(tokenId)],
         },
       ],
     });
 
-    const ops = [
-      {
-        target: POSITION_MANAGER_ADDRESS,
-        value: "0",
-        data,
-      },
-    ];
-
-    const walletClient = client.getWalletClient(args.chainId);
-    if (!walletClient) {
-      return {
-        intent: `Mint Uniswap V3 position for ${args.token0}/${args.token1}`,
-        ops,
-        chain: args.chainId,
-      };
-    }
-
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
+    const [position, owner] = data;
+    return clean({
+      owner: owner.result,
+      token0: position.result?.[2],
+      token1: position.result?.[3],
+      fee: position.result?.[4],
+      tickLower: position.result?.[5],
+      tickUpper: position.result?.[6],
+      liquidity: position.result?.[7].toString(),
+      tokensOwed0: position.result?.[10].toString(),
+      tokensOwed1: position.result?.[11].toString(),
     });
-
-    return {
-      intent: `Mint Uniswap V3 position for ${args.token0}/${args.token1}`,
-      ops,
-      chain: args.chainId,
-      hash,
-    };
   },
 });
 
-const intentIncreaseLiquidity = createTool({
-  name: "intentIncreaseLiquidity",
-  description: "Adds more liquidity to an existing Uniswap V3 position",
+const getUserPositions = createTool({
+  name: "getUserPositions",
+  description: "Gets all Uniswap V3 positions for a user",
   supportedChains,
   parameters: z.object({
-    tokenId: z.string(),
-    amount0Desired: z.string(),
-    amount1Desired: z.string(),
-    slippageTolerance: z.number().default(0.5),
-    deadline: z.number().optional(),
     chainId: z.number(),
+    user: z.string().optional(),
   }),
-  execute: async (client, args) => {
-    const deadline = args.deadline || Math.floor(Date.now() / 1000) + 1200;
-    const amount0Desired = BigInt(args.amount0Desired);
-    const amount1Desired = BigInt(args.amount1Desired);
-    const amount0Min =
-      (amount0Desired * (10000n - BigInt(args.slippageTolerance * 100))) /
-      10000n;
-    const amount1Min =
-      (amount1Desired * (10000n - BigInt(args.slippageTolerance * 100))) /
-      10000n;
+  execute: async (client, { chainId, user }) => {
+    const publicClient = client.getPublicClient(chainId);
+    const owner = user || (await client.getAddress());
 
-    const data = encodeFunctionData({
-      abi: NONFUNGIBLE_POSITION_MANAGER_ABI,
-      functionName: "increaseLiquidity",
-      args: [
-        {
-          tokenId: BigInt(args.tokenId),
-          amount0Desired,
-          amount1Desired,
-          amount0Min,
-          amount1Min,
-          deadline: BigInt(deadline),
-        },
-      ],
+    const balance = await publicClient.readContract({
+      address: POSITION_MANAGER_ADDRESS[chainId],
+      abi: nonfungiblePositionManagerAbi,
+      functionName: "balanceOf",
+      args: [owner as Address],
     });
 
-    const ops = [
-      {
-        target: POSITION_MANAGER_ADDRESS,
-        value: "0",
-        data,
-      },
-    ];
+    const tokenIds = await Promise.all(
+      Array.from({ length: Number(balance) }).map((_, i) =>
+        publicClient.readContract({
+          address: POSITION_MANAGER_ADDRESS[chainId],
+          abi: nonfungiblePositionManagerAbi,
+          functionName: "tokenOfOwnerByIndex",
+          args: [owner as Address, BigInt(i)],
+        }),
+      ),
+    );
 
-    const walletClient = client.getWalletClient(args.chainId);
-    if (!walletClient) {
-      return {
-        intent: `Increase liquidity for position #${args.tokenId}`,
-        ops,
-        chain: args.chainId,
-      };
-    }
+    const positionDetails = await Promise.all(
+      tokenIds.map((tokenId) =>
+        publicClient.readContract({
+          address: POSITION_MANAGER_ADDRESS[chainId],
+          abi: nonfungiblePositionManagerAbi,
+          functionName: "positions",
+          args: [tokenId],
+        }),
+      ),
+    );
 
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
+    return clean({
+      positions: tokenIds.map((id, index) => ({
+        tokenId: id.toString(),
+        token0: positionDetails[index][2],
+        token1: positionDetails[index][3],
+        fee: positionDetails[index][4],
+        tickLower: positionDetails[index][5],
+        tickUpper: positionDetails[index][6],
+        liquidity: positionDetails[index][7].toString(),
+        tokensOwed0: positionDetails[index][10].toString(),
+        tokensOwed1: positionDetails[index][11].toString(),
+      })),
     });
-
-    return {
-      intent: `Increase liquidity for position #${args.tokenId}`,
-      ops,
-      chain: args.chainId,
-      hash,
-    };
   },
 });
 
-const intentDecreaseLiquidity = createTool({
-  name: "intentDecreaseLiquidity",
-  description: "Removes liquidity from a Uniswap V3 position",
+const getPoolFeeData = createTool({
+  name: "getPoolFeeData",
+  description: "Gets fee-related data for a pool",
   supportedChains,
   parameters: z.object({
-    tokenId: z.string(),
-    liquidity: z.string(),
-    slippageTolerance: z.number().default(0.5),
-    deadline: z.number().optional(),
+    poolAddress: z.string(),
     chainId: z.number(),
   }),
-  execute: async (client, args) => {
-    const deadline = args.deadline || Math.floor(Date.now() / 1000) + 1200;
-    const liquidity = BigInt(args.liquidity);
-    const amountMin =
-      (liquidity * (10000n - BigInt(args.slippageTolerance * 100))) / 10000n;
+  execute: async (client, { poolAddress, chainId }) => {
+    const publicClient = client.getPublicClient(chainId);
 
-    const data = encodeFunctionData({
-      abi: NONFUNGIBLE_POSITION_MANAGER_ABI,
-      functionName: "decreaseLiquidity",
-      args: [
-        {
-          tokenId: BigInt(args.tokenId),
-          liquidity,
-          amount0Min: amountMin,
-          amount1Min: amountMin,
-          deadline: BigInt(deadline),
-        },
-      ],
+    const [feeGrowthGlobal0X128, feeGrowthGlobal1X128, protocolFees] =
+      await publicClient.multicall({
+        contracts: [
+          {
+            address: poolAddress,
+            abi: uniV3poolAbi,
+            functionName: "feeGrowthGlobal0X128",
+          },
+          {
+            address: poolAddress,
+            abi: uniV3poolAbi,
+            functionName: "feeGrowthGlobal1X128",
+          },
+          {
+            address: poolAddress,
+            abi: uniV3poolAbi,
+            functionName: "protocolFees",
+          },
+        ],
+      });
+
+    return clean({
+      feeGrowth0: feeGrowthGlobal0X128.result.toString(),
+      feeGrowth1: feeGrowthGlobal1X128.result.toString(),
+      protocolFeesToken0: protocolFees.result[0].toString(),
+      protocolFeesToken1: protocolFees.result[1].toString(),
     });
-
-    const ops = [
-      {
-        target: POSITION_MANAGER_ADDRESS,
-        value: "0",
-        data,
-      },
-    ];
-
-    const walletClient = client.getWalletClient(args.chainId);
-    if (!walletClient) {
-      return {
-        intent: `Decrease liquidity for position #${args.tokenId}`,
-        ops,
-        chain: args.chainId,
-      };
-    }
-
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
-    });
-
-    return {
-      intent: `Decrease liquidity for position #${args.tokenId}`,
-      ops,
-      chain: args.chainId,
-      hash,
-    };
   },
 });
 
-const intentCollectFees = createTool({
-  name: "intentCollectFees",
-  description: "Collects accumulated fees from a Uniswap V3 position",
-  supportedChains,
-  parameters: z.object({
-    tokenId: z.string(),
-    recipient: z.string().optional(),
-    chainId: z.number(),
-  }),
-  execute: async (client, args) => {
-    const user = await client.getAddress();
-    const data = encodeFunctionData({
-      abi: NONFUNGIBLE_POSITION_MANAGER_ABI,
-      functionName: "collect",
-      args: [
-        {
-          tokenId: BigInt(args.tokenId),
-          recipient: (args.recipient as Address) || user,
-          amount0Max: maxUint128,
-          amount1Max: maxUint128,
-        },
-      ],
-    });
-
-    const ops = [
-      {
-        target: POSITION_MANAGER_ADDRESS,
-        value: "0",
-        data,
-      },
-    ];
-
-    const walletClient = client.getWalletClient(args.chainId);
-    if (!walletClient) {
-      return {
-        intent: `Collect fees from position #${args.tokenId}`,
-        ops,
-        chain: args.chainId,
-      };
-    }
-
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
-    });
-
-    return {
-      intent: `Collect fees from position #${args.tokenId}`,
-      ops,
-      chain: args.chainId,
-      hash,
-    };
-  },
-});
-
-const intentTransferPosition = createTool({
-  name: "intentTransferPosition",
-  description: "Transfers ownership of a Uniswap V3 LP NFT",
-  supportedChains,
-  parameters: z.object({
-    tokenId: z.string(),
-    to: z.string(),
-    chainId: z.number(),
-  }),
-  execute: async (client, args) => {
-    const data = encodeFunctionData({
-      abi: erc721Abi,
-      functionName: "safeTransferFrom",
-      args: [
-        await client.getAddress(),
-        args.to as Address,
-        BigInt(args.tokenId),
-      ],
-    });
-
-    const ops = [
-      {
-        target: POSITION_MANAGER_ADDRESS,
-        value: "0",
-        data,
-      },
-    ];
-
-    const walletClient = client.getWalletClient(args.chainId);
-    if (!walletClient) {
-      return {
-        intent: `Transfer position #${args.tokenId} to ${args.to}`,
-        ops,
-        chain: args.chainId,
-      };
-    }
-
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
-    });
-
-    return {
-      intent: `Transfer position #${args.tokenId} to ${args.to}`,
-      ops,
-      chain: args.chainId,
-      hash,
-    };
-  },
-});
-
-export {
-  getUniV3Pool,
-  intentMintPosition,
-  intentIncreaseLiquidity,
-  intentDecreaseLiquidity,
-  intentCollectFees,
-  intentTransferPosition,
-};
+export { getUniV3Pool, getUserPositions, getPoolFeeData, getPositionDetails };

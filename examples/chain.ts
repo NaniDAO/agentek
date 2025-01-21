@@ -5,8 +5,6 @@ import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { transferTools } from "../src/shared/transfer";
-import { dexscreenerTools } from "../src/shared/dexscreener";
 import { rpcTools } from "../src/shared/rpc";
 
 async function main() {
