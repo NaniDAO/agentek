@@ -32,11 +32,21 @@ async function main() {
 
   const toolkit = new AgentekToolkit({
     transports: [
-      http(),
-      http("https://mainnet.mode.network"),
-      http(),
-      http(),
-      http(),
+      http(
+        `https://lb.drpc.org/ogrpc?network=ethereum&dkey=${process.env.DRPC_KEY}`,
+      ),
+      http(
+        `https://lb.drpc.org/ogrpc?network=mode&dkey=${process.env.DRPC_KEY}`,
+      ),
+      http(
+        `https://lb.drpc.org/ogrpc?network=arbitrum&dkey=${process.env.DRPC_KEY}`,
+      ),
+      http(
+        `https://lb.drpc.org/ogrpc?network=base&dkey=${process.env.DRPC_KEY}`,
+      ),
+      http(
+        `https://lb.drpc.org/ogrpc?network=sepolia&dkey=${process.env.DRPC_KEY}`,
+      ),
     ],
     chains,
     accountOrAddress: account,
@@ -52,7 +62,7 @@ async function main() {
     {
       role: "user",
       content:
-        "Which chain is the cheapest ? How many txs has vitalik.eth done on mode?",
+        "Compare chains based on important metrics like gas, and how many txs vitalik.eth did on them and how much balance he has on them",
     },
   ] as CoreMessage[];
 
@@ -62,7 +72,7 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("openai/gpt-4o-mini"),
+    model: openrouter("anthropic/claude-3.5-sonnet"),
     system: `You are an intelligent crypto analytics agent that employs Step-by-Step Reasoning.
 
 Approach problems by:
@@ -93,7 +103,7 @@ Let's solve this problem through careful analysis and reasoning.`,
           console.log(`[Tool:${content.toolName}]`);
           console.log(`${JSON.stringify(content.args, null, 2)}`);
         } else if (content.type === "tool-result") {
-          console.log(`\n---\n${content.result}`);
+          console.log(`\n---\n${JSON.stringify(content.result)}`);
         }
       });
     }

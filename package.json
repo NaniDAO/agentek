@@ -4,15 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest -c ./test/vitest.config.ts"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0",
   "devDependencies": {
     "@openrouter/ai-sdk-provider": "^0.0.6",
     "@types/node": "^22.10.6",
-    "typescript": "^5.7.3"
+    "dotenv": "^16.4.7",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.2"
   },
   "dependencies": {
     "ai": "^3.4.7 || ^4.0.0",
