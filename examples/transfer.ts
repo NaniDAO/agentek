@@ -1,5 +1,5 @@
 import { Hex, http } from "viem";
-import { base, mainnet, arbitrum, sepolia } from "viem/chains";
+import { mainnet, sepolia } from "viem/chains";
 import { ensTools } from "../src/shared/ens";
 import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
