@@ -32,11 +32,21 @@ async function main() {
 
   const toolkit = new AgentekToolkit({
     transports: [
-      http(),
-      http("https://mainnet.mode.network"),
-      http(),
-      http(),
-      http(),
+      http(
+        `https://lb.drpc.org/ogrpc?network=ethereum&dkey=${process.env.DRPC_KEY}`,
+      ),
+      http(
+        `https://lb.drpc.org/ogrpc?network=mode&dkey=${process.env.DRPC_KEY}`,
+      ),
+      http(
+        `https://lb.drpc.org/ogrpc?network=arbitrum&dkey=${process.env.DRPC_KEY}`,
+      ),
+      http(
+        `https://lb.drpc.org/ogrpc?network=base&dkey=${process.env.DRPC_KEY}`,
+      ),
+      http(
+        `https://lb.drpc.org/ogrpc?network=sepolia&dkey=${process.env.DRPC_KEY}`,
+      ),
     ],
     chains,
     accountOrAddress: account,
@@ -52,7 +62,7 @@ async function main() {
     {
       role: "user",
       content:
-        "Get receipt for 0xa8d2e7503b44041cea85c310a25f6eca3d7ef57980d1bd54c771e456fd972fe9 on base",
+        "Compare chains based on important metrics like gas, and how many txs vitalik.eth did on them and how much balance he has on them",
     },
   ] as CoreMessage[];
 
@@ -62,7 +72,7 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("openai/gpt-4o-mini"),
+    model: openrouter("anthropic/claude-3.5-sonnet"),
     system: `You are an intelligent crypto analytics agent that employs Step-by-Step Reasoning.
 
 Approach problems by:
