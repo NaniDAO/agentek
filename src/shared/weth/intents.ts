@@ -1,16 +1,16 @@
 import { z } from "zod";
 import { AgentekClient, createTool, Intent } from "../client"; 
-import { Address, encodeFunctionData, Hex, SendTransactionParameters } from "viem";
+import { Address, encodeFunctionData, Hex, parseEther, SendTransactionParameters } from "viem";
 import { supportedChains, WETH_ADDRESS, wethAbi } from "./constants";
 
 const depositWETHParameters = z.object({
   chainId: z.number().describe("Chain ID to deposit on"),
-  amount: z.string().describe("Amount of ETH to deposit (as a string)"),
+  amount: z.bigint().describe("Amount of ETH to deposit (as a bigint)"),
 });
 
 const withdrawWETHParameters = z.object({
   chainId: z.number().describe("Chain ID to withdraw on"),
-  amount: z.string().describe("Amount of WETH to withdraw (as a string)"),
+  amount: z.bigint().describe("Amount of WETH to withdraw (as a bigint)"),
 });
 
 const depositWETHChains = supportedChains;
@@ -28,7 +28,7 @@ export const intent_depositWETH = createTool({
     const { chainId, amount } = args;
     const walletClient = client.getWalletClient(chainId);
 
-    const valueToSend = BigInt(amount);
+    const valueToDeposit = parseEther(amount.toString());
 
     const data = encodeFunctionData({
       abi: wethAbi,
@@ -39,7 +39,7 @@ export const intent_depositWETH = createTool({
     const ops = [
       {
         target: WETH_ADDRESS[chainId as keyof typeof WETH_ADDRESS] as Address,
-        value: valueToSend.toString(),
+        value: valueToDeposit.toString(),
         data: data,
       },
     ];
@@ -79,12 +79,13 @@ export const intent_withdrawWETH = createTool({
     const { chainId, amount } = args;
 
     const walletClient = client.getWalletClient(chainId);
-    const amountToWithdraw = BigInt(amount);
+
+    const valueToWithdraw = parseEther(amount.toString());
 
     const data = encodeFunctionData({
       abi: wethAbi,
       functionName: "withdraw",
-      args: [amountToWithdraw],
+      args: [valueToWithdraw],
     });
 
     const ops = [
