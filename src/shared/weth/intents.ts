@@ -16,7 +16,7 @@ const withdrawWETHParameters = z.object({
 const depositWETHChains = supportedChains;
 const withdrawWETHChains = supportedChains;
 
-export const depositWETHIntent = createTool({
+export const intent_depositWETH = createTool({
   name: "depositWETH",
   description: "Deposit ETH into the WETH contract, receiving WETH in return",
   supportedChains: depositWETHChains,
@@ -46,7 +46,7 @@ export const depositWETHIntent = createTool({
 
     if (!walletClient) {
       return {
-        intent: `Deposit ${amount} ETH into WETH on chain ${chainId}`,
+        intent: `Deposit ${amount} ETH into WETH`,
         ops,
         chain: chainId,
       };
@@ -58,7 +58,7 @@ export const depositWETHIntent = createTool({
         } as SendTransactionParameters);
     
     return {
-      intent: `Deposit ${amount} ETH into WETH on chain ${chainId}`,
+      intent: `Deposit ${amount} ETH into WETH`,
       ops,
       chain: chainId,
       hash,
@@ -67,7 +67,7 @@ export const depositWETHIntent = createTool({
   },
 });
 
-export const withdrawWETHIntent = createTool({
+export const intent_withdrawWETH = createTool({
   name: "withdrawWETH",
   description: "Withdraw WETH back to native ETH",
   supportedChains: withdrawWETHChains,
@@ -97,7 +97,7 @@ export const withdrawWETHIntent = createTool({
 
     if (!walletClient) {
       return {
-        intent: `Withdraw ${amount} WETH to native ETH on chain ${chainId}`,
+        intent: `Withdraw ${amount} WETH to native ETH`,
         ops,
         chain: chainId,
       };
@@ -109,7 +109,7 @@ export const withdrawWETHIntent = createTool({
       } as SendTransactionParameters);
 
       return {
-        intent: `Withdraw ${amount} WETH to native ETH on chain ${chainId}`,
+        intent: `Withdraw ${amount} WETH to native ETH`,
         ops,
         chain: chainId,
         hash,
