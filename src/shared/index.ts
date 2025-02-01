@@ -4,6 +4,7 @@ import { dexscreenerTools } from "./dexscreener";
 import { rpcTools } from "./rpc";
 import { uniV3Tools } from "./uniV3";
 import { wethTools } from "./weth";
+import { naniTools } from "./nani";
 
 const allTools = () => {
   return [
@@ -13,6 +14,7 @@ const allTools = () => {
     ...rpcTools(),
     ...uniV3Tools(),
     ...wethTools(),
+    ...naniTools(),
   ];
 };
 
