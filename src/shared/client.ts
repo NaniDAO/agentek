@@ -159,6 +159,40 @@ export class AgentekClient {
     });
   }
 
+  public async executeOps(ops: Op[], chainId: number): Promise<string> {
+    const walletClient = this.getWalletClient(chainId);
+    const publicClient = this.getPublicClient(chainId);
+
+    if (!walletClient) {
+      throw new Error(`No wallet client available for chain ${chainId}`);
+    }
+
+    if (!publicClient) {
+      throw new Error(`No public client available for chain ${chainId}`);
+    }
+
+    let hash = "";
+    for (const op of ops) {
+      const txHash = await walletClient.sendTransaction({
+        to: op.target,
+        value: BigInt(op.value),
+        data: op.data,
+      });
+
+      await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+      });
+
+      if (ops.length > 1) {
+        hash = hash + txHash + ";";
+      } else {
+        hash = txHash;
+      }
+    }
+
+    return hash;
+  }
+
   public async execute(method: string, args: any): Promise<any> {
     const tool = this.tools.get(method);
     if (!tool) {
