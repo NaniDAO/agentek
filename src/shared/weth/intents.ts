@@ -22,7 +22,7 @@ const withdrawWETHParameters = z.object({
 const depositWETHChains = supportedChains;
 const withdrawWETHChains = supportedChains;
 
-export const intent_depositWETH = createTool({
+export const intentDepositWETH = createTool({
   name: "depositWETH",
   description: "Deposit ETH into the WETH contract, receiving WETH in return",
   supportedChains: depositWETHChains,
@@ -78,7 +78,7 @@ export const intent_depositWETH = createTool({
   },
 });
 
-export const intent_withdrawWETH = createTool({
+export const intentWithdrawWETH = createTool({
   name: "withdrawWETH",
   description: "Withdraw WETH back to native ETH",
   supportedChains: withdrawWETHChains,
