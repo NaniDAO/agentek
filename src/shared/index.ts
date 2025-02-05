@@ -6,9 +6,10 @@ import { uniV3Tools } from "./uniV3";
 import { wethTools } from "./weth";
 import { naniTools } from "./nani";
 import { erc20Tools } from "./erc20";
+import { searchTools } from "./search";
 
-const allTools = () => {
-  return [
+const allTools = ({ perplexityApiKey }: { perplexityApiKey?: string }) => {
+  let tools = [
     ...ensTools(),
     ...erc20Tools(),
     ...transferTools(),
@@ -18,6 +19,12 @@ const allTools = () => {
     ...wethTools(),
     ...naniTools(),
   ];
+
+  if (perplexityApiKey) {
+    tools.push(...searchTools({ perplexityApiKey }));
+  }
+
+  return tools;
 };
 
 export { allTools };

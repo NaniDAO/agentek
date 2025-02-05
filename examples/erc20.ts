@@ -1,5 +1,5 @@
 import { Hex, http } from "viem";
-import { mainnet, sepolia } from "viem/chains";
+import { base, mainnet, sepolia } from "viem/chains";
 import { ensTools } from "../src/shared/ens";
 import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -7,6 +7,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
 import { transferTools } from "../src/shared/transfer";
 import { erc20Tools } from "../src/shared/erc20";
+import { searchTools } from "../src/shared/search";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -22,7 +23,7 @@ async function main() {
 
   const account = privateKeyToAccount(privateKey as Hex);
 
-  const chains = [mainnet, sepolia];
+  const chains = [mainnet, base, sepolia];
   console.log("ACCOUNT:", account.address);
   console.log(
     "CHAINS:",
@@ -33,7 +34,12 @@ async function main() {
     transports: [http(), http(), http()],
     chains,
     accountOrAddress: account,
-    tools: [...erc20Tools(), ...ensTools(), ...transferTools()],
+    tools: [
+      ...searchTools({ perplexityApiKey: process.env.PERPLEXITY_API_KEY! }),
+      ...erc20Tools(),
+      ...ensTools(),
+      ...transferTools(),
+    ],
   });
 
   const tools = toolkit.getTools();
@@ -44,8 +50,8 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content:
-        "Please revoke the approval for spender shivanshi.eth on the USDC contract (0x94a9d9ac8a22534e3faca9f4e7f2e2cf85d5e4c8) on the Sepolia network. I want to completely remove their spending allowance.",
+      content: "Find the best-est tokens on flaunch.gg kudasai",
+      // "Please revoke the approval for spender shivanshi.eth on the USDC contract (0x94a9d9ac8a22534e3faca9f4e7f2e2cf85d5e4c8) on the Sepolia network. I want to completely remove their spending allowance.",
       // "Check if vitalik.eth has approved 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D (uniswap v2 router) for 0x6b175474e89094c44da98b954eedeac495271d0f (dai) and also give me all the deets on DAI and if he has a balance or whatevs",
     },
   ] as CoreMessage[];
@@ -73,10 +79,10 @@ async function main() {
         if (content.type === "text") {
           console.log(`${content.text}`);
         } else if (content.type === "tool-call") {
-          console.log(`[Tool:${content.toolName}]`);
-          console.log(`${JSON.stringify(content.args, null, 2)}`);
+          // console.log(`[Tool:${content.toolName}]`);
+          // console.log(`${JSON.stringify(content.args, null, 2)}`);
         } else if (content.type === "tool-result") {
-          console.log(`\n---\n${JSON.stringify(content.result, null, 2)}`);
+          // console.log(`\n---\n${JSON.stringify(content.result, null, 2)}`);
         }
       });
     }
