@@ -62,6 +62,11 @@ export const intentStakeNani = createTool({
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
 
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+      });
+
       return {
         intent,
         chain: chainId,
@@ -124,6 +129,11 @@ export const intentUnstakeNani = createTool({
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
 
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+      });
+
       return {
         intent,
         chain: chainId,
@@ -170,6 +180,11 @@ export const intentProposeNani = createTool({
 
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
+
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+      });
 
       return {
         intent: `propose "${args.content}" on NANI`,
@@ -218,6 +233,11 @@ export const intentVoteNaniProposal = createTool({
 
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
+
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+      });
 
       return {
         intent: `vote ${args.approve ? "yes" : "no"} on NANI proposal ${args.proposalId}`,
