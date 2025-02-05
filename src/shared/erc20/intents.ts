@@ -130,6 +130,13 @@ export const intentApproveTool = createTool({
         data: ops[0].data,
       });
 
+      await client
+        .getPublicClient(executionChain.chain.id)
+        .waitForTransactionReceipt({
+          hash,
+          confirmations: 1,
+        });
+
       return {
         intent: `Approve ${amount.toString()} ${token} from ${from} for spender ${spender}`,
         ops,

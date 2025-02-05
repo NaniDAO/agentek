@@ -154,6 +154,11 @@ export const intentTransferTool = createTool({
         data: ops[0].data,
       });
 
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+      });
+
       return {
         intent: `send ${amount.toString()} ${token} from ${from} to ${to}`,
         ops,
@@ -266,8 +271,13 @@ export const intentTransferFromTool = createTool({
     } else {
       const hash = await walletClient.sendTransaction({
         to: ops[0].target,
-        value: ops[0].value,
+        value: BigInt(ops[0].value),
         data: ops[0].data,
+      });
+
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
       });
 
       return {
