@@ -1,4 +1,5 @@
 import { BaseTool, createToolCollection } from "../client";
+import { intentApproveTool } from "./intents";
 import {
   getAllowanceTool,
   getBalanceOfTool,
@@ -11,6 +12,7 @@ import {
 
 export function erc20Tools(): BaseTool[] {
   return createToolCollection([
+    // tools
     getAllowanceTool,
     getBalanceOfTool,
     getTotalSupplyTool,
@@ -18,5 +20,8 @@ export function erc20Tools(): BaseTool[] {
     getNameTool,
     getSymbolTool,
     getTokenMetadataTool,
+
+    // intents
+    intentApproveTool,
   ]);
 }
