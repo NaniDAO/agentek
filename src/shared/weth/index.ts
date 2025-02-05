@@ -1,6 +1,6 @@
-import {BaseTool, createToolCollection} from "../client";
-import {intent_withdrawWETH, intent_depositWETH, } from "./intents";
+import { BaseTool, createToolCollection } from "../client";
+import { intentWithdrawWETH, intentDepositWETH } from "./intents";
 
 export function wethTools(): BaseTool[] {
-  return createToolCollection([intent_depositWETH, intent_withdrawWETH]);
+  return createToolCollection([intentDepositWETH, intentWithdrawWETH]);
 }

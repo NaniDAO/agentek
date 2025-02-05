@@ -1,17 +1,7 @@
 import { z } from "zod";
 import { createTool } from "../client";
-import {
-  arbitrum,
-  base,
-  mainnet,
-  mode,
-  optimism,
-  polygon,
-  sepolia,
-} from "viem/chains";
 import { Address, erc20Abi, formatUnits } from "viem";
-
-const erc20Chains = [mainnet, arbitrum, base, optimism, polygon, mode, sepolia];
+import { erc20Chains } from "./constants";
 
 const getAllowanceParameters = z.object({
   token: z.string().describe("The token address"),

@@ -45,7 +45,8 @@ async function main() {
     {
       role: "user",
       content:
-        "Check if vitalik.eth has approved 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D (uniswap v2 router) for 0x6b175474e89094c44da98b954eedeac495271d0f (dai) and also give me all the deets on DAI and if he has a balance or whatevs",
+        "Please revoke the approval for spender shivanshi.eth on the USDC contract (0x94a9d9ac8a22534e3faca9f4e7f2e2cf85d5e4c8) on the Sepolia network. I want to completely remove their spending allowance.",
+      // "Check if vitalik.eth has approved 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D (uniswap v2 router) for 0x6b175474e89094c44da98b954eedeac495271d0f (dai) and also give me all the deets on DAI and if he has a balance or whatevs",
     },
   ] as CoreMessage[];
 
@@ -56,7 +57,7 @@ async function main() {
 
   const response = await generateText({
     model: openrouter("openai/gpt-4o-mini"),
-    system: "",
+    system: `YOUR ADDRESS: ${account.address}`,
     messages,
     maxSteps: 5,
     tools: tools as Record<string, CoreTool<any, any>>,
