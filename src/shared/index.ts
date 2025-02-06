@@ -8,6 +8,7 @@ import { naniTools } from "./nani";
 import { erc20Tools } from "./erc20";
 import { searchTools } from "./search";
 import { swapTools } from "./swap";
+import { blockscoutTools } from "./blockscout";
 
 const allTools = ({
   perplexityApiKey,
@@ -25,6 +26,7 @@ const allTools = ({
     ...uniV3Tools(),
     ...wethTools(),
     ...naniTools(),
+    ...blockscoutTools(),
   ];
 
   if (perplexityApiKey) {
