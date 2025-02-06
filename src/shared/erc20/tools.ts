@@ -58,10 +58,7 @@ const getSymbolParameters = z.object({
 
 const tokenMetadataParameters = z.object({
   token: z.string().describe("The token address"),
-  chainId: z
-    .number()
-    .optional()
-    .describe("If not specified, returns metadata for all supported chains."),
+  chainId: z.number().describe("The token chain"),
 });
 
 export const getAllowanceTool = createTool({
@@ -306,51 +303,36 @@ export const getTokenMetadataTool = createTool({
   parameters: tokenMetadataParameters,
   execute: async (client, args) => {
     const { token, chainId } = args;
-    const chains = client.filterSupportedChains(erc20Chains, chainId);
-
-    const metadata = await Promise.all(
-      chains.map(async (chain) => {
-        const publicClient = client.getPublicClient(chain.id);
-        try {
-          const [name, symbol, decimals, totalSupply] = await Promise.all([
-            publicClient.readContract({
-              address: token as Address,
-              abi: erc20Abi,
-              functionName: "name",
-            }),
-            publicClient.readContract({
-              address: token as Address,
-              abi: erc20Abi,
-              functionName: "symbol",
-            }),
-            publicClient.readContract({
-              address: token as Address,
-              abi: erc20Abi,
-              functionName: "decimals",
-            }),
-            publicClient.readContract({
-              address: token as Address,
-              abi: erc20Abi,
-              functionName: "totalSupply",
-            }),
-          ]);
-
-          return {
-            chain: chain.id,
-            name,
-            symbol,
-            decimals,
-            totalSupply: formatUnits(totalSupply, decimals),
-          };
-        } catch (error) {
-          return {
-            chain: chain.id,
-            error: `Failed to fetch metadata: ${error?.shortMessage ?? error?.message}`,
-          };
-        }
+    const publicClient = client.getPublicClient(chainId);
+    const [name, symbol, decimals, totalSupply] = await Promise.all([
+      publicClient.readContract({
+        address: token as Address,
+        abi: erc20Abi,
+        functionName: "name",
       }),
-    );
+      publicClient.readContract({
+        address: token as Address,
+        abi: erc20Abi,
+        functionName: "symbol",
+      }),
+      publicClient.readContract({
+        address: token as Address,
+        abi: erc20Abi,
+        functionName: "decimals",
+      }),
+      publicClient.readContract({
+        address: token as Address,
+        abi: erc20Abi,
+        functionName: "totalSupply",
+      }),
+    ]);
 
-    return metadata;
+    return {
+      chain: chainId,
+      name,
+      symbol,
+      decimals,
+      totalSupply: formatUnits(totalSupply, decimals),
+    };
   },
 });

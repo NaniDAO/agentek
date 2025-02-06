@@ -7,8 +7,15 @@ import { wethTools } from "./weth";
 import { naniTools } from "./nani";
 import { erc20Tools } from "./erc20";
 import { searchTools } from "./search";
+import { swapTools } from "./swap";
 
-const allTools = ({ perplexityApiKey }: { perplexityApiKey?: string }) => {
+const allTools = ({
+  perplexityApiKey,
+  zeroxApiKey,
+}: {
+  perplexityApiKey?: string;
+  zeroxApiKey?: string;
+}) => {
   let tools = [
     ...ensTools(),
     ...erc20Tools(),
@@ -22,6 +29,10 @@ const allTools = ({ perplexityApiKey }: { perplexityApiKey?: string }) => {
 
   if (perplexityApiKey) {
     tools.push(...searchTools({ perplexityApiKey }));
+  }
+
+  if (zeroxApiKey) {
+    tools.push(...swapTools({ zeroxApiKey }));
   }
 
   return tools;
