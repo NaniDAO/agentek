@@ -27,7 +27,6 @@ export const intentDepositWETH = createTool({
   ): Promise<Intent> => {
     const { chainId, amount } = args;
     const walletClient = client.getWalletClient(chainId);
-    const publicClient = client.getPublicClient(chainId);
 
     const valueToDeposit = parseEther(amount.toString());
 
