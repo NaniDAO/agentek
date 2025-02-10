@@ -1,10 +1,10 @@
 import { Hex, http } from "viem";
-import { base, mainnet } from "viem/chains";
+import { base, optimism } from "viem/chains";
+import { acrossTools } from "../src/shared/across";
 import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { blockscoutTools } from "../src/shared/blockscout";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -20,7 +20,7 @@ async function main() {
 
   const account = privateKeyToAccount(privateKey as Hex);
 
-  const chains = [mainnet, base];
+  const chains = [base, optimism];
   console.log("ACCOUNT:", account.address);
   console.log(
     "CHAINS:",
@@ -28,10 +28,16 @@ async function main() {
   );
 
   const toolkit = new AgentekToolkit({
-    transports: [http()],
+    transports: [http(), http()],
     chains,
     accountOrAddress: account,
-    tools: [...blockscoutTools()],
+    tools: [
+      // getBlockscoutSearch,
+      // ...searchTools({
+      //   perplexityApiKey: process.env.PERPLEXITY_API_KEY!,
+      // }),
+      ...acrossTools(),
+    ],
   });
 
   const tools = toolkit.getTools();
@@ -43,7 +49,7 @@ async function main() {
     {
       role: "user",
       content:
-        "What is on 0x84443CFd09A48AF6eF360C6976C5392aC5023a1F for optimismm, arbitrum and ethereum. Check the smart contract.",
+        "Bridge 2 USDC from base (0x833589fcd6edb6e08f4c7c32d4f71b54bda02913) to optimism (0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85)", // need an address book
     },
   ] as CoreMessage[];
 
@@ -53,10 +59,10 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("openai/gpt-4o-mini"),
-    system: "",
+    model: openrouter("anthropic/claude-3.5-sonnet"),
+    system: `YOUR ADDRESS: ${account.address}, CHAINS: ${chains.map((chain) => `${chain.name} (${chain.id})`).join(", ")}`,
     messages,
-    maxSteps: 20,
+    maxSteps: 10,
     tools: tools as Record<string, CoreTool<any, any>>,
     experimental_activeTools: Object.keys(tools),
   });
