@@ -4,11 +4,8 @@ import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
 import { erc20Abi, parseUnits } from "viem";
 
 /**
- * acrossFeeQuoteTool retrieves a suggested fee quote for bridging assets using the Across Protocol REST API.
- *
- * It calls the documented endpoint at:
+ * It calls the endpoint at:
  *   https://across.to/api/suggested-fees
- *
  */
 export const getAcrossFeeQuote = createTool({
   name: "getAcrossFeeQuote",
@@ -31,7 +28,7 @@ export const getAcrossFeeQuote = createTool({
     destinationChainId: z
       .number()
       .describe("Chain ID of the destination chain."),
-    amount: z.string().describe("Amount of the token to transfer"),
+    amount: z.string().describe("Amount of tokens to bridge (in ether)"),
     recipient: z
       .string()
       .describe("Recipient address on the destination chain."),
@@ -40,14 +37,12 @@ export const getAcrossFeeQuote = createTool({
   async execute(client, args) {
     const publicClient = client.getPublicClient(args.originChainId);
 
-    // Get token decimals from chain
     const decimals = await publicClient.readContract({
       address: args.inputToken as `0x${string}`,
       abi: erc20Abi,
       functionName: "decimals",
     });
 
-    // Build query parameters for the GET request based on Across API documentation.
     const queryParams = new URLSearchParams({
       inputToken: args.inputToken,
       outputToken: args.outputToken,
@@ -73,6 +68,7 @@ export const getAcrossFeeQuote = createTool({
           `Across REST API error: ${response.status} ${response.statusText} - ${errorText}`,
         );
       }
+
       const result = await response.json();
       return result;
     } catch (err: any) {

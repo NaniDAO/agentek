@@ -42,7 +42,8 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content: "Test ALL the tools you have uh",
+      content:
+        "What is on 0x84443CFd09A48AF6eF360C6976C5392aC5023a1F for optimismm, arbitrum and ethereum. Check the smart contract.",
     },
   ] as CoreMessage[];
 
@@ -72,7 +73,7 @@ async function main() {
           console.log(`[Tool:${content.toolName}]`);
           console.log(`${JSON.stringify(content.args, null, 2)}`);
         } else if (content.type === "tool-result") {
-          console.log(`\n---\n${content.result}`);
+          console.log(`\n---\n${JSON.stringify(content.result, null, 2)}`);
         }
       });
     }

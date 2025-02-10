@@ -5,8 +5,6 @@ import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { searchTools } from "../src/shared/search";
-import { getBlockscoutSearch } from "../src/shared/blockscout/tools";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -34,10 +32,10 @@ async function main() {
     chains,
     accountOrAddress: account,
     tools: [
-      getBlockscoutSearch,
-      ...searchTools({
-        perplexityApiKey: process.env.PERPLEXITY_API_KEY!,
-      }),
+      // getBlockscoutSearch,
+      // ...searchTools({
+      //   perplexityApiKey: process.env.PERPLEXITY_API_KEY!,
+      // }),
       ...acrossTools(),
     ],
   });
@@ -50,7 +48,8 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content: "Bridge 1 usdc from base to optimism",
+      content:
+        "Bridge 2 USDC from base (0x833589fcd6edb6e08f4c7c32d4f71b54bda02913) to optimism (0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85)", // need an address book
     },
   ] as CoreMessage[];
 
@@ -60,8 +59,8 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("openai/gpt-4o-mini"),
-    system: `YOUR ADDRESS: ${account.address}`,
+    model: openrouter("anthropic/claude-3.5-sonnet"),
+    system: `YOUR ADDRESS: ${account.address}, CHAINS: ${chains.map((chain) => `${chain.name} (${chain.id})`).join(", ")}`,
     messages,
     maxSteps: 10,
     tools: tools as Record<string, CoreTool<any, any>>,
