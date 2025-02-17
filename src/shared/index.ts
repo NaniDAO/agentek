@@ -9,13 +9,16 @@ import { erc20Tools } from "./erc20";
 import { searchTools } from "./search";
 import { swapTools } from "./swap";
 import { blockscoutTools } from "./blockscout";
+import { tallyTools } from "./tally";
 
 const allTools = ({
   perplexityApiKey,
   zeroxApiKey,
+  tallyApiKey,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
+  tallyApiKey?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -35,6 +38,14 @@ const allTools = ({
 
   if (zeroxApiKey) {
     tools.push(...swapTools({ zeroxApiKey }));
+  }
+
+  if (tallyApiKey) {
+    tools.push(
+      ...tallyTools({
+        tallyApiKey,
+      }),
+    );
   }
 
   return tools;

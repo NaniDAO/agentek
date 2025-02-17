@@ -149,8 +149,6 @@ export const createMatchSwapTool = ({
 
         const quoteUrl = `${zeroXEndpoint}/swap/v1/quote?${params}`;
 
-        console.log("quoteUrl", quoteUrl);
-
         const quoteResp = await fetch(quoteUrl, {
           headers: { "0x-api-key": zeroxApiKey },
         });

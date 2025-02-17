@@ -110,7 +110,6 @@ export const intentDepositAcross = createTool({
 
     const outputAmountBigInt = amountBigInt - BigInt(quote.relayFeeTotal);
 
-    console.log("outputAmountBigInt", outputAmountBigInt);
     // Encode deposit data
     const depositData = encodeFunctionData({
       abi: acrossSpokePoolAbi,
