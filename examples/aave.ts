@@ -1,12 +1,16 @@
 import { Hex, http } from "viem";
-import { arbitrum, base, mainnet, optimism } from "viem/chains";
+import { base, mainnet } from "viem/chains";
 import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { blockscoutTools } from "../src/shared/blockscout";
+import { aaveTools } from "../src/shared/aave";
 
 async function main() {
+  if (!process.env.TALLY_API_KEY) {
+    throw new Error("TALLY_API_KEY is required");
+  }
+
   const openrouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
   });
@@ -20,7 +24,7 @@ async function main() {
 
   const account = privateKeyToAccount(privateKey as Hex);
 
-  const chains = [mainnet, base, arbitrum, optimism];
+  const chains = [mainnet, base];
   console.log("ACCOUNT:", account.address);
   console.log(
     "CHAINS:",
@@ -28,10 +32,14 @@ async function main() {
   );
 
   const toolkit = new AgentekToolkit({
-    transports: [http(), http(), http(), http()],
+    transports: [http()],
     chains,
     accountOrAddress: account,
-    tools: [...blockscoutTools()],
+    tools: [
+      ...tallyTools({
+        tallyApiKey: process.env.TALLY_API_KEY,
+      }),
+    ],
   });
 
   const tools = toolkit.getTools();
@@ -43,7 +51,7 @@ async function main() {
     {
       role: "user",
       content:
-        "Create a weekly tx report for 0x1c0aa8ccd568d90d61659f060d1bfb1e6f855a20 cross-chain and DO NOT USE any function that will have a long ass response. Only getAddressInfo lol. Today is 17th February, 2025. Thanks!",
+        "Get the latest proposal for uniswap and suggest what I should vote on it",
     },
   ] as CoreMessage[];
 
@@ -53,7 +61,7 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("anthropic/claude-3.5-sonnet"),
+    model: openrouter("openai/gpt-4o-mini"),
     system: "",
     messages,
     maxSteps: 20,
