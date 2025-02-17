@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTool } from "../client";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
+import { formatEther, parseEther } from "viem";
 
 const supportedChains = [mainnet, polygon, arbitrum, optimism, base];
 
@@ -99,7 +100,21 @@ export const getAddressInfo = createTool({
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
-    return await fetchFromBlockscoutV2(chain, `/addresses/${address}`);
+    const response = await fetchFromBlockscoutV2(
+      chain,
+      `/addresses/${address}`,
+    );
+
+    const coin_balance = formatEther(BigInt(response.coin_balance));
+    const coin_balance_in_usd =
+      parseFloat(coin_balance) * parseFloat(response.exchange_rate);
+
+    return {
+      ...response,
+      coin_balance_raw: response.coin_balance,
+      coin_balance,
+      coin_balance_in_usd,
+    };
   },
 });
 

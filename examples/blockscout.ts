@@ -1,5 +1,5 @@
 import { Hex, http } from "viem";
-import { base, mainnet } from "viem/chains";
+import { arbitrum, base, mainnet, optimism } from "viem/chains";
 import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
@@ -20,7 +20,7 @@ async function main() {
 
   const account = privateKeyToAccount(privateKey as Hex);
 
-  const chains = [mainnet, base];
+  const chains = [mainnet, base, arbitrum, optimism];
   console.log("ACCOUNT:", account.address);
   console.log(
     "CHAINS:",
@@ -28,7 +28,7 @@ async function main() {
   );
 
   const toolkit = new AgentekToolkit({
-    transports: [http()],
+    transports: [http(), http(), http(), http()],
     chains,
     accountOrAddress: account,
     tools: [...blockscoutTools()],
@@ -43,7 +43,7 @@ async function main() {
     {
       role: "user",
       content:
-        "What is on 0x84443CFd09A48AF6eF360C6976C5392aC5023a1F for optimismm, arbitrum and ethereum. Check the smart contract.",
+        "Create a weekly tx report for 0x1c0aa8ccd568d90d61659f060d1bfb1e6f855a20 cross-chain and DO NOT USE any function that will have a long ass response. Only getAddressInfo lol. Today is 17th February, 2025. Thanks!",
     },
   ] as CoreMessage[];
 
