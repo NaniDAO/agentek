@@ -2,10 +2,13 @@ import { createToolCollection } from "../client";
 import type { BaseTool } from "../client";
 import {
   createTallyProposalsTool,
-  createTallyVotesTool,
-  createTallyDelegationsTool,
   createTallyChainsTool,
+  createTallyUserDaosTool,
 } from "./tools";
+import {
+  createTallyVoteIntent,
+  createTallyVoteWithReasonIntent,
+} from "./intents";
 
 export function tallyTools({
   tallyApiKey,
@@ -17,7 +20,13 @@ export function tallyTools({
   }
 
   return createToolCollection([
+    // tools
     createTallyProposalsTool(tallyApiKey),
     createTallyChainsTool(tallyApiKey),
+    createTallyUserDaosTool(tallyApiKey),
+
+    // intents
+    createTallyVoteIntent(tallyApiKey),
+    createTallyVoteWithReasonIntent(tallyApiKey),
   ]);
 }
