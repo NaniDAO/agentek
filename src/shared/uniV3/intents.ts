@@ -1,12 +1,9 @@
 import { z } from "zod";
 import { createTool } from "../client";
-import { supportedChains } from "./constants";
+import { getPositionManagerAddress, supportedChains } from "./constants";
 
 import { Address, encodeFunctionData, erc721Abi, maxUint128 } from "viem";
-import {
-  nonfungiblePositionManagerAbi,
-  POSITION_MANAGER_ADDRESS,
-} from "./constants";
+import { nonfungiblePositionManagerAbi } from "./constants";
 
 const intentMintPosition = createTool({
   name: "intentMintPosition",
@@ -26,7 +23,6 @@ const intentMintPosition = createTool({
     chainId: z.number(),
   }),
   execute: async (client, args) => {
-    const publicClient = client.getPublicClient(args.chainId);
     const user = await client.getAddress();
     const deadline = args.deadline || Math.floor(Date.now() / 1000) + 1200;
 
@@ -61,7 +57,7 @@ const intentMintPosition = createTool({
 
     const ops = [
       {
-        target: POSITION_MANAGER_ADDRESS,
+        target: getPositionManagerAddress(args.chainId),
         value: "0",
         data,
       },
@@ -76,11 +72,7 @@ const intentMintPosition = createTool({
       };
     }
 
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
-    });
+    const hash = await client.executeOps(ops, args.chainId);
 
     return {
       intent: `Mint Uniswap V3 position for ${args.token0}/${args.token1}`,
@@ -131,7 +123,7 @@ const intentIncreaseLiquidity = createTool({
 
     const ops = [
       {
-        target: POSITION_MANAGER_ADDRESS,
+        target: getPositionManagerAddress(args.chainId),
         value: "0",
         data,
       },
@@ -146,11 +138,7 @@ const intentIncreaseLiquidity = createTool({
       };
     }
 
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
-    });
+    const hash = await client.executeOps(ops, args.chainId);
 
     return {
       intent: `Increase liquidity for position #${args.tokenId}`,
@@ -194,7 +182,7 @@ const intentDecreaseLiquidity = createTool({
 
     const ops = [
       {
-        target: POSITION_MANAGER_ADDRESS,
+        target: getPositionManagerAddress(args.chainId),
         value: "0",
         data,
       },
@@ -209,11 +197,7 @@ const intentDecreaseLiquidity = createTool({
       };
     }
 
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
-    });
+    const hash = await client.executeOps(ops, args.chainId);
 
     return {
       intent: `Decrease liquidity for position #${args.tokenId}`,
@@ -250,7 +234,7 @@ const intentCollectFees = createTool({
 
     const ops = [
       {
-        target: POSITION_MANAGER_ADDRESS,
+        target: getPositionManagerAddress(args.chainId),
         value: "0",
         data,
       },
@@ -265,11 +249,7 @@ const intentCollectFees = createTool({
       };
     }
 
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
-    });
+    const hash = await client.executeOps(ops, args.chainId);
 
     return {
       intent: `Collect fees from position #${args.tokenId}`,
@@ -302,7 +282,7 @@ const intentTransferPosition = createTool({
 
     const ops = [
       {
-        target: POSITION_MANAGER_ADDRESS,
+        target: getPositionManagerAddress(args.chainId),
         value: "0",
         data,
       },
@@ -317,11 +297,7 @@ const intentTransferPosition = createTool({
       };
     }
 
-    const hash = await walletClient.sendTransaction({
-      to: ops[0].target,
-      value: BigInt(ops[0].value),
-      data: ops[0].data,
-    });
+    const hash = await client.executeOps(ops, args.chainId);
 
     return {
       intent: `Transfer position #${args.tokenId} to ${args.to}`,

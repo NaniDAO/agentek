@@ -5,6 +5,7 @@ import {
   Address,
   encodeFunctionData,
   erc20Abi,
+  Hex,
   parseUnits,
   PublicClient,
 } from "viem";
@@ -119,19 +120,18 @@ export const intentTransferTool = createTool({
       ),
     );
 
-    const publicClient = client.getPublicClient(cheapestChain.chain.id);
     const walletClient = client.getWalletClient(cheapestChain.chain.id);
 
     let ops = [];
     if (token === ETH_ADDRESS) {
       ops.push({
-        target: to,
+        target: to as Address,
         value: cheapestChain.amount.toString(),
-        data: undefined,
+        data: "0x" as Hex,
       });
     } else {
       ops.push({
-        target: token,
+        target: token as Address,
         value: "0",
         data: encodeFunctionData({
           abi: erc20Abi,
@@ -148,11 +148,7 @@ export const intentTransferTool = createTool({
         chain: cheapestChain.chain.id,
       };
     } else {
-      const hash = await walletClient.sendTransaction({
-        to: ops[0].target,
-        value: BigInt(ops[0].value),
-        data: ops[0].data,
-      });
+      const hash = await client.executeOps(ops, cheapestChain.chain.id);
 
       return {
         intent: `send ${amount.toString()} ${token} from ${from} to ${to}`,
@@ -243,11 +239,11 @@ export const intentTransferFromTool = createTool({
 
     let ops = [];
     if (token === ETH_ADDRESS) {
-      // gracefully fallback to weth if eth mentioned
+      // @TODO gracefully fallback to weth if eth mentioned
       throw new Error("ETH transferFrom not supported");
     } else {
       ops.push({
-        target: token,
+        target: token as Address,
         value: "0",
         data: encodeFunctionData({
           abi: erc20Abi,
@@ -264,11 +260,7 @@ export const intentTransferFromTool = createTool({
         chain: cheapestChain.chain.id,
       };
     } else {
-      const hash = await walletClient.sendTransaction({
-        to: ops[0].target,
-        value: ops[0].value,
-        data: ops[0].data,
-      });
+      const hash = await client.executeOps(ops, cheapestChain.chain.id);
 
       return {
         intent: `send ${amount.toString()} ${token} from ${from} to ${to}`,
