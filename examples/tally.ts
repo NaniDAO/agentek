@@ -7,6 +7,14 @@ import { CoreMessage, CoreTool, generateText } from "ai";
 import { tallyTools } from "../src/shared/tally";
 
 async function main() {
+  // Get command line arguments
+  const args = process.argv.slice(2);
+  const promptIndex = args.indexOf("--prompt");
+  const userPrompt =
+    promptIndex !== -1
+      ? args[promptIndex + 1]
+      : "Get the latest proposal for uniswap and suggest what I should vote on it";
+
   if (!process.env.TALLY_API_KEY) {
     throw new Error("TALLY_API_KEY is required");
   }
@@ -50,8 +58,7 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content:
-        "Get the latest proposal for uniswap and suggest what I should vote on it",
+      content: userPrompt,
     },
   ] as CoreMessage[];
 
