@@ -1,8 +1,8 @@
 import z from "zod";
 import { createTool } from "../client";
 import type { BaseTool, AgentekClient } from "../client";
-
-const TALLY_API_URL = "https://api.tally.xyz/query";
+import { getGovernorBySlug } from "./utils";
+import { TALLY_API_URL } from "./constants";
 
 export function createTallyProposalsTool(tallyApiKey: string): BaseTool {
   return createTool({
@@ -21,36 +21,8 @@ export function createTallyProposalsTool(tallyApiKey: string): BaseTool {
         .describe("Maximum number of proposals to fetch"),
     }),
     execute: async (_client: AgentekClient, args) => {
-      // First get governor ID from slug
-      const getGovernorQuery = `
-        query GetGovernorBySlug($slug: String!) {
-          governor(input: { slug: $slug }) {
-            id
-            name
-          }
-        }
-      `;
-
-      const governorResponse = await fetch(TALLY_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Api-Key": tallyApiKey,
-        },
-        body: JSON.stringify({
-          query: getGovernorQuery,
-          variables: { slug: args.space },
-        }),
-      });
-
-      const governorResult = await governorResponse.json();
-      if (governorResult.errors || !governorResult.data?.governor?.id) {
-        throw new Error("DAO not supported");
-      }
-
-      const governorId = governorResult.data.governor.id;
-
-      console.log("governorId", governorId);
+      const governor = await getGovernorBySlug(args.space, tallyApiKey);
+      const governorId = governor.id;
 
       // Then get proposals using governor ID
       const getProposalsQuery = `
@@ -165,6 +137,73 @@ export function createTallyChainsTool(tallyApiKey: string): BaseTool {
           "Api-Key": tallyApiKey,
         },
         body: JSON.stringify({ query }),
+      });
+
+      const result = await response.json();
+      if (result.errors) {
+        throw new Error(`Tally API Error: ${JSON.stringify(result.errors)}`);
+      }
+      return result.data;
+    },
+  });
+}
+
+export function createTallyUserDaosTool(tallyApiKey: string): BaseTool {
+  return createTool({
+    name: "tallyUserDaos",
+    description:
+      "Fetch all DAOs a user is a member of from the Tally governance API.",
+    supportedChains: [],
+    parameters: z.object({
+      address: z
+        .string()
+        .describe("The Ethereum address to check DAO membership for"),
+    }),
+    execute: async (_client: AgentekClient, args) => {
+      const query = `
+        query Organizations($input: OrganizationsInput) {
+          organizations(input: $input) {
+            nodes {
+              ... on Organization {
+                id
+                slug
+                name
+                chainIds
+                tokenIds
+                governorIds
+                metadata {
+                  color
+                  description
+                  icon
+                }
+              }
+            }
+            pageInfo {
+              firstCursor
+              lastCursor
+              count
+            }
+          }
+        }
+      `;
+
+      const response = await fetch(TALLY_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Api-Key": tallyApiKey,
+        },
+        body: JSON.stringify({
+          query,
+          variables: {
+            input: {
+              filters: {
+                address: args.address,
+                isMember: true,
+              },
+            },
+          },
+        }),
       });
 
       const result = await response.json();
