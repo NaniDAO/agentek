@@ -10,6 +10,7 @@ import { searchTools } from "./search";
 import { swapTools } from "./swap";
 import { blockscoutTools } from "./blockscout";
 import { tallyTools } from "./tally";
+import { securityTools } from "./security";
 
 const allTools = ({
   perplexityApiKey,
@@ -30,6 +31,7 @@ const allTools = ({
     ...wethTools(),
     ...naniTools(),
     ...blockscoutTools(),
+    ...securityTools(),
   ];
 
   if (perplexityApiKey) {
