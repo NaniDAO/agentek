@@ -11,6 +11,7 @@ import { swapTools } from "./swap";
 import { blockscoutTools } from "./blockscout";
 import { tallyTools } from "./tally";
 import { securityTools } from "./security";
+import { webTools } from "./web";
 
 const allTools = ({
   perplexityApiKey,
@@ -32,6 +33,7 @@ const allTools = ({
     ...naniTools(),
     ...blockscoutTools(),
     ...securityTools(),
+    ...webTools(),
   ];
 
   if (perplexityApiKey) {
