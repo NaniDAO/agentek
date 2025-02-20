@@ -5,11 +5,24 @@ import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, generateText } from "ai";
+import { coindeskTools } from "../src/shared/coindesk";
 
 async function main() {
+  // Get command line arguments
+  const args = process.argv.slice(2);
+  const promptIndex = args.indexOf("--prompt");
+  const userPrompt =
+    promptIndex !== -1
+      ? args[promptIndex + 1]
+      : "Get the latest proposal for uniswap and suggest what I should vote on it";
+
   const openrouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
   });
+
+  if (!process.env.COINDESK_API_KEY) {
+    throw new Error("COINDESK_API_KEY environment variable is required");
+  }
 
   let privateKey = process.env.PRIVATE_KEY;
 
@@ -31,7 +44,10 @@ async function main() {
     transports: [http(), http()],
     chains,
     accountOrAddress: account,
-    tools: [...webTools()],
+    tools: [
+      ...webTools(),
+      ...coindeskTools({ coindeskApiKey: process.env.COINDESK_API_KEY }),
+    ],
   });
 
   const tools = toolkit.getTools();
@@ -42,8 +58,7 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content:
-        "Should I sell my curve considering this news: https://ambcrypto.com/curve-dao-tests-a-key-support-level-is-1-59-next-for-crv/ ?",
+      content: userPrompt,
     },
   ] as CoreMessage[];
 

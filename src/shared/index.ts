@@ -12,15 +12,18 @@ import { blockscoutTools } from "./blockscout";
 import { tallyTools } from "./tally";
 import { securityTools } from "./security";
 import { webTools } from "./web";
+import { coindeskTools } from "./coindesk";
 
 const allTools = ({
   perplexityApiKey,
   zeroxApiKey,
   tallyApiKey,
+  coindeskApiKey,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
   tallyApiKey?: string;
+  coindeskApiKey?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -50,6 +53,10 @@ const allTools = ({
         tallyApiKey,
       }),
     );
+  }
+
+  if (coindeskApiKey) {
+    tools.push(...coindeskTools({ coindeskApiKey }));
   }
 
   return tools;
