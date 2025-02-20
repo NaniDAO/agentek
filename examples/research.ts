@@ -6,6 +6,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, generateText } from "ai";
 import { coindeskTools } from "../src/shared/coindesk";
+import { fearGreedIndexTools } from "../src/shared/feargreed";
 
 async function main() {
   // Get command line arguments
@@ -46,6 +47,7 @@ async function main() {
     accountOrAddress: account,
     tools: [
       ...webTools(),
+      ...fearGreedIndexTools(),
       ...coindeskTools({ coindeskApiKey: process.env.COINDESK_API_KEY }),
     ],
   });

@@ -13,6 +13,7 @@ import { tallyTools } from "./tally";
 import { securityTools } from "./security";
 import { webTools } from "./web";
 import { coindeskTools } from "./coindesk";
+import { fearGreedIndexTools } from "./feargreed";
 
 const allTools = ({
   perplexityApiKey,
@@ -37,6 +38,7 @@ const allTools = ({
     ...blockscoutTools(),
     ...securityTools(),
     ...webTools(),
+    ...fearGreedIndexTools(),
   ];
 
   if (perplexityApiKey) {
