@@ -4,131 +4,93 @@
 
 An extensible TypeScript toolkit that simplifies complex EVM blockchain interactions into composable, intent-based tools. Provides a unified, type-safe interface for both on-chain actions and off-chain data services, enabling developers to programmatically execute any blockchain operation across multiple EVM networks.
 
-## example tool set
+Interested in contributing? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) guide!
 
-```typescript
-// index.ts
-import { BaseTool, createToolCollection } from "./client";
-import { intentSendEthTool } from "./intents";
-import { getEthBalanceTool } from "./tools";
+## Tools (84 total)
 
-export function helloWorldTools(): BaseTool[] {
-  return createToolCollection([
-    // tools
-    getEthBalanceTool,
-    // intents
-    intentSendEthTool,
-  ]);
-}
-```
+### Available Tools
 
-```typescript
-// tools.ts
-import { z } from "zod";
-import { createTool } from "./client";
-import { formatEther } from "viem";
-
-const supportedChains = [
-  { id: 1, name: "Ethereum" },
-  { id: 137, name: "Polygon" },
-];
-
-const getEthBalanceParameters = z.object({
-  address: z.string().describe("The wallet address to check balance for"),
-  chainId: z
-    .number()
-    .optional()
-    .describe("If not specified, returns balance for all supported chains"),
-});
-
-export const getEthBalanceTool = createTool({
-  name: "getEthBalance",
-  description: "Gets the ETH balance of an address",
-  supportedChains,
-  parameters: getEthBalanceParameters,
-  execute: async (client, args) => {
-    const { address, chainId } = args;
-    const chains = client.filterSupportedChains(supportedChains, chainId);
-
-    const balances = await Promise.all(
-      chains.map(async (chain) => {
-        const publicClient = client.getPublicClient(chain.id);
-        try {
-          const balance = await publicClient.getBalance({
-            address: address as `0x${string}`,
-          });
-
-          return {
-            chain: chain.id,
-            balance: formatEther(balance),
-          };
-        } catch (error) {
-          return {
-            chain: chain.id,
-            error: `Failed to fetch balance: ${error?.shortMessage ?? error?.message}`,
-          };
-        }
-      })
-    );
-
-    return balances;
-  },
-});
-```
-
-```typescript
-// intents.ts
-import { z } from "zod";
-import { createTool, Intent } from "./client";
-import { parseEther } from "viem";
-
-const supportedChains = [
-  { id: 1, name: "Ethereum" },
-  { id: 137, name: "Polygon" },
-];
-
-const intentSendEthParameters = z.object({
-  to: z.string().describe("The recipient address"),
-  amount: z.string().describe("The amount of ETH to send"),
-  chainId: z.number().describe("The chain to execute on"),
-});
-
-export const intentSendEthTool = createTool({
-  name: "intentSendEth",
-  description: "Creates an intent to send ETH to an address",
-  supportedChains,
-  parameters: intentSendEthParameters,
-  execute: async (client, args): Promise<Intent> => {
-    const { to, amount, chainId } = args;
-    const from = await client.getAddress();
-    const amountWei = parseEther(amount);
-
-    const ops = [
-      {
-        target: to as `0x${string}`,
-        value: amountWei.toString(),
-        data: "0x", // Empty calldata for simple ETH transfer
-      },
-    ];
-
-    const walletClient = client.getWalletClient(chainId);
-
-    if (!walletClient) {
-      return {
-        intent: `send ${amount} ETH to ${to}`,
-        ops,
-        chain: chainId,
-      };
-    } else {
-      const hash = await client.executeOps(ops, chainId);
-      
-      return {
-        intent: `Send ${amount} ETH from ${from} to ${to}`,
-        ops,
-        chain: chainId,
-        hash: hash,
-      };
-    }
-  },
-});
-```
+1. resolveENS
+2. lookupENS
+3. getAllowance
+4. getBalanceOf
+5. getTotalSupply
+6. getDecimals
+7. getName
+8. getSymbol
+9. getTokenMetadata
+10. intentApprove
+11. intentTransfer
+12. intentTransferFrom
+13. getLatestTokens
+14. getBalance
+15. getCode
+16. getTransactionCount
+17. getBlock
+18. getBlockNumber
+19. getGasPrice
+20. estimateGas
+21. getFeeHistory
+22. getTransaction
+23. getTransactionReceipt
+24. getUniV3Pool
+25. getUserPositions
+26. getPoolFeeData
+27. getPositionDetails
+28. intentMintPosition
+29. intentIncreaseLiquidity
+30. intentDecreaseLiquidity
+31. intentCollectFees
+32. intentTransferPosition
+33. depositWETH
+34. withdrawWETH
+35. getNaniProposals
+36. intentStakeNani
+37. intentUnstakeNani
+38. intentProposeNani
+39. intentVoteNaniProposal
+40. getNativeCoinHolders
+41. getAddressInfo
+42. getAddressCounters
+43. getAddressTransactions
+44. getAddressTokenTransfers
+45. getAddressInternalTransactions
+46. getAddressLogs
+47. getAddressBlocksValidated
+48. getAddressTokenBalances
+49. getAddressTokens
+50. getAddressCoinBalanceHistory
+51. getAddressCoinBalanceHistoryByDay
+52. getAddressWithdrawals
+53. getAddressNFTs
+54. getAddressNFTCollections
+55. getBlockInfo
+56. getBlockTransactions
+57. getBlockWithdrawals
+58. getStats
+59. getMarketChart
+60. getTransactionsChart
+61. getTransactionInfo
+62. getTransactionTokenTransfers
+63. getTransactionInternalTransactions
+64. getTransactionLogs
+65. getTransactionRawTrace
+66. getTransactionStateChanges
+67. getTransactionSummary
+68. getSmartContracts
+69. getSmartContract
+70. getTokenInfo
+71. getTokenHolders
+72. getTokenTransfers
+73. getBlockscoutSearch
+74. checkMaliciousAddress
+75. checkMaliciousWebsite
+76. scrapeWebContent
+77. askPerplexitySearch
+78. intent0xSwap
+79. tallyProposals
+80. tallyChains
+81. tallyUserDaos
+82. intentGovernorVote
+83. intentGovernorVoteWithReason
+84. getLatestCoindeskNewsTool

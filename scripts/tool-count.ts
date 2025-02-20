@@ -7,7 +7,12 @@ const tools = allTools({
   coindeskApiKey: process.env.COINDESK_API_KEY,
 });
 
-console.log(`${tools.length} tools`);
-console.log("list of tools:");
+const markdown = `## Tools (${tools.length} total)
 
-tools.forEach((tool, i) => console.log(`${i + 1} ${tool.name}`));
+### Available Tools
+
+${tools.map((tool, i) => `${i + 1}. ${tool.name}`).join("\n")}
+
+`;
+
+console.log(markdown);
