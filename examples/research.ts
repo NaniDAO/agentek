@@ -7,6 +7,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, generateText } from "ai";
 import { coindeskTools } from "../src/shared/coindesk";
 import { fearGreedIndexTools } from "../src/shared/feargreed";
+import { createCoinMarketCalTools } from "../src/shared/coinmarketcal";
 
 async function main() {
   // Get command line arguments
@@ -49,6 +50,9 @@ async function main() {
       ...webTools(),
       ...fearGreedIndexTools(),
       ...coindeskTools({ coindeskApiKey: process.env.COINDESK_API_KEY }),
+      ...createCoinMarketCalTools({
+        coinMarketCalApiKey: process.env.COINMARKETCAL_API_KEY!,
+      }),
     ],
   });
 

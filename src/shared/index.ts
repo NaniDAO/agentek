@@ -14,17 +14,20 @@ import { securityTools } from "./security";
 import { webTools } from "./web";
 import { coindeskTools } from "./coindesk";
 import { fearGreedIndexTools } from "./feargreed";
+import { createCoinMarketCalTools } from "./coinmarketcal";
 
 const allTools = ({
   perplexityApiKey,
   zeroxApiKey,
   tallyApiKey,
   coindeskApiKey,
+  coinMarketCalApiKey,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
   tallyApiKey?: string;
   coindeskApiKey?: string;
+  coinMarketCalApiKey?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -59,6 +62,10 @@ const allTools = ({
 
   if (coindeskApiKey) {
     tools.push(...coindeskTools({ coindeskApiKey }));
+  }
+
+  if (coinMarketCalApiKey) {
+    tools.push(...createCoinMarketCalTools({ coinMarketCalApiKey }));
   }
 
   return tools;
