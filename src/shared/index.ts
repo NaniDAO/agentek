@@ -10,6 +10,7 @@ import { searchTools } from "./search";
 import { swapTools } from "./swap";
 import { blockscoutTools } from "./blockscout";
 import { tallyTools } from "./tally";
+import { aaveTools } from "./aave";
 import { securityTools } from "./security";
 import { webTools } from "./web";
 import { coindeskTools } from "./coindesk";
@@ -39,6 +40,7 @@ const allTools = ({
     ...wethTools(),
     ...naniTools(),
     ...blockscoutTools(),
+    ...aaveTools(),
     ...securityTools(),
     ...webTools(),
     ...fearGreedIndexTools(),

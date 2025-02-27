@@ -1,9 +1,10 @@
 import { Hex, http } from "viem";
-import { arbitrum, base, mainnet, optimism } from "viem/chains";
+import { base, mainnet } from "viem/chains";
 import AgentekToolkit from "../src/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
+import { aaveTools } from "../src/shared/aave";
 import { blockscoutTools } from "../src/shared/blockscout";
 
 async function main() {
@@ -20,7 +21,7 @@ async function main() {
 
   const account = privateKeyToAccount(privateKey as Hex);
 
-  const chains = [mainnet, base, arbitrum, optimism];
+  const chains = [mainnet, base];
   console.log("ACCOUNT:", account.address);
   console.log(
     "CHAINS:",
@@ -28,10 +29,10 @@ async function main() {
   );
 
   const toolkit = new AgentekToolkit({
-    transports: [http(), http(), http(), http()],
+    transports: [http()],
     chains,
     accountOrAddress: account,
-    tools: [...blockscoutTools()],
+    tools: [...blockscoutTools(), ...aaveTools()],
   });
 
   const tools = toolkit.getTools();
@@ -42,8 +43,7 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content:
-        "Create a weekly tx report for 0x1c0aa8ccd568d90d61659f060d1bfb1e6f855a20 cross-chain and DO NOT USE any function that will have a long ass response. Only getAddressInfo lol. Today is 17th February, 2025. Thanks!",
+      content: "Withdraw supplied USDC on base",
     },
   ] as CoreMessage[];
 
@@ -54,7 +54,10 @@ async function main() {
 
   const response = await generateText({
     model: openrouter("anthropic/claude-3.5-sonnet"),
-    system: "",
+    system: `You are an autonomous trading agent. Use the available tools to maximize your purpose.
+
+    Address: ${account.address}
+    Chains: ${chains.map((chain) => chain.name).join(", ")}`,
     messages,
     maxSteps: 20,
     tools: tools as Record<string, CoreTool<any, any>>,
