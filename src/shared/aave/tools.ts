@@ -1,6 +1,12 @@
 import { createTool } from "../client";
 import { z } from "zod";
 import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants";
+import { formatUnits } from "viem";
+
+const formatRate = (rate: bigint) =>
+  `${(Number(formatUnits(rate, 27)) * 100).toFixed(2)}%`;
+const isZeroAddress = (address: string) =>
+  address === "0x0000000000000000000000000000000000000000";
 
 export const getAaveUserData = createTool({
   name: "getAaveUserData",
@@ -14,23 +20,58 @@ export const getAaveUserData = createTool({
   async execute(client, args) {
     const publicClient = client.getPublicClient(args.chainId);
     const poolAddress = getAavePoolAddress(args.chainId);
-    // Call the Aave Pool function getUserAccountData(address user)
-    const accountData = await publicClient.readContract({
+
+    const result = (await publicClient.readContract({
       address: poolAddress as `0x${string}`,
       abi: aavePoolAbi,
       functionName: "getUserAccountData",
       args: [args.userAddress],
-    });
-    // Expected returned tuple (all BigInts):
-    // [totalCollateralETH, totalDebtETH, availableBorrowsETH, currentLiquidationThreshold, ltv, healthFactor]
+    })) as [bigint, bigint, bigint, bigint, bigint, bigint];
+
+    const [
+      totalCollateralBase,
+      totalDebtBase,
+      availableBorrowsBase,
+      currentLiquidationThreshold,
+      ltv,
+      healthFactor,
+    ] = result;
+
     return {
-      totalCollateralETH: accountData.totalCollateralETH.toString(),
-      totalDebtETH: accountData.totalDebtETH.toString(),
-      availableBorrowsETH: accountData.availableBorrowsETH.toString(),
-      currentLiquidationThreshold:
-        accountData.currentLiquidationThreshold.toString(),
-      ltv: accountData.ltv.toString(),
-      healthFactor: accountData.healthFactor.toString(),
+      summary: {
+        totalCollateralUSD: `$${Number(formatUnits(totalCollateralBase, 8)).toFixed(2)}`,
+        totalDebtUSD: `$${Number(formatUnits(totalDebtBase, 8)).toFixed(2)}`,
+        availableToBorrowUSD: `$${Number(formatUnits(availableBorrowsBase, 8)).toFixed(2)}`,
+        loanToValue: `${Number(formatUnits(ltv, 2)).toFixed(2)}%`,
+        liquidationThreshold: `${Number(formatUnits(currentLiquidationThreshold, 2)).toFixed(2)}%`,
+        healthFactor:
+          healthFactor >= BigInt(1e9)
+            ? "∞"
+            : Number(formatUnits(healthFactor, 18)).toFixed(2),
+      },
+      riskAssessment: {
+        status:
+          healthFactor > BigInt(1e18)
+            ? "HEALTHY"
+            : healthFactor > BigInt(1e18)
+              ? "SAFE"
+              : "AT RISK",
+        canBorrow: availableBorrowsBase > BigInt(0) ? "YES" : "NO",
+        liquidationRisk:
+          healthFactor < BigInt(1.1e18)
+            ? "HIGH"
+            : healthFactor < BigInt(2e18)
+              ? "MEDIUM"
+              : "LOW",
+      },
+      rawData: {
+        totalCollateralBase: totalCollateralBase.toString(),
+        totalDebtBase: totalDebtBase.toString(),
+        availableBorrowsBase: availableBorrowsBase.toString(),
+        currentLiquidationThreshold: currentLiquidationThreshold.toString(),
+        ltv: ltv.toString(),
+        healthFactor: healthFactor.toString(),
+      },
     };
   },
 });
@@ -47,22 +88,79 @@ export const getAaveReserveData = createTool({
   async execute(client, args) {
     const publicClient = client.getPublicClient(args.chainId);
     const poolAddress = getAavePoolAddress(args.chainId);
-    // Call the Aave Pool function getReserveData(address asset)
-    const reserveData = await publicClient.readContract({
-      address: poolAddress as `0x${string}`,
+
+    const result = (await publicClient.readContract({
+      address: poolAddress,
       abi: aavePoolAbi,
       functionName: "getReserveData",
       args: [args.asset],
-    });
+    })) as {
+      configuration: { data: bigint };
+      liquidityIndex: bigint;
+      currentLiquidityRate: bigint;
+      variableBorrowIndex: bigint;
+      currentVariableBorrowRate: bigint;
+      currentStableBorrowRate: bigint;
+      lastUpdateTimestamp: number;
+      id: number;
+      aTokenAddress: string;
+      stableDebtTokenAddress: string;
+      variableDebtTokenAddress: string;
+      interestRateStrategyAddress: string;
+      accruedToTreasury: bigint;
+      unbacked: bigint;
+      isolationModeTotalDebt: bigint;
+    };
+
     return {
-      availableLiquidity: reserveData.availableLiquidity.toString(),
-      totalStableDebt: reserveData.totalStableDebt.toString(),
-      totalVariableDebt: reserveData.totalVariableDebt.toString(),
-      liquidityRate: reserveData.liquidityRate.toString(),
-      stableBorrowRate: reserveData.stableBorrowRate.toString(),
-      variableBorrowRate: reserveData.variableBorrowRate.toString(),
-      liquidityIndex: reserveData.liquidityIndex.toString(),
-      variableBorrowIndex: reserveData.variableBorrowIndex.toString(),
+      summary: {
+        assetStatus:
+          Number(result.configuration.data) > 0 ? "ACTIVE" : "INACTIVE",
+        supplyAPY: formatRate(result.currentLiquidityRate),
+        variableBorrowAPY: formatRate(result.currentVariableBorrowRate),
+        stableBorrowAPY: formatRate(result.currentStableBorrowRate),
+        lastUpdate: new Date(result.lastUpdateTimestamp * 1000).toISOString(),
+      },
+      tokens: {
+        aToken: !isZeroAddress(result.aTokenAddress)
+          ? result.aTokenAddress
+          : "Not Available",
+        stableDebtToken: !isZeroAddress(result.stableDebtTokenAddress)
+          ? result.stableDebtTokenAddress
+          : "Not Available",
+        variableDebtToken: !isZeroAddress(result.variableDebtTokenAddress)
+          ? result.variableDebtTokenAddress
+          : "Not Available",
+      },
+      metrics: {
+        liquidityIndex: Number(formatUnits(result.liquidityIndex, 27)).toFixed(
+          8,
+        ),
+        accruedToTreasury: Number(
+          formatUnits(result.accruedToTreasury, 27),
+        ).toFixed(8),
+        unbacked: Number(formatUnits(result.unbacked, 27)).toFixed(8),
+        isolationModeTotalDebt: Number(
+          formatUnits(result.isolationModeTotalDebt, 27),
+        ).toFixed(8),
+      },
+      rawData: {
+        configuration: result.configuration.data.toString(),
+        liquidityIndex: result.liquidityIndex.toString(),
+        currentLiquidityRate: result.currentLiquidityRate.toString(),
+        variableBorrowIndex: result.variableBorrowIndex.toString(),
+        currentVariableBorrowRate: result.currentVariableBorrowRate.toString(),
+        currentStableBorrowRate: result.currentStableBorrowRate.toString(),
+        lastUpdateTimestamp: result.lastUpdateTimestamp,
+        id: result.id,
+        aTokenAddress: result.aTokenAddress,
+        stableDebtTokenAddress: result.stableDebtTokenAddress,
+        variableDebtTokenAddress: result.variableDebtTokenAddress,
+        interestRateStrategyAddress: result.interestRateStrategyAddress,
+        accruedToTreasury: result.accruedToTreasury.toString(),
+        unbacked: result.unbacked.toString(),
+        isolationModeTotalDebt: result.isolationModeTotalDebt.toString(),
+      },
     };
   },
 });

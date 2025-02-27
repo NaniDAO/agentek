@@ -1,6 +1,12 @@
 import { createTool } from "../client";
 import { z } from "zod";
-import { erc20Abi, parseUnits, maxUint256, encodeFunctionData } from "viem";
+import {
+  erc20Abi,
+  Address,
+  parseUnits,
+  maxUint256,
+  encodeFunctionData,
+} from "viem";
 import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants";
 
 // Intent: Deposit tokens into Aave (i.e. supply to the pool)
@@ -21,18 +27,16 @@ export const intentAaveDeposit = createTool({
     const publicClient = client.getPublicClient(args.chainId);
     const userAddress = await client.getAddress();
 
-    // Fetch token decimals to convert amount correctly
     const decimals = await publicClient.readContract({
-      address: args.asset as `0x${string}`,
+      address: args.asset as Address,
       abi: erc20Abi,
       functionName: "decimals",
     });
     const amountBigInt = parseUnits(args.amount, decimals);
 
     const poolAddress = getAavePoolAddress(args.chainId);
-    // Check current allowance for the Aave Pool contract
     const currentAllowance = await publicClient.readContract({
-      address: args.asset as `0x${string}`,
+      address: args.asset as Address,
       abi: erc20Abi,
       functionName: "allowance",
       args: [userAddress, poolAddress],
@@ -40,20 +44,18 @@ export const intentAaveDeposit = createTool({
 
     let ops = [];
     if (currentAllowance < amountBigInt) {
-      // Prepare token approval operation
       const approvalData = encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
         args: [poolAddress, maxUint256],
       });
       ops.push({
-        target: args.asset as `0x${string}`,
+        target: args.asset as Address,
         value: "0",
         data: approvalData,
       });
     }
-    // Prepare the Aave supply() call:
-    // supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode)
+
     const supplyData = encodeFunctionData({
       abi: aavePoolAbi,
       functionName: "supply",
@@ -103,15 +105,13 @@ export const intentAaveWithdraw = createTool({
     const userAddress = await client.getAddress();
 
     const decimals = await publicClient.readContract({
-      address: args.asset as `0x${string}`,
+      address: args.asset as Address,
       abi: erc20Abi,
       functionName: "decimals",
     });
     const amountBigInt = parseUnits(args.amount, decimals);
     const poolAddress = getAavePoolAddress(args.chainId);
 
-    // Prepare the withdraw() call:
-    // withdraw(address asset, uint256 amount, address to)
     const withdrawData = encodeFunctionData({
       abi: aavePoolAbi,
       functionName: "withdraw",
@@ -143,7 +143,6 @@ export const intentAaveWithdraw = createTool({
   },
 });
 
-// Intent: Borrow tokens from Aave
 export const intentAaveBorrow = createTool({
   name: "intentAaveBorrow",
   description:
@@ -166,7 +165,7 @@ export const intentAaveBorrow = createTool({
     const userAddress = await client.getAddress();
 
     const decimals = await publicClient.readContract({
-      address: args.asset as `0x${string}`,
+      address: args.asset as Address,
       abi: erc20Abi,
       functionName: "decimals",
     });
@@ -174,8 +173,6 @@ export const intentAaveBorrow = createTool({
     const interestRateMode = args.interestRateMode ?? 2;
     const poolAddress = getAavePoolAddress(args.chainId);
 
-    // Prepare the borrow() call:
-    // borrow(address asset, uint256 amount, uint256 interestRateMode, uint16 referralCode, address onBehalfOf)
     const borrowData = encodeFunctionData({
       abi: aavePoolAbi,
       functionName: "borrow",
@@ -232,7 +229,7 @@ export const intentAaveRepay = createTool({
     const userAddress = await client.getAddress();
 
     const decimals = await publicClient.readContract({
-      address: args.asset as `0x${string}`,
+      address: args.asset as Address,
       abi: erc20Abi,
       functionName: "decimals",
     });
@@ -241,9 +238,8 @@ export const intentAaveRepay = createTool({
     const poolAddress = getAavePoolAddress(args.chainId);
 
     let ops = [];
-    // Check allowance for repayment if needed (since tokens must be approved)
     const currentAllowance = await publicClient.readContract({
-      address: args.asset as `0x${string}`,
+      address: args.asset as Address,
       abi: erc20Abi,
       functionName: "allowance",
       args: [userAddress, poolAddress],
@@ -255,12 +251,12 @@ export const intentAaveRepay = createTool({
         args: [poolAddress, maxUint256],
       });
       ops.push({
-        target: args.asset as `0x${string}`,
+        target: args.asset as Address,
         value: "0",
         data: approvalData,
       });
     }
-    // Prepare the repay() call:
+
     // repay(address asset, uint256 amount, uint256 rateMode, address onBehalfOf)
     const repayData = encodeFunctionData({
       abi: aavePoolAbi,

@@ -5,12 +5,9 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
 import { aaveTools } from "../src/shared/aave";
+import { blockscoutTools } from "../src/shared/blockscout";
 
 async function main() {
-  if (!process.env.TALLY_API_KEY) {
-    throw new Error("TALLY_API_KEY is required");
-  }
-
   const openrouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
   });
@@ -35,11 +32,7 @@ async function main() {
     transports: [http()],
     chains,
     accountOrAddress: account,
-    tools: [
-      ...tallyTools({
-        tallyApiKey: process.env.TALLY_API_KEY,
-      }),
-    ],
+    tools: [...blockscoutTools(), ...aaveTools()],
   });
 
   const tools = toolkit.getTools();
@@ -50,8 +43,7 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content:
-        "Get the latest proposal for uniswap and suggest what I should vote on it",
+      content: "Withdraw supplied USDC on base",
     },
   ] as CoreMessage[];
 
@@ -61,8 +53,11 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("openai/gpt-4o-mini"),
-    system: "",
+    model: openrouter("anthropic/claude-3.5-sonnet"),
+    system: `You are an autonomous trading agent. Use the available tools to maximize your purpose.
+
+    Address: ${account.address}
+    Chains: ${chains.map((chain) => chain.name).join(", ")}`,
     messages,
     maxSteps: 20,
     tools: tools as Record<string, CoreTool<any, any>>,
