@@ -11,15 +11,24 @@ import { swapTools } from "./swap";
 import { blockscoutTools } from "./blockscout";
 import { tallyTools } from "./tally";
 import { aaveTools } from "./aave";
+import { securityTools } from "./security";
+import { webTools } from "./web";
+import { coindeskTools } from "./coindesk";
+import { fearGreedIndexTools } from "./feargreed";
+import { createCoinMarketCalTools } from "./coinmarketcal";
 
 const allTools = ({
   perplexityApiKey,
   zeroxApiKey,
   tallyApiKey,
+  coindeskApiKey,
+  coinMarketCalApiKey,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
   tallyApiKey?: string;
+  coindeskApiKey?: string;
+  coinMarketCalApiKey?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -32,6 +41,9 @@ const allTools = ({
     ...naniTools(),
     ...blockscoutTools(),
     ...aaveTools(),
+    ...securityTools(),
+    ...webTools(),
+    ...fearGreedIndexTools(),
   ];
 
   if (perplexityApiKey) {
@@ -48,6 +60,14 @@ const allTools = ({
         tallyApiKey,
       }),
     );
+  }
+
+  if (coindeskApiKey) {
+    tools.push(...coindeskTools({ coindeskApiKey }));
+  }
+
+  if (coinMarketCalApiKey) {
+    tools.push(...createCoinMarketCalTools({ coinMarketCalApiKey }));
   }
 
   return tools;

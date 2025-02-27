@@ -120,15 +120,7 @@ export const intentApproveTool = createTool({
         chain: executionChain.chain.id,
       };
     } else {
-      if (!ops[0]) {
-        throw new Error("Operations array is empty or undefined");
-      }
-
-      const hash = await walletClient.sendTransaction({
-        to: ops[0].target,
-        value: 0n,
-        data: ops[0].data,
-      });
+      const hash = await client.executeOps(ops, executionChain.chain.id);
 
       return {
         intent: `Approve ${amount.toString()} ${token} from ${from} for spender ${spender}`,

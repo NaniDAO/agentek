@@ -1,11 +1,20 @@
+import { Address } from "viem";
 import { mainnet, base, arbitrum } from "viem/chains";
 
 export const supportedChains = [mainnet, base, arbitrum];
-export const POSITION_MANAGER_ADDRESS = {
-  [mainnet.id]: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
-  [base.id]: "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
-  [arbitrum.id]: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
-};
+export function getPositionManagerAddress(chainId: number): Address {
+  const addresses: Record<number, Address> = {
+    [mainnet.id]: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+    [base.id]: "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+    [arbitrum.id]: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
+  };
+
+  if (!(chainId in addresses)) {
+    throw new Error(`Chain ID ${chainId} not supported`);
+  }
+
+  return addresses[chainId];
+}
 
 export const nonfungiblePositionManagerAbi = [
   {

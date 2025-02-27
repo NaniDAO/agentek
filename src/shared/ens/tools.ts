@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTool } from "../client";
 import { Address } from "viem";
+import { normalize } from 'viem/ens'
 
 export const resolveENSTool = createTool({
   name: "resolveENS",
@@ -10,9 +11,9 @@ export const resolveENSTool = createTool({
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(1);
-    const ensName = args.name.endsWith(".eth") ? args.name : `${args.name}.eth`;
+    const ensName = args.name.includes(".") ? args.name : `${args.name}.eth`;
     const address = await publicClient.getEnsAddress({
-      name: ensName,
+      name: normalize(ensName),
     });
 
     if (address === null) {

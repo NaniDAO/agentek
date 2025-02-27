@@ -4,9 +4,16 @@ const tools = allTools({
   perplexityApiKey: process.env.PERPLEXITY_API_KEY,
   zeroxApiKey: process.env.ZEROX_API_KEY,
   tallyApiKey: process.env.TALLY_API_KEY,
+  coindeskApiKey: process.env.COINDESK_API_KEY,
+  coinMarketCalApiKey: process.env.COINMARKETCAL_API_KEY,
 });
 
-console.log(`${tools.length} tools`);
-console.log("list of tools:");
+const markdown = `## Tools (${tools.length} total)
 
-tools.forEach((tool, i) => console.log(`${i + 1} ${tool.name}`));
+### Available Tools
+
+${tools.map((tool, i) => `${i + 1}. ${tool.name}`).join("\n")}
+
+`;
+
+console.log(markdown);

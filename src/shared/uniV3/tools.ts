@@ -3,7 +3,7 @@ import { createTool } from "../client";
 import { clean } from "../utils";
 import {
   nonfungiblePositionManagerAbi,
-  POSITION_MANAGER_ADDRESS,
+  getPositionManagerAddress,
   supportedChains,
   uniV3poolAbi,
 } from "./constants";
@@ -48,13 +48,13 @@ const getPositionDetails = createTool({
     const data = await publicClient.multicall({
       contracts: [
         {
-          address: POSITION_MANAGER_ADDRESS[chainId],
+          address: getPositionManagerAddress(chainId),
           abi: nonfungiblePositionManagerAbi,
           functionName: "positions",
           args: [BigInt(tokenId)],
         },
         {
-          address: POSITION_MANAGER_ADDRESS[chainId],
+          address: getPositionManagerAddress(chainId),
           abi: erc721Abi,
           functionName: "ownerOf",
           args: [BigInt(tokenId)],
@@ -90,7 +90,7 @@ const getUserPositions = createTool({
     const owner = user || (await client.getAddress());
 
     const balance = await publicClient.readContract({
-      address: POSITION_MANAGER_ADDRESS[chainId],
+      address: getPositionManagerAddress(chainId),
       abi: nonfungiblePositionManagerAbi,
       functionName: "balanceOf",
       args: [owner as Address],
@@ -99,7 +99,7 @@ const getUserPositions = createTool({
     const tokenIds = await Promise.all(
       Array.from({ length: Number(balance) }).map((_, i) =>
         publicClient.readContract({
-          address: POSITION_MANAGER_ADDRESS[chainId],
+          address: getPositionManagerAddress(chainId),
           abi: nonfungiblePositionManagerAbi,
           functionName: "tokenOfOwnerByIndex",
           args: [owner as Address, BigInt(i)],
@@ -110,7 +110,7 @@ const getUserPositions = createTool({
     const positionDetails = await Promise.all(
       tokenIds.map((tokenId) =>
         publicClient.readContract({
-          address: POSITION_MANAGER_ADDRESS[chainId],
+          address: getPositionManagerAddress(chainId),
           abi: nonfungiblePositionManagerAbi,
           functionName: "positions",
           args: [tokenId],
