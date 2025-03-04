@@ -1,0 +1,32 @@
+{
+  "name": "@nanidao/agentek-mcp-server",
+  "version": "0.0.0",
+  "description": "MCP server for using Agentek",
+  "license": "AGPL-3.0",
+  "author": "NaniDAO",
+  "homepage": "https://nani.ooo",
+  "type": "module",
+  "bin": {
+    "mcp-server-agentek": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/mcp/index.js",
+    "prepare": "npm run build",
+    "start": "node dist/mcp/index.js",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.0.1",
+    "viem": "^1.19.11",
+    "zod": "^3.22.4",
+    "zod-to-json-schema": "^3.21.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.6",
+    "shx": "^0.3.4",
+    "typescript": "^5.6.2"
+  }
+}

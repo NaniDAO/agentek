@@ -7,7 +7,7 @@
     "test": "vitest -c ./test/vitest.config.ts"
   },
   "keywords": [],
-  "author": "",
+  "author": "NaniDAO",
   "license": "AGPL-3.0",
   "devDependencies": {
     "@openrouter/ai-sdk-provider": "^0.0.6",

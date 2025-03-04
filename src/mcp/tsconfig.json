@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "..", // This points to the parent directory containing both mcp and shared
+    "declaration": true
+    // other compiler options...
+  },
+  "include": [
+    "**/*.ts",
+    "../shared/**/*.ts" // Include shared folder files
+  ],
+  "exclude": ["node_modules", "dist"]
+}
