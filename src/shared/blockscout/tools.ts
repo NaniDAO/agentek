@@ -1,9 +1,19 @@
 import { z } from "zod";
 import { createTool } from "../client";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
-import { formatEther, parseEther } from "viem";
+import { formatEther } from "viem";
+import { addressSchema } from "../utils";
 
 const supportedChains = [mainnet, polygon, arbitrum, optimism, base];
+const chainSchema = z
+  .enum([
+    String(mainnet.id),
+    String(polygon.id),
+    String(arbitrum.id),
+    String(optimism.id),
+    String(base.id),
+  ])
+  .transform(Number) as unknown as z.ZodNumber;
 
 // Note: the endpoints already include "/api/v2"
 const BLOCKSCOUT_API_ENDPOINTS = new Map([
@@ -18,7 +28,7 @@ type SupportedChain = (typeof supportedChains)[number]["id"];
 
 /**
  * Helper to call a Blockscout v2 endpoint.
- * The endpoint parameter should be the “path” (starting with a slash) after the base URL.
+ * The endpoint parameter should be the "path" (starting with a slash) after the base URL.
  * An optional query object is appended as query parameters.
  */
 async function fetchFromBlockscoutV2(
@@ -77,11 +87,11 @@ export const getNativeCoinHolders = createTool({
   description: "Get native coin holders list",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
   }),
   execute: async (_, args) => {
     const { chain } = args;
-    return await fetchFromBlockscoutV2(chain, `/addresses`);
+    return await fetchFromBlockscoutV2(chain as SupportedChain, `/addresses`);
   },
 });
 
@@ -95,13 +105,13 @@ export const getAddressInfo = createTool({
   description: "Get information about a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     const response = await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}`,
     );
 
@@ -128,12 +138,15 @@ export const getAddressCounters = createTool({
   description: "Get counters for a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
-    return await fetchFromBlockscoutV2(chain, `/addresses/${address}/counters`);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/addresses/${address}/counters`,
+    );
   },
 });
 
@@ -147,13 +160,13 @@ export const getAddressTransactions = createTool({
   description: "Get transactions for a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/transactions`,
     );
   },
@@ -169,13 +182,13 @@ export const getAddressTokenTransfers = createTool({
   description: "Get token transfers for a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/token-transfers`,
     );
   },
@@ -191,13 +204,13 @@ export const getAddressInternalTransactions = createTool({
   description: "Get internal transactions for a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/internal-transactions`,
     );
   },
@@ -213,12 +226,15 @@ export const getAddressLogs = createTool({
   description: "Get logs for a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
-    return await fetchFromBlockscoutV2(chain, `/addresses/${address}/logs`);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/addresses/${address}/logs`,
+    );
   },
 });
 
@@ -232,13 +248,13 @@ export const getAddressBlocksValidated = createTool({
   description: "Get blocks validated by a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/blocks-validated`,
     );
   },
@@ -254,13 +270,13 @@ export const getAddressTokenBalances = createTool({
   description: "Get all token balances for a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/token-balances`,
     );
   },
@@ -276,12 +292,15 @@ export const getAddressTokens = createTool({
   description: "Get token balances with filtering and pagination",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
-    return await fetchFromBlockscoutV2(chain, `/addresses/${address}/tokens`);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/addresses/${address}/tokens`,
+    );
   },
 });
 
@@ -295,13 +314,13 @@ export const getAddressCoinBalanceHistory = createTool({
   description: "Get address coin balance history",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/coin-balance-history`,
     );
   },
@@ -317,13 +336,13 @@ export const getAddressCoinBalanceHistoryByDay = createTool({
   description: "Get address coin balance history by day",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/coin-balance-history-by-day`,
     );
   },
@@ -339,13 +358,13 @@ export const getAddressWithdrawals = createTool({
   description: "Get withdrawals for a specific address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/withdrawals`,
     );
   },
@@ -361,12 +380,15 @@ export const getAddressNFTs = createTool({
   description: "Get list of NFTs owned by address",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
-    return await fetchFromBlockscoutV2(chain, `/addresses/${address}/nft`);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/addresses/${address}/nft`,
+    );
   },
 });
 
@@ -380,13 +402,13 @@ export const getAddressNFTCollections = createTool({
   description: "Get list of NFTs owned by address, grouped by collection",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    chain: chainSchema,
+    address: addressSchema,
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/addresses/${address}/nft/collections`,
     );
   },
@@ -409,12 +431,15 @@ export const getBlockInfo = createTool({
   description: "Get information about a specific block",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     blockNumberOrHash: z.union([z.string(), z.number()]),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash } = args;
-    return await fetchFromBlockscoutV2(chain, `/blocks/${blockNumberOrHash}`);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/blocks/${blockNumberOrHash}`,
+    );
   },
 });
 
@@ -428,13 +453,13 @@ export const getBlockTransactions = createTool({
   description: "Get transactions within a specific block",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     blockNumberOrHash: z.union([z.string(), z.number()]),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/blocks/${blockNumberOrHash}/transactions`,
     );
   },
@@ -450,13 +475,13 @@ export const getBlockWithdrawals = createTool({
   description: "Get withdrawals within a specific block",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     blockNumberOrHash: z.union([z.string(), z.number()]),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/blocks/${blockNumberOrHash}/withdrawals`,
     );
   },
@@ -479,11 +504,11 @@ export const getStats = createTool({
   description: "Get statistics for various blockchain metrics.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
   }),
   execute: async (_, args) => {
     const { chain } = args;
-    return await fetchFromBlockscoutV2(chain, "/stats");
+    return await fetchFromBlockscoutV2(chain as SupportedChain, "/stats");
   },
 });
 
@@ -497,11 +522,14 @@ export const getMarketChart = createTool({
   description: "Retrieve native gas token market data chart.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
   }),
   execute: async (_, args) => {
     const { chain } = args;
-    return await fetchFromBlockscoutV2(chain, "/stats/charts/market");
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      "/stats/charts/market",
+    );
   },
 });
 
@@ -515,11 +543,14 @@ export const getTransactionsChart = createTool({
   description: "Retrieve daily transaction statistics chart data.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
   }),
   execute: async (_, args) => {
     const { chain } = args;
-    return await fetchFromBlockscoutV2(chain, "/stats/charts/transactions");
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      "/stats/charts/transactions",
+    );
   },
 });
 
@@ -544,13 +575,17 @@ export const getTransactionInfo = createTool({
   description: "Retrieve detailed information for a given transaction hash.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     txhash: z.string(),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
     const query: Record<string, string> = {};
-    return await fetchFromBlockscoutV2(chain, `/transactions/${txhash}`, query);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/transactions/${txhash}`,
+      query,
+    );
   },
 });
 
@@ -565,14 +600,14 @@ export const getTransactionTokenTransfers = createTool({
     "Retrieve all token transfers that occurred within a given transaction.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     txhash: z.string(),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
     const query: Record<string, string> = {};
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/transactions/${txhash}/token-transfers`,
       query,
     );
@@ -590,13 +625,13 @@ export const getTransactionInternalTransactions = createTool({
     "Retrieve internal transactions that occurred within a given transaction.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     txhash: z.string(),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/transactions/${txhash}/internal-transactions`,
     );
   },
@@ -612,12 +647,15 @@ export const getTransactionLogs = createTool({
   description: "Retrieve logs that were generated from a specific transaction.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     txhash: z.string(),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
-    return await fetchFromBlockscoutV2(chain, `/transactions/${txhash}/logs`);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/transactions/${txhash}/logs`,
+    );
   },
 });
 
@@ -631,13 +669,13 @@ export const getTransactionRawTrace = createTool({
   description: "Retrieve raw trace information for a specific transaction.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     txhash: z.string(),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/transactions/${txhash}/raw-trace`,
     );
   },
@@ -653,13 +691,13 @@ export const getTransactionStateChanges = createTool({
   description: "Retrieve state changes that occurred during a transaction.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     txhash: z.string(),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/transactions/${txhash}/state-changes`,
     );
   },
@@ -675,13 +713,13 @@ export const getTransactionSummary = createTool({
   description: "Retrieve a summary of data related to a transaction.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     txhash: z.string(),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/transactions/${txhash}/summary`,
     );
   },
@@ -703,7 +741,7 @@ export const getSmartContracts = createTool({
   description: "Get smart contract for the query",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     q: z.string().describe("Query to get smart contracts for"),
     language: z
       .enum(["solidity", "yul", "viper"])
@@ -718,7 +756,11 @@ export const getSmartContracts = createTool({
       query["language"] = language;
     }
 
-    return await fetchFromBlockscoutV2(chain, `/smart-contracts`, query);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/smart-contracts`,
+      query,
+    );
   },
 });
 
@@ -732,14 +774,17 @@ export const getSmartContract = createTool({
   description: "Retrieve the source code, ABI and metadata a contract.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     address: z
       .string()
       .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid contract address"),
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
-    return await fetchFromBlockscoutV2(chain, `/smart-contracts/${address}`);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/smart-contracts/${address}`,
+    );
   },
 });
 
@@ -760,14 +805,17 @@ export const getTokenInfo = createTool({
   description: "Fetch metadata for a token contract.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
+    chain: chainSchema,
     tokenContract: z
       .string()
       .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid token contract address"),
   }),
   execute: async (_, args) => {
     const { chain, tokenContract } = args;
-    return await fetchFromBlockscoutV2(chain, `/tokens/${tokenContract}`);
+    return await fetchFromBlockscoutV2(
+      chain as SupportedChain,
+      `/tokens/${tokenContract}`,
+    );
   },
 });
 
@@ -781,10 +829,8 @@ export const getTokenHolders = createTool({
   description: "Retrieve token holders and their balances for a given token.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    tokenContract: z
-      .string()
-      .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid token contract address"),
+    chain: chainSchema,
+    tokenContract: addressSchema,
     page: z.number().optional(),
     offset: z.number().optional(),
   }),
@@ -795,7 +841,7 @@ export const getTokenHolders = createTool({
     if (offset !== undefined) query["offset"] = String(offset);
 
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/tokens/${tokenContract}/holders`,
       query,
     );
@@ -813,10 +859,8 @@ export const getTokenTransfers = createTool({
     "List transfers for a specific token contract with pagination support.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for getting data on"),
-    tokenContract: z
-      .string()
-      .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid token contract address"),
+    chain: chainSchema,
+    tokenContract: addressSchema,
     page: z.number().optional(),
     offset: z.number().optional(),
   }),
@@ -826,7 +870,7 @@ export const getTokenTransfers = createTool({
     if (page !== undefined) query["page"] = String(page);
     if (offset !== undefined) query["offset"] = String(offset);
     return await fetchFromBlockscoutV2(
-      chain,
+      chain as SupportedChain,
       `/tokens/${tokenContract}/transfers`,
       query,
     );
@@ -843,13 +887,15 @@ export const getBlockscoutSearch = createTool({
     "Perform a search query to find blocks, transactions, addresses, or tokens on the blockchain.",
   supportedChains: supportedChains,
   parameters: z.object({
-    chain: z.number().describe("ChainID for searching data on"),
+    chain: chainSchema,
     query: z.string().min(1, "A non-empty search query is required"),
   }),
   execute: async (_, args) => {
     const { chain, query } = args;
     // Assuming the Blockscout v2 API exposes a search endpoint at `/search`
     // with the query passed as parameter 'q'. Adjust if your API differs.
-    return await fetchFromBlockscoutV2(chain, `/search`, { q: query });
+    return await fetchFromBlockscoutV2(chain as SupportedChain, `/search`, {
+      q: query,
+    });
   },
 });

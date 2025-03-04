@@ -94,7 +94,7 @@ export const getAllowanceTool = createTool({
           // @TODO type specific viem short errors
           return {
             chain: chain.id,
-            error: `Failed to fetch allowance: ${error?.shortMessage ?? error?.message}`,
+            error: `Failed to fetch allowance: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
           };
         }
       }),
@@ -136,7 +136,7 @@ export const getBalanceOfTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch balance: ${error?.shortMessage ?? error?.message}`,
+            error: `Failed to fetch balance: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
           };
         }
       }),
@@ -177,7 +177,7 @@ export const getTotalSupplyTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch total supply: ${error?.shortMessage ?? error?.message}`,
+            error: `Failed to fetch total supply: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
           };
         }
       }),
@@ -213,7 +213,7 @@ export const getDecimalsTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch decimals: ${error?.shortMessage ?? error?.message}`,
+            error: `Failed to fetch decimals: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
           };
         }
       }),
@@ -249,7 +249,7 @@ export const getNameTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch name: ${error?.shortMessage ?? error?.message}`,
+            error: `Failed to fetch name: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
           };
         }
       }),
@@ -285,7 +285,7 @@ export const getSymbolTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch symbol: ${error?.shortMessage ?? error?.message}`,
+            error: `Failed to fetch symbol: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
           };
         }
       }),

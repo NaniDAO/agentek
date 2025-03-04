@@ -8,10 +8,12 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
-import { http, Address } from "viem";
+import { http, Address, Hex } from "viem";
 import { mainnet, optimism, arbitrum, polygon } from "viem/chains";
 import { createAgentekClient } from "../shared/client.js";
 import { allTools } from "../shared/index.js";
+import { privateKeyToAccount } from "viem/accounts";
+import { Account } from "viem";
 
 console.error("Starting Agentek MCP Server...");
 process.on("uncaughtException", (err) => {
@@ -32,6 +34,8 @@ const server = new Server(
 );
 
 // Configuration from environment variables
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const ACCOUNT = process.env.ACCOUNT;
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY;
 const TALLY_API_KEY = process.env.TALLY_API_KEY;
@@ -42,18 +46,17 @@ const COINMARKETCAL_API_KEY = process.env.COINMARKETCAL_API_KEY;
 const chains = [mainnet, optimism, arbitrum, polygon];
 const transports = chains.map(() => http());
 // Using a placeholder address - tools that require a wallet will fail in read-only mode
-const readOnlyAddress = "0x0000000000000000000000000000000000000000" as Address;
+let account: Account | Address = PRIVATE_KEY
+  ? privateKeyToAccount(PRIVATE_KEY as Hex)
+  : (ACCOUNT as Address);
 
 // Create Agentek client with available tools
 // @ts-ignore
 const agentekClient = createAgentekClient({
-  // @ts-ignore
   transports,
-  // @ts-ignore
   chains,
   // @ts-ignore
-  accountOrAddress: readOnlyAddress,
-  // @ts-ignore
+  accountOrAddress: account,
   tools: allTools({
     perplexityApiKey: PERPLEXITY_API_KEY,
     zeroxApiKey: ZEROX_API_KEY,
@@ -65,15 +68,15 @@ const agentekClient = createAgentekClient({
 
 // Handle listing available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  const toolsList = Array.from(agentekClient.getTools?.values?.() || []).map(
-    (tool) => {
-      return {
-        name: tool.name,
-        description: tool.description,
-        inputSchema: zodToJsonSchema(tool.parameters),
-      };
-    },
-  );
+  const toolsList = Array.from(
+    agentekClient.getTools ? agentekClient.getTools().values() : [],
+  ).map((tool) => {
+    return {
+      name: tool.name,
+      description: tool.description,
+      inputSchema: zodToJsonSchema(tool.parameters),
+    };
+  });
 
   return {
     tools: toolsList,

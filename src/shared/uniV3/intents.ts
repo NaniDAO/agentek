@@ -309,7 +309,6 @@ const intentTransferPosition = createTool({
 });
 
 export {
-  getUniV3Pool,
   intentMintPosition,
   intentIncreaseLiquidity,
   intentDecreaseLiquidity,
