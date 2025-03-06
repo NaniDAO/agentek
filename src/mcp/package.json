@@ -1,13 +1,17 @@
 {
-  "name": "@nanidao/agentek-mcp-server",
-  "version": "0.0.0",
-  "description": "MCP server for using Agentek",
+  "name": "agentek-mcp-server",
+  "version": "0.1.0",
+  "description": "[PREVIEW] Model Context Protocol (MCP) server for Agentek",
   "license": "AGPL-3.0",
   "author": "NaniDAO",
   "homepage": "https://nani.ooo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaniDAO/agentek.git"
+  },
   "type": "module",
   "bin": {
-    "mcp-server-agentek": "dist/index.js"
+    "agentek-mcp-server": "dist/mcp/index.js"
   },
   "files": [
     "dist"
@@ -16,17 +20,31 @@
     "build": "rm -rf dist && tsc && shx chmod +x dist/mcp/index.js",
     "prepare": "npm run build",
     "start": "node dist/mcp/index.js",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "test": "vitest run",
+    "publish": "npm run build && npm publish"
   },
+  
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.0.1",
     "viem": "2.22.8",
     "zod": "^3.24.1",
     "zod-to-json-schema": "^3.21.4"
   },
+  "keywords": [
+    "ai",
+    "agents",
+    "blockchain",
+    "mcp",
+    "model-context-protocol"
+  ],
   "devDependencies": {
     "@types/node": "^22.10.6",
     "shx": "^0.3.4",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

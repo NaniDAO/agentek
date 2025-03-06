@@ -32,8 +32,8 @@ const server = new Server(
 );
 
 // Load Environment
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-const ACCOUNT = process.env.ACCOUNT;
+const PRIVATE_KEY = process.env.PRIVATE_KEY as Hex;
+const ACCOUNT = process.env.ACCOUNT as Address;
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const ZEROX_API_KEY = process.env.ZEROX_API_KEY;
 const TALLY_API_KEY = process.env.TALLY_API_KEY;

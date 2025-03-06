@@ -2,6 +2,7 @@
 
 ## Commands
 - Install: `bun i`
+- Build: `bun run build`
 - Test all: `bun run test`
 - Test single file: `bun test -- path/to/file.test.ts`
 - Run single test: Use `it.only("test name", ...)` in the test file
