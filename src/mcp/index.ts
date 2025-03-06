@@ -8,19 +8,17 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
-import { http, Address, Hex } from "viem";
+import { http, Address, Hex, zeroAddress } from "viem";
 import { mainnet, optimism, arbitrum, polygon } from "viem/chains";
 import { createAgentekClient } from "../shared/client.js";
 import { allTools } from "../shared/index.js";
 import { privateKeyToAccount } from "viem/accounts";
-import { Account } from "viem";
 
 console.error("Starting Agentek MCP Server...");
 process.on("uncaughtException", (err) => {
   console.error("Uncaught exception:", err);
 });
 
-// Create the MCP server
 const server = new Server(
   {
     name: "agentek-mcp-server",
@@ -33,7 +31,7 @@ const server = new Server(
   },
 );
 
-// Configuration from environment variables
+// Load Environment
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const ACCOUNT = process.env.ACCOUNT;
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
@@ -42,13 +40,12 @@ const TALLY_API_KEY = process.env.TALLY_API_KEY;
 const COINDESK_API_KEY = process.env.COINDESK_API_KEY;
 const COINMARKETCAL_API_KEY = process.env.COINMARKETCAL_API_KEY;
 
-// Set up Agentek client
-const chains = [mainnet, optimism, arbitrum, polygon];
+const chains = [mainnet, optimism, arbitrum, polygon]; // should this be through the CLI?
 const transports = chains.map(() => http());
-// Using a placeholder address - tools that require a wallet will fail in read-only mode
-let account: Account | Address = PRIVATE_KEY
-  ? privateKeyToAccount(PRIVATE_KEY as Hex)
-  : (ACCOUNT as Address);
+
+let account = PRIVATE_KEY
+  ? privateKeyToAccount(PRIVATE_KEY)
+  : ACCOUNT || zeroAddress;
 
 // Create Agentek client with available tools
 // @ts-ignore
