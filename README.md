@@ -6,6 +6,106 @@ An extensible TypeScript toolkit that simplifies complex EVM blockchain interact
 
 Interested in contributing? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) guide!
 
+## Packages
+
+The Agentek toolkit is structured as a monorepo with multiple publishable packages:
+
+- `agentek` - The main package containing all tools
+- `agentek-ai` - AI SDK integration for Vercel AI SDK
+- `agentek-mcp-server` - Model Context Protocol server
+- Individual tool packages:
+  - `agentek-erc20` - ERC20 token tools
+  - `agentek-ens` - ENS tools
+  - `agentek-nani` - NaniDAO tools
+  - `agentek-aave` - Aave tools
+  - `agentek-transfer` - Transfer tools
+  - `agentek-security` - Security tools
+  - `agentek-uni-v3` - Uniswap V3 tools
+  - `agentek-weth` - WETH tools
+  - `agentek-tally` - Tally tools
+
+## Installation
+
+You can install the entire toolkit:
+
+```bash
+npm install agentek
+```
+
+Or install individual packages:
+
+```bash
+npm install agentek-erc20
+```
+
+## Usage
+
+### Using the full toolkit
+
+```typescript
+import { createAgentekClient, allTools } from 'agentek';
+import { http } from 'viem';
+import { mainnet } from 'viem/chains';
+
+const client = createAgentekClient({
+  accountOrAddress: '0x...',
+  chains: [mainnet],
+  transports: [http()],
+  tools: allTools({})
+});
+
+// Execute a tool
+const result = await client.execute('getERC20BalanceTool', {
+  address: '0x...',
+  tokenAddress: '0x...'
+});
+```
+
+### Using individual tool packages
+
+```typescript
+import { createAgentekClient } from 'agentek';
+import { erc20Tools } from 'agentek-erc20';
+import { http } from 'viem';
+import { mainnet } from 'viem/chains';
+
+const client = createAgentekClient({
+  accountOrAddress: '0x...',
+  chains: [mainnet],
+  transports: [http()],
+  tools: erc20Tools()
+});
+
+// Execute a tool
+const result = await client.execute('getERC20BalanceTool', {
+  address: '0x...',
+  tokenAddress: '0x...'
+});
+```
+
+### Using with AI SDK
+
+```typescript
+import { createAgentekClient, allTools } from 'agentek';
+import { AgentekToolkit } from 'agentek-ai';
+import { http } from 'viem';
+import { mainnet } from 'viem/chains';
+
+const toolkit = new AgentekToolkit({
+  accountOrAddress: '0x...',
+  chains: [mainnet],
+  transports: [http()],
+  tools: allTools({})
+});
+
+// Get tools for Vercel AI SDK
+const aiTools = toolkit.getTools();
+```
+
+### Using the MCP Server
+
+The MCP (Model Context Protocol) server allows you to expose Agentek tools to LLMs via the Model Context Protocol. For more information, see the [MCP Server README](/src/mcp/README.md)
+
 ## Tools (84 total)
 
 ### Available Tools

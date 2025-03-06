@@ -1,0 +1,37 @@
+{
+  "name": "@agentek/tools",
+  "version": "0.1.0",
+  "description": "Blockchain tools for AI agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "viem": "2.22.8",
+    "zod": "^3.24.1",
+    "cheerio": "^1.0.0"
+  },
+  "peerDependencies": {
+    "@agentek/ai-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.2"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "tools",
+    "ai",
+    "agents"
+  ],
+  "author": "NaniDAO",
+  "license": "AGPL-3.0"
+}

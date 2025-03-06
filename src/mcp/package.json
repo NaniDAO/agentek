@@ -1,5 +1,5 @@
 {
-  "name": "agentek-mcp-server",
+  "name": "@agentek/mcp-server",
   "version": "0.1.0",
   "description": "[PREVIEW] Model Context Protocol (MCP) server for Agentek",
   "license": "AGPL-3.0",
@@ -11,25 +11,25 @@
   },
   "type": "module",
   "bin": {
-    "agentek-mcp-server": "dist/mcp/index.js"
+    "agentek-mcp-server": "dist/index.js"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc && shx chmod +x dist/mcp/index.js",
-    "prepare": "npm run build",
-    "start": "node dist/mcp/index.js",
+    "build": "rm -rf dist && tsc && shx chmod +x dist/index.js",
+    "start": "node dist/index.js",
     "watch": "tsc --watch",
-    "test": "vitest run",
-    "publish": "npm run build && npm publish"
+    "test": "vitest run"
   },
-  
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.0.1",
     "viem": "2.22.8",
     "zod": "^3.24.1",
     "zod-to-json-schema": "^3.21.4"
+  },
+  "peerDependencies": {
+    "@agentek/tools": "workspace:*"
   },
   "keywords": [
     "ai",

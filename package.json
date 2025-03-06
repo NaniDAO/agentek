@@ -1,14 +1,35 @@
 {
   "name": "agentek",
-  "version": "0.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "description": "A collection of AI agent tools for blockchain interaction",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "src/ai-sdk",
+    "src/shared",
+    "src/mcp"
+  ],
   "scripts": {
-    "test": "vitest -c ./test/vitest.config.ts"
+    "build": "tsc --build",
+    "dev": "tsc --build --watch",
+    "test": "vitest -c ./test/vitest.config.ts", 
+    "prepare": "npm run build",
+    "clean": "rm -rf dist src/shared/dist src/ai-sdk/dist src/mcp/dist"
   },
-  "keywords": [],
+  "keywords": [
+    "ai",
+    "agents",
+    "blockchain",
+    "ethereum",
+    "tools"
+  ],
   "author": "NaniDAO",
   "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaniDAO/agentek.git"
+  },
+  "homepage": "https://nani.ooo",
   "devDependencies": {
     "@openrouter/ai-sdk-provider": "^0.0.6",
     "@types/node": "^22.10.6",
@@ -16,10 +37,7 @@
     "typescript": "^5.7.3",
     "vitest": "^3.0.2"
   },
-  "dependencies": {
-    "ai": "^3.4.7 || ^4.0.0",
-    "cheerio": "^1.0.0",
-    "viem": "2.22.8",
-    "zod": "^3.24.1"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
