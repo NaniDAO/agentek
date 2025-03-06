@@ -8,6 +8,7 @@ import {
   uniV3poolAbi,
 } from "./constants";
 import { Address, erc721Abi } from "viem";
+import { addressSchema } from "../utils";
 
 const getUniV3Pool = createTool({
   name: "getUniV3Pool",
@@ -139,7 +140,7 @@ const getPoolFeeData = createTool({
   description: "Gets fee-related data for a pool",
   supportedChains,
   parameters: z.object({
-    poolAddress: z.string(),
+    poolAddress: addressSchema,
     chainId: z.number(),
   }),
   execute: async (client, { poolAddress, chainId }) => {
@@ -167,10 +168,10 @@ const getPoolFeeData = createTool({
       });
 
     return clean({
-      feeGrowth0: feeGrowthGlobal0X128.result.toString(),
-      feeGrowth1: feeGrowthGlobal1X128.result.toString(),
-      protocolFeesToken0: protocolFees.result[0].toString(),
-      protocolFeesToken1: protocolFees.result[1].toString(),
+      feeGrowth0: feeGrowthGlobal0X128.result?.toString() || "0",
+      feeGrowth1: feeGrowthGlobal1X128.result?.toString() || "0",
+      protocolFeesToken0: protocolFees.result?.[0]?.toString() || "0",
+      protocolFeesToken1: protocolFees.result?.[1]?.toString() || "0",
     });
   },
 });

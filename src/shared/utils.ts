@@ -1,3 +1,14 @@
+import { Address } from "viem";
+import { z } from "zod";
+import { isAddress } from "viem/utils";
+
+export const addressSchema = z
+  .string()
+  .refine((val) => isAddress(val), {
+    message: "Invalid Ethereum address",
+  })
+  .transform((val) => val as Address);
+
 export const clean = (obj: any): any => {
   if (typeof obj === "bigint") {
     return obj.toString();

@@ -107,11 +107,12 @@ export const createMarketEventsTool = (apiKey: string) => {
           }
         }
 
-        const json: GetMarketEventsResponse = await response.json();
-        const filteredEvents = json.body.map((event) => {
+        const json: MarketEvent[] = (await response.json()).body;
+        const filteredEvents = json.map((event) => {
           const { vote_history, view_history, ...rest } = event;
           return rest;
         });
+
         return filteredEvents;
       } catch (err) {
         throw new Error(

@@ -10,7 +10,7 @@ import {
   polygon,
   sepolia,
 } from "viem/chains";
-import { clean } from "../utils";
+import { addressSchema, clean } from "../utils";
 
 const supportedChains = [
   mainnet,
@@ -223,7 +223,7 @@ const estimateGas = createTool({
   description: "Estimate gas for a transaction",
   supportedChains,
   parameters: z.object({
-    to: z.string(),
+    to: addressSchema,
     value: z.string().optional(),
     data: z.string().optional(),
     chainId: z.number().optional(),
@@ -288,7 +288,7 @@ const getFeeHistory = createTool({
     const publicClient = client.getPublicClient(args.chainId);
     return publicClient.getFeeHistory({
       blockCount: args.blockCount,
-      rewardPercentiles: args.rewardPercentiles,
+      rewardPercentiles: args.rewardPercentiles || [],
     });
   },
 });

@@ -1,2 +1,7 @@
-node_modules/
-.env
+**/node_modules/
+**/.env
+
+**/dist
+*.map
+*.js
+*.d.ts

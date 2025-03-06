@@ -103,11 +103,14 @@ export class AgentekClient {
   // Get public client for specific chain
   public getPublicClient(chainId?: number): PublicClient {
     if (!chainId) {
-      return this.publicClients.values().next().value;
+      const defaultClient = this.publicClients.values().next().value;
+      if (!defaultClient) throw new Error("No public clients available");
+      return defaultClient;
     }
-    const client = this.publicClients.get(chainId);
-    if (!client) throw new Error(`No public client for chain ${chainId}`);
-    return client;
+    const specificClient = this.publicClients.get(chainId);
+    if (!specificClient)
+      throw new Error(`No public client for chain ${chainId}`);
+    return specificClient;
   }
 
   // Get all public clients
@@ -131,6 +134,11 @@ export class AgentekClient {
   // Get all available chains
   public getChains(): Chain[] {
     return this.chains;
+  }
+
+  // Get all tools
+  public getTools(): Map<string, BaseTool> {
+    return this.tools;
   }
 
   // Method to filter supported chains
@@ -173,6 +181,8 @@ export class AgentekClient {
 
     let hash = "";
     for (const op of ops) {
+      // Remove the explicit account parameter as it's already set in the wallet client
+      // @ts-expect-error
       const txHash = await walletClient.sendTransaction({
         to: op.target,
         value: BigInt(op.value),
