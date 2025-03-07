@@ -10,7 +10,7 @@
     "src/mcp"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "rm -rf dist src/shared/dist src/ai-sdk/dist src/mcp/dist && tsc --build",
     "dev": "tsc --build --watch",
     "test": "vitest -c ./test/vitest.config.ts", 
     "prepare": "npm run build",
