@@ -9,9 +9,9 @@ import {
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { http, Address, Hex, zeroAddress } from "viem";
-import { mainnet, optimism, arbitrum, polygon } from "viem/chains";
-import { createAgentekClient } from "../shared/client";
-import { allTools } from "../shared/index";
+import { mainnet, optimism, arbitrum, polygon, base } from "viem/chains";
+import { createAgentekClient } from "../shared/client.js";
+import { allTools } from "../shared/index.js";
 import { privateKeyToAccount } from "viem/accounts";
 
 console.error("Starting Agentek MCP Server...");
@@ -40,7 +40,7 @@ const TALLY_API_KEY = process.env.TALLY_API_KEY;
 const COINDESK_API_KEY = process.env.COINDESK_API_KEY;
 const COINMARKETCAL_API_KEY = process.env.COINMARKETCAL_API_KEY;
 
-const chains = [mainnet, optimism, arbitrum, polygon]; // should this be through the CLI?
+const chains = [mainnet, optimism, arbitrum, polygon, base]; // should this be through the CLI?
 const transports = chains.map(() => http());
 
 let account = PRIVATE_KEY
