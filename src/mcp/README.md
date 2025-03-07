@@ -1,6 +1,6 @@
 # Agentek MCP Server
 
-🚧 v0.1.0
+🚧 v0.1.1
 
 Hey! This is a basic MCP server that bundles all Agentek tools into one package. Works with Claude Desktop, Cursor, and other MCP-friendly apps.
 
