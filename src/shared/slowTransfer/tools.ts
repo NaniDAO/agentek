@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTool } from "../client";
 import { SLOW_ADDRESS, slowAbi, slowTransferChains } from "./constants";
+import { addressSchema } from "../utils";
 
 export const getSlowStatus = createTool({
   name: "getSlowStatus",
@@ -8,7 +9,7 @@ export const getSlowStatus = createTool({
     "Get information about tokens, unlocked balances, and pending transfers in SLOW",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    user: z.string().describe("The user address to check"),
+    user: addressSchema.describe("The user address to check"),
     tokenId: z
       .string()
       .optional()
@@ -88,8 +89,8 @@ export const predictTransferId = createTool({
   description: "Predict a transfer ID for a potential transfer",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    from: z.string().describe("The sender address"),
-    to: z.string().describe("The recipient address"),
+    from: addressSchema.describe("The sender address"),
+    to: addressSchema.describe("The recipient address"),
     id: z.string().describe("The token ID"),
     amount: z.string().describe("The transfer amount"),
   }),
@@ -205,7 +206,7 @@ export const getSlowGuardianInfo = createTool({
   description: "Get guardian information for a user",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    user: z.string().describe("The user address to check"),
+    user: addressSchema.describe("The user address to check"),
   }),
   execute: async (client, args) => {
     const { user } = args;
@@ -248,8 +249,8 @@ export const approveSlowTransfer = createTool({
   description: "Check if a transfer needs guardian approval",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    user: z.string().describe("The user address"),
-    to: z.string().describe("The recipient address"),
+    user: addressSchema.describe("The user address"),
+    to: addressSchema.describe("The recipient address"),
     id: z.string().describe("The token ID"),
     amount: z.string().describe("The amount to transfer"),
   }),

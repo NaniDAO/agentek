@@ -14,7 +14,11 @@ export const intentDepositToSlow = createTool({
       "The token address to deposit (use 0x0000000000000000000000000000000000000000 for ETH)",
     ),
     to: addressSchema.describe("The recipient address"),
-    amount: z.string().describe("The amount to deposit in token units or ETH"),
+    amount: z
+      .string()
+      .describe(
+        "The amount to deposit in human readable format (e.g. for 0.01 ETH use 0.01)",
+      ),
     delay: z.number().describe("The timelock delay in seconds"),
   }),
   execute: async (client, args): Promise<Intent> => {
@@ -66,7 +70,7 @@ export const intentDepositToSlow = createTool({
       });
     }
 
-    const walletClient = client.getWalletClient();
+    const walletClient = client.getWalletClient(chainId);
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
       return {
@@ -112,11 +116,11 @@ export const intentSetSlowGuardian = createTool({
           functionName: "setGuardian",
           args: [guardianAddress],
         }),
-        value: 0n,
+        value: "0",
       },
     ];
 
-    const walletClient = client.getWalletClient();
+    const walletClient = client.getWalletClient(chainId);
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
       return {
@@ -159,11 +163,11 @@ export const intentWithdrawFromSlow = createTool({
           functionName: "withdrawFrom",
           args: [from, to, BigInt(id), BigInt(amount)],
         }),
-        value: 0n,
+        value: "0",
       },
     ];
 
-    const walletClient = client.getWalletClient();
+    const walletClient = client.getWalletClient(chainId);
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
       return {
@@ -206,11 +210,11 @@ export const intentApproveSlowTransfer = createTool({
           functionName: "approveTransfer",
           args: [from, BigInt(transferId)],
         }),
-        value: 0n,
+        value: "0",
       },
     ];
 
-    const walletClient = client.getWalletClient();
+    const walletClient = client.getWalletClient(chainId);
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
       return {
@@ -250,11 +254,11 @@ export const intentUnlockSlow = createTool({
           functionName: "unlock",
           args: [BigInt(transferId)],
         }),
-        value: 0n,
+        value: "0",
       },
     ];
 
-    const walletClient = client.getWalletClient();
+    const walletClient = client.getWalletClient(chainId);
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
       return {
@@ -294,11 +298,11 @@ export const intentReverseSlowTransfer = createTool({
           functionName: "reverse",
           args: [BigInt(transferId)],
         }),
-        value: 0n,
+        value: "0",
       },
     ];
 
-    const walletClient = client.getWalletClient();
+    const walletClient = client.getWalletClient(chainId);
     if (walletClient) {
       const hash = await client.executeOps(ops, chainId);
       return {

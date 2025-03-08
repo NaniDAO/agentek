@@ -2,7 +2,7 @@ import { BaseTool, createToolCollection } from "../client";
 import {
   getSlowStatus,
   predictTransferId,
-  unlockSlow,
+  canUnlockSlow,
   reverseSlowTransfer,
   getSlowGuardianInfo,
   approveSlowTransfer,
@@ -29,13 +29,13 @@ import {
 export function slowTransferTools(): BaseTool[] {
   return createToolCollection([
     // tools
-    depositToSlow,
     getSlowStatus,
     predictTransferId,
-    unlockSlow,
+    canUnlockSlow,
     reverseSlowTransfer,
     getSlowGuardianInfo,
     approveSlowTransfer,
+
     // intents
     intentDepositToSlow,
     intentSetSlowGuardian,
