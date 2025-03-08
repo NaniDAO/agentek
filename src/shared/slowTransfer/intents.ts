@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { createTool, Intent } from "../client";
 import { SLOW_ADDRESS, slowAbi, slowTransferChains } from "./constants";
-import { parseEther, encodeFunctionData } from "viem";
+import { parseEther, encodeFunctionData, erc20Abi, parseUnits } from "viem";
+import { addressSchema } from "../utils";
 
 export const intentDepositToSlow = createTool({
   name: "intentDepositToSlow",
@@ -9,96 +10,61 @@ export const intentDepositToSlow = createTool({
   supportedChains: slowTransferChains,
   parameters: z.object({
     chainId: z.number().describe("The chainId to execute the intent on."),
-    token: z
-      .string()
-      .describe(
-        "The token address to deposit (use 0x0 or empty string for ETH)",
-      ),
-    to: z.string().describe("The recipient address"),
+    token: addressSchema.describe(
+      "The token address to deposit (use 0x0000000000000000000000000000000000000000 for ETH)",
+    ),
+    to: addressSchema.describe("The recipient address"),
     amount: z.string().describe("The amount to deposit in token units or ETH"),
     delay: z.number().describe("The timelock delay in seconds"),
-    data: z.string().optional().describe("Optional data for the deposit"),
   }),
   execute: async (client, args): Promise<Intent> => {
-    const { chainId, token, to, amount, delay, data = "0x" } = args;
-    const tokenAddress =
-      token === "0x0" || token === ""
-        ? "0x0000000000000000000000000000000000000000"
-        : token;
-
-    const isEth = tokenAddress === "0x0000000000000000000000000000000000000000";
-    const value = isEth ? parseEther(amount) : 0n;
+    const { chainId, token, to, amount, delay } = args;
+    const isEth = token === "0x0000000000000000000000000000000000000000";
+    const value = isEth ? parseEther(amount).toString() : "0";
 
     const intent = `Deposit ${amount} ${isEth ? "ETH" : token} to ${to} with a ${delay} seconds delay`;
 
-    // For ETH deposits
+    const ops = [];
+
     if (isEth) {
-      const ops = [
-        {
-          target: SLOW_ADDRESS,
-          data: encodeFunctionData({
-            abi: slowAbi,
-            functionName: "depositTo",
-            args: [tokenAddress, to, 0n, BigInt(delay), data],
-          }),
-          value: parseEther(amount),
-        },
-      ];
+      ops.push({
+        target: SLOW_ADDRESS,
+        data: encodeFunctionData({
+          abi: slowAbi,
+          functionName: "depositTo",
+          args: [token, to, 0n, BigInt(delay), "0x"],
+        }),
+        value,
+      });
+    } else {
+      const decimals = await client.getPublicClient(chainId).readContract({
+        address: token,
+        abi: erc20Abi,
+        functionName: "decimals",
+      });
 
-      const walletClient = client.getWalletClient();
-      if (walletClient) {
-        const hash = await client.executeOps(ops, chainId);
-        return {
-          intent,
-          chain: chainId,
-          ops,
-          hash,
-        };
-      }
+      const tokenAmount = parseUnits(amount, decimals);
 
-      return {
-        intent,
-        chain: chainId,
-        ops,
-      };
-    }
-
-    // For ERC20 deposits, we need to approve first
-    const erc20Abi = [
-      {
-        inputs: [
-          { name: "spender", type: "address" },
-          { name: "amount", type: "uint256" },
-        ],
-        name: "approve",
-        outputs: [{ name: "", type: "bool" }],
-        stateMutability: "nonpayable",
-        type: "function",
-      },
-    ] as const;
-
-    const tokenAmount = BigInt(amount);
-
-    const ops = [
-      {
-        target: tokenAddress,
+      ops.push({
+        target: token,
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: "approve",
           args: [SLOW_ADDRESS, tokenAmount],
         }),
-        value: 0n,
-      },
-      {
+        value: "0",
+      });
+
+      ops.push({
         target: SLOW_ADDRESS,
         data: encodeFunctionData({
           abi: slowAbi,
           functionName: "depositTo",
-          args: [tokenAddress, to, tokenAmount, BigInt(delay), data],
+          args: [token, to, tokenAmount, BigInt(delay), "0x"],
         }),
-        value: 0n,
-      },
-    ];
+        value,
+      });
+    }
 
     const walletClient = client.getWalletClient();
     if (walletClient) {
@@ -125,9 +91,9 @@ export const intentSetSlowGuardian = createTool({
   supportedChains: slowTransferChains,
   parameters: z.object({
     chainId: z.number().describe("The chainId to execute the intent on."),
-    guardian: z
-      .string()
-      .describe("The guardian address to set (use 0x0 to remove guardian)"),
+    guardian: addressSchema.describe(
+      "The guardian address to set (use 0x0 to remove guardian)",
+    ),
   }),
   execute: async (client, args): Promise<Intent> => {
     const { chainId, guardian } = args;
@@ -175,8 +141,8 @@ export const intentWithdrawFromSlow = createTool({
   supportedChains: slowTransferChains,
   parameters: z.object({
     chainId: z.number().describe("The chainId to execute the intent on."),
-    from: z.string().describe("The address to withdraw from"),
-    to: z.string().describe("The recipient address"),
+    from: addressSchema.describe("The address to withdraw from"),
+    to: addressSchema.describe("The recipient address"),
     id: z.string().describe("The token ID to withdraw"),
     amount: z.string().describe("The amount to withdraw"),
   }),
@@ -222,7 +188,9 @@ export const intentApproveSlowTransfer = createTool({
   supportedChains: slowTransferChains,
   parameters: z.object({
     chainId: z.number().describe("The chainId to execute the intent on."),
-    from: z.string().describe("The user address that initiated the transfer"),
+    from: addressSchema.describe(
+      "The user address that initiated the transfer",
+    ),
     transferId: z.string().describe("The transfer ID to approve"),
   }),
   execute: async (client, args): Promise<Intent> => {
