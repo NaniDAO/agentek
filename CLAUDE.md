@@ -1,10 +1,14 @@
 # Agentek Project Guidelines
 
+## Requirements
+- Node.js >= 18.17.0 (Required for proper fetch API support)
+- pnpm
+
 ## Commands
-- Install: `bun i`
-- Build: `bun run build`
-- Test all: `bun run test`
-- Test single file: `bun test -- path/to/file.test.ts`
+- Install: `pnpm i`
+- Build: `pnpm run build`
+- Test all: `pnpm run test`
+- Test single file: `pnpm test -- path/to/file.test.ts`
 - Run single test: Use `it.only("test name", ...)` in the test file
 
 ## Code Style

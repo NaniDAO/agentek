@@ -24,6 +24,11 @@ The Agentek toolkit is structured as a monorepo with multiple publishable packag
   - `agentek-weth` - WETH tools
   - `agentek-tally` - Tally tools
 
+## Requirements
+
+- Node.js >= 18.0.0
+- npm, yarn, or pnpm
+
 ## Installation
 
 You can install the entire toolkit:
