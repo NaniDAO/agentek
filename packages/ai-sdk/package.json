@@ -3,13 +3,22 @@
   "version": "0.1.0",
   "description": "AI SDK integration for Agentek tools",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc"
+    "build": "tsup",
+    "dev": "tsup --watch"
   },
   "keywords": [
     "ai",
@@ -30,7 +39,7 @@
     "zod": "^3.24.1"
   },
   "peerDependencies": {
-    "@agentek/tools": "workspace:*"
+    "@agentek/tools": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.6",

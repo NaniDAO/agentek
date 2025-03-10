@@ -7,7 +7,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "outDir": "./dist",
+    "outDir": "./dist/esm",
     "rootDir": ".",
     "strict": false,
     "noImplicitAny": false,
@@ -32,9 +32,9 @@
     "composite": true
   },
   "references": [
-    { "path": "./src/shared" },
-    { "path": "./src/ai-sdk" },
-    { "path": "./src/mcp" }
+    { "path": "./packages/shared" },
+    { "path": "./packages/ai-sdk" },
+    { "path": "./packages/mcp" }
   ],
   "files": []
 }

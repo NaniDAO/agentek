@@ -1,6 +1,6 @@
 {
-  "name": "agentek-mcp-server",
-  "version": "0.1.1",
+  "name": "@agentek/mcp-server",
+  "version": "0.1.0",
   "description": "[PREVIEW] Model Context Protocol (MCP) server for Agentek",
   "license": "AGPL-3.0",
   "author": "NaniDAO",
@@ -11,25 +11,33 @@
   },
   "type": "module",
   "bin": {
-    "agentek-mcp-server": "dist/index.js"
+    "agentek-mcp-server": "dist/index.mjs"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc && shx chmod +x dist/index.js",
-    "start": "node dist/index.js",
-    "watch": "tsc --watch",
+    "build": "tsup && echo '#!/usr/bin/env node' > temp.txt && cat dist/index.mjs >> temp.txt && mv temp.txt dist/index.mjs && chmod +x dist/index.mjs",
+    "dev": "tsup --watch",
+    "start": "node dist/index.mjs",
     "test": "vitest run"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.0.1",
+    "@agentek/tools": "0.1.0",
     "viem": "2.22.8",
     "zod": "^3.24.1",
     "zod-to-json-schema": "^3.21.4"
-  },
-  "peerDependencies": {
-    "@agentek/tools": "workspace:*"
   },
   "keywords": [
     "ai",

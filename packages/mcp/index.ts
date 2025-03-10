@@ -10,8 +10,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { http, Address, Hex, zeroAddress } from "viem";
 import { mainnet, optimism, arbitrum, polygon, base } from "viem/chains";
-import { createAgentekClient } from "../shared/client.js";
-import { allTools } from "../shared/index.js";
+import { createAgentekClient } from "@agentek/tools/client";
+import { allTools } from "@agentek/tools";
 import { privateKeyToAccount } from "viem/accounts";
 
 console.error("Starting Agentek MCP Server...");

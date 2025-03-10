@@ -1,12 +1,12 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist",
+    "outDir": "./dist/esm",
     "rootDir": ".",
     "composite": true
   },
   "include": ["./**/*.ts"],
-  "exclude": ["**/*.test.ts"],
+  "exclude": ["**/*.test.ts", "node_modules", "dist"],
   "references": [
     { "path": "../shared" }
   ]

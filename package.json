@@ -5,16 +5,15 @@
   "type": "module",
   "private": true,
   "workspaces": [
-    "src/ai-sdk",
-    "src/shared",
-    "src/mcp"
+    "packages/ai-sdk",
+    "packages/shared",
+    "packages/mcp"
   ],
   "scripts": {
-    "build": "rm -rf dist src/shared/dist src/ai-sdk/dist src/mcp/dist && tsc --build",
-    "dev": "tsc --build --watch",
-    "test": "vitest -c ./test/vitest.config.ts", 
-    "prepare": "npm run build",
-    "clean": "rm -rf dist src/shared/dist src/ai-sdk/dist src/mcp/dist"
+    "build": "pnpm -r build",
+    "dev": "pnpm -r dev",
+    "test": "vitest -c ./test/vitest.config.ts",
+    "clean": "rm -rf dist packages/*/dist"
   },
   "keywords": [
     "ai",
@@ -35,6 +34,7 @@
     "@types/node": "^22.10.6",
     "dotenv": "^16.4.7",
     "typescript": "^5.7.3",
+    "viem": "2.22.8",
     "vitest": "^3.0.2"
   },
   "engines": {
