@@ -27,7 +27,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup && echo '#!/usr/bin/env node' > temp.txt && cat dist/index.mjs >> temp.txt && mv temp.txt dist/index.mjs && chmod +x dist/index.mjs",
+    "build": "tsup && sed -i '1d' dist/index.mjs && sed -i '1i\\#!/usr/bin/env node' dist/index.mjs && chmod +x dist/index.mjs",
     "dev": "tsup --watch",
     "start": "node dist/index.mjs",
     "test": "vitest run"
