@@ -1,4 +1,4 @@
-import { allTools } from "../src/shared";
+import { allTools } from "../packages/shared";
 
 const tools = allTools({
   perplexityApiKey: process.env.PERPLEXITY_API_KEY,
