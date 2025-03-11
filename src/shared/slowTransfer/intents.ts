@@ -96,17 +96,13 @@ export const intentSetSlowGuardian = createTool({
   parameters: z.object({
     chainId: z.number().describe("The chainId to execute the intent on."),
     guardian: addressSchema.describe(
-      "The guardian address to set (use 0x0 to remove guardian)",
+      "The guardian address to set (use zero address to remove guardian)",
     ),
   }),
   execute: async (client, args): Promise<Intent> => {
     const { chainId, guardian } = args;
-    const guardianAddress =
-      guardian === "0x0"
-        ? "0x0000000000000000000000000000000000000000"
-        : guardian;
-
-    const intent = `Set guardian to ${guardianAddress}`;
+  
+    const intent = `Set guardian to ${guardian}`;
 
     const ops = [
       {
@@ -114,7 +110,7 @@ export const intentSetSlowGuardian = createTool({
         data: encodeFunctionData({
           abi: slowAbi,
           functionName: "setGuardian",
-          args: [guardianAddress],
+          args: [guardian],
         }),
         value: "0",
       },
@@ -153,7 +149,7 @@ export const intentWithdrawFromSlow = createTool({
   execute: async (client, args): Promise<Intent> => {
     const { chainId, from, to, id, amount } = args;
 
-    const intent = `Withdraw ${amount} of token ID ${id} from ${from} to ${to}`;
+    const intent = `Withdraw ${amount} of ${id} tokenId from ${from} to ${to}`;
 
     const ops = [
       {
@@ -200,7 +196,7 @@ export const intentApproveSlowTransfer = createTool({
   execute: async (client, args): Promise<Intent> => {
     const { chainId, from, transferId } = args;
 
-    const intent = `Approve transfer ID ${transferId} from ${from}`;
+    const intent = `Approve transfer with ID ${transferId}`;
 
     const ops = [
       {
@@ -244,7 +240,7 @@ export const intentUnlockSlow = createTool({
   execute: async (client, args): Promise<Intent> => {
     const { chainId, transferId } = args;
 
-    const intent = `Unlock transfer ID ${transferId}`;
+    const intent = `Unlock transfer with ID ${transferId}`;
 
     const ops = [
       {
@@ -288,7 +284,7 @@ export const intentReverseSlowTransfer = createTool({
   execute: async (client, args): Promise<Intent> => {
     const { chainId, transferId } = args;
 
-    const intent = `Reverse transfer ID ${transferId}`;
+    const intent = `Reverse transfer with ID ${transferId}`;
 
     const ops = [
       {
