@@ -1,8 +1,10 @@
 import { base } from "viem/chains";
+import { Address } from "viem";
 
 export const slowTransferChains = [base];
 export const SLOW_ADDRESS =
   "0x000000000000888741b254d37e1b27128afeaabc" as Address;
+  
 export const slowAbi = [
   { inputs: [], stateMutability: "payable", type: "constructor" },
   { inputs: [], name: "AccountBalanceOverflow", type: "error" },

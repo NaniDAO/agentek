@@ -162,7 +162,7 @@ export const canUnlockSlow = createTool({
 });
 
 export const reverseSlowTransfer = createTool({
-  name: "reverseSlowTransfer",
+  name: "getCanReverseSlowTransfer",
   description: "Check if a transfer can be reversed",
   supportedChains: slowTransferChains,
   parameters: z.object({
@@ -219,7 +219,7 @@ export const getSlowGuardianInfo = createTool({
       args: [user],
     });
 
-    const canChange = await publicClient.readContract({
+    const [canChange, cooldownEndsAt] = await publicClient.readContract({
       address: SLOW_ADDRESS,
       abi: slowAbi,
       functionName: "canChangeGuardian",
@@ -237,15 +237,15 @@ export const getSlowGuardianInfo = createTool({
       user,
       currentGuardian: guardian,
       hasGuardian: guardian !== "0x0000000000000000000000000000000000000000",
-      canChangeGuardian: canChange[0],
-      cooldownEndsAt: Number(canChange[1]),
+      canChangeGuardian: canChange,
+      cooldownEndsAt: Number(cooldownEndsAt),
       lastChanged: Number(lastGuardianChange),
     };
   },
 });
 
 export const approveSlowTransfer = createTool({
-  name: "approveSlowTransfer",
+  name: "getSlowTransferApprovalRequired",
   description: "Check if a transfer needs guardian approval",
   supportedChains: slowTransferChains,
   parameters: z.object({
