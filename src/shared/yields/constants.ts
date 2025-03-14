@@ -70,6 +70,36 @@ export interface DefiLlamaChartResponse {
   data: DefiLlamaChartDataPoint[];
 }
 
+export interface PoolComparisonResult {
+  poolId: string;
+  project: string;
+  symbol: string;
+  chain: string;
+  current: {
+    apy: string;
+    tvl: string;
+  };
+  statistics: {
+    apy: {
+      average: string;
+      min: string;
+      max: string;
+      volatility: string;
+    },
+    tvl: {
+      average: string;
+      min: string;
+      max: string;
+    }
+  };
+  performance: {
+    apyChange30d?: string;
+    apyRank?: number;
+    volatilityRank?: number;
+    stabilityScore?: number;
+  };
+}
+
 // NOTE: Some of these endpoints are mock/placeholders for demonstration only, not actual APIs
 export const PROTOCOL_API_ENDPOINTS = {
   Aave: 'https://aave-api-v2.aave.com/data/markets-data',

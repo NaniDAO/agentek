@@ -1,5 +1,5 @@
 import { BaseTool, createToolCollection } from '../client';
-import { getYieldTool, compareYieldTool, defiLlamaYieldTool, getYieldHistoryTool } from './tools';
+import { getYieldTool, compareYieldTool, defiLlamaYieldTool, getYieldHistoryTool, compareYieldHistoryTool } from './tools';
 
 export function yieldTools(): BaseTool[] {
   return createToolCollection([
@@ -7,6 +7,7 @@ export function yieldTools(): BaseTool[] {
     compareYieldTool,
     defiLlamaYieldTool,
     getYieldHistoryTool,
+    compareYieldHistoryTool,
   ]);
 }
 

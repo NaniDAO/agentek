@@ -9,7 +9,8 @@ import {
   YieldData,
   SUPPORTED_CHAINS,
   DefiLlamaResponse,
-  DefiLlamaChartResponse
+  DefiLlamaChartResponse,
+  PoolComparisonResult
 } from './constants';
 
 // Schema for getYieldTool parameters
@@ -301,6 +302,29 @@ const getYieldHistoryToolSchema = z.object({
 
 type GetYieldHistoryToolParams = z.infer<typeof getYieldHistoryToolSchema>;
 
+// Schema for compareYieldHistoryTool parameters
+const compareYieldHistoryToolSchema = z.object({
+  poolIds: z
+    .array(z.string())
+    .min(2)
+    .max(5)
+    .describe('List of DefiLlama pool IDs to compare (between 2-5 pools)'),
+  days: z
+    .number()
+    .min(1)
+    .max(365)
+    .optional()
+    .default(30)
+    .describe('Number of days of historical data to analyze (max 365)'),
+  sortBy: z
+    .enum(['apy', 'volatility', 'stability', 'tvl'] as [string, ...string[]])
+    .optional()
+    .default('apy')
+    .describe('Metric to sort the comparison results by'),
+});
+
+type CompareYieldHistoryToolParams = z.infer<typeof compareYieldHistoryToolSchema>;
+
 // The yield history tool
 export const getYieldHistoryTool = createTool({
   name: 'getYieldHistoryTool',
@@ -568,6 +592,203 @@ export const defiLlamaYieldTool = createTool({
       };
     } catch (error) {
       throw new Error(`Failed to fetch DefiLlama yield data: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  },
+});
+
+// The compareYieldHistoryTool
+export const compareYieldHistoryTool = createTool({
+  name: 'compareYieldHistoryTool',
+  description: 'Compares historical yield performance across multiple pools, analyzing metrics like APY, volatility, and TVL trends',
+  supportedChains: SUPPORTED_CHAINS,
+  parameters: compareYieldHistoryToolSchema,
+  execute: async (client, args) => {
+    const { poolIds, days, sortBy } = args;
+    try {
+      // Fetch historical data for all pools in parallel
+      const poolDataPromises = poolIds.map(async (poolId) => {
+        // Construct the API URL with the pool ID
+        const apiUrl = `${PROTOCOL_API_ENDPOINTS.DefiLlamaChart}/${poolId}`;
+        
+        // Fetch data from DefiLlama chart API
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch from DefiLlama for pool ${poolId}: ${response.statusText}`);
+        }
+        
+        const data: DefiLlamaChartResponse = await response.json();
+        
+        if (!data.data || data.data.length === 0) {
+          throw new Error(`No historical data found for pool ID: ${poolId}`);
+        }
+        
+        return { poolId, data };
+      });
+      
+      // Wait for all API responses
+      const poolResponses = await Promise.all(poolDataPromises);
+      
+      // Process each pool's data
+      const poolResults: PoolComparisonResult[] = poolResponses.map(({ poolId, data }) => {
+        // Sort data by timestamp (oldest to newest)
+        const sortedData = [...data.data].sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+        
+        // Filter data by requested days
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        const filteredData = sortedData.filter(point => 
+          new Date(point.timestamp) >= cutoffDate
+        );
+        
+        // Get pool metadata from first data point
+        const latestDataPoint = filteredData[filteredData.length - 1];
+        const firstDataPoint = filteredData[0];
+        
+        // Calculate statistics
+        const apyValues = filteredData.map(point => point.apy);
+        const tvlValues = filteredData.map(point => point.tvlUsd);
+        
+        const avgApy = apyValues.reduce((sum, apy) => sum + apy, 0) / apyValues.length;
+        const minApy = Math.min(...apyValues);
+        const maxApy = Math.max(...apyValues);
+        
+        const avgTvl = tvlValues.reduce((sum, tvl) => sum + tvl, 0) / tvlValues.length;
+        const minTvl = Math.min(...tvlValues);
+        const maxTvl = Math.max(...tvlValues);
+        
+        // Calculate volatility (standard deviation of APY)
+        const apyVariance = apyValues.reduce((sum, apy) => sum + Math.pow(apy - avgApy, 2), 0) / apyValues.length;
+        const apyVolatility = Math.sqrt(apyVariance);
+        
+        // Calculate 30-day APY change if data is available
+        const apyChange30d = firstDataPoint && latestDataPoint 
+          ? latestDataPoint.apy - firstDataPoint.apy 
+          : undefined;
+        
+        // Calculate stability score (inverse of normalized volatility)
+        // Higher score means more stable
+        const stabilityScore = 100 - (apyVolatility / avgApy * 100);
+        
+        return {
+          poolId,
+          project: '', // Will be filled later
+          symbol: '', // Will be filled later
+          chain: '', // Will be filled later
+          current: {
+            apy: `${latestDataPoint.apy.toFixed(2)}%`,
+            tvl: formatUSD(latestDataPoint.tvlUsd)
+          },
+          statistics: {
+            apy: {
+              average: `${avgApy.toFixed(2)}%`,
+              min: `${minApy.toFixed(2)}%`,
+              max: `${maxApy.toFixed(2)}%`,
+              volatility: `${apyVolatility.toFixed(2)}%`
+            },
+            tvl: {
+              average: formatUSD(avgTvl),
+              min: formatUSD(minTvl),
+              max: formatUSD(maxTvl)
+            }
+          },
+          performance: {
+            apyChange30d: apyChange30d !== undefined ? `${apyChange30d > 0 ? '+' : ''}${apyChange30d.toFixed(2)}%` : undefined,
+            stabilityScore: parseFloat(stabilityScore.toFixed(2))
+          }
+        };
+      });
+      
+      // Fetch additional pool metadata from the pools API
+      const poolsResponse = await fetch(PROTOCOL_API_ENDPOINTS.DefiLlama);
+      if (!poolsResponse.ok) {
+        throw new Error(`Failed to fetch pool metadata from DefiLlama: ${poolsResponse.statusText}`);
+      }
+      
+      const poolsData: DefiLlamaResponse = await poolsResponse.json();
+      
+      // Add metadata to each pool result
+      for (const result of poolResults) {
+        const poolMetadata = poolsData.data.find(pool => pool.pool === result.poolId);
+        if (poolMetadata) {
+          result.project = poolMetadata.project;
+          result.symbol = poolMetadata.symbol;
+          result.chain = poolMetadata.chain;
+        }
+      }
+      
+      // Add performance rankings
+      // Sort by APY (highest first)
+      const apySorted = [...poolResults].sort((a, b) => 
+        parseFloat(b.statistics.apy.average) - parseFloat(a.statistics.apy.average)
+      );
+      
+      // Assign APY rank
+      apySorted.forEach((result, index) => {
+        result.performance.apyRank = index + 1;
+      });
+      
+      // Sort by volatility (lowest first)
+      const volatilitySorted = [...poolResults].sort((a, b) => 
+        parseFloat(a.statistics.apy.volatility) - parseFloat(b.statistics.apy.volatility)
+      );
+      
+      // Assign volatility rank
+      volatilitySorted.forEach((result, index) => {
+        result.performance.volatilityRank = index + 1;
+      });
+      
+      // Sort results based on user preference
+      let sortedResults = [...poolResults];
+      switch (sortBy) {
+        case 'apy':
+          sortedResults = apySorted;
+          break;
+        case 'volatility':
+          sortedResults = volatilitySorted;
+          break;
+        case 'stability':
+          sortedResults.sort((a, b) => 
+            (b.performance.stabilityScore || 0) - (a.performance.stabilityScore || 0)
+          );
+          break;
+        case 'tvl':
+          sortedResults.sort((a, b) => 
+            parseFloat(b.statistics.tvl.average.replace(/[^\d.-]/g, '')) - 
+            parseFloat(a.statistics.tvl.average.replace(/[^\d.-]/g, ''))
+          );
+          break;
+      }
+      
+      return {
+        count: poolResults.length,
+        period: `${days} days`,
+        sortedBy: sortBy,
+        bestFor: {
+          highestAvgApy: apySorted[0].project + ' ' + apySorted[0].symbol,
+          lowestVolatility: volatilitySorted[0].project + ' ' + volatilitySorted[0].symbol,
+          bestStability: sortedResults.sort((a, b) => 
+            (b.performance.stabilityScore || 0) - (a.performance.stabilityScore || 0)
+          )[0].project + ' ' + sortedResults[0].symbol
+        },
+        pools: sortedResults.map(pool => ({
+          poolId: pool.poolId,
+          name: `${pool.project} ${pool.symbol}`,
+          chain: pool.chain,
+          currentApy: pool.current.apy,
+          avgApy: pool.statistics.apy.average,
+          volatility: pool.statistics.apy.volatility,
+          stabilityScore: pool.performance.stabilityScore,
+          apyRank: pool.performance.apyRank,
+          volatilityRank: pool.performance.volatilityRank,
+          tvlAvg: pool.statistics.tvl.average,
+          apyChange: pool.performance.apyChange30d
+        })),
+        details: sortedResults
+      };
+    } catch (error) {
+      throw new Error(`Failed to compare yield history: ${error instanceof Error ? error.message : String(error)}`);
     }
   },
 });

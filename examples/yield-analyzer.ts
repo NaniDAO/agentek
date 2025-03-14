@@ -1,4 +1,4 @@
-import { getYieldTool, compareYieldTool, defiLlamaYieldTool, getYieldHistoryTool } from '../src/shared/yields';
+import { getYieldTool, compareYieldTool, defiLlamaYieldTool, getYieldHistoryTool, compareYieldHistoryTool } from '../src/shared/yields';
 
 // Example 1: Get top yield opportunities across all protocols
 async function example1() {
@@ -111,6 +111,47 @@ async function example7() {
 }
 
 // Run all examples
+// Example 8: Compare historical yield data for multiple pools
+async function example8() {
+  console.log('Example 8: Compare historical yield data across multiple pools');
+  
+  // First get some pool IDs from the pools API
+  const stablecoinPools = await defiLlamaYieldTool.execute(null, {
+    stablecoin: true,
+    minApy: 3,
+    limit: 3
+  });
+  
+  if (stablecoinPools.yields.length < 2) {
+    console.log('Not enough pools found for comparison');
+    return;
+  }
+  
+  // Extract pool IDs for comparison
+  const poolIds = stablecoinPools.yields.map(pool => pool.pool);
+  console.log(`Comparing ${poolIds.length} pools: ${poolIds.join(', ')}`);
+  
+  // Now compare their historical performance
+  const result = await compareYieldHistoryTool.execute(null, {
+    poolIds,
+    days: 60,
+    sortBy: 'stability'
+  });
+  
+  console.log(`Period: ${result.period}`);
+  console.log(`Sorted by: ${result.sortedBy}`);
+  console.log(`Pools analyzed: ${result.count}`);
+  
+  console.log('\nBest for:');
+  console.table(result.bestFor);
+  
+  console.log('\nPool Comparison:');
+  console.table(result.pools);
+  
+  console.log('\nDetailed Results (first pool):');
+  console.table(result.details[0]);
+}
+
 async function runExamples() {
   try {
     await example1();
@@ -132,6 +173,9 @@ async function runExamples() {
     console.log('\n');
     
     await example7();
+    console.log('\n');
+    
+    await example8();
   } catch (error) {
     console.error('Error running examples:', error);
   }
