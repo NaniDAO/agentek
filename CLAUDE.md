@@ -10,6 +10,7 @@
 - Test all: `pnpm run test`
 - Test single file: `pnpm test -- path/to/file.test.ts`
 - Run single test: Use `it.only("test name", ...)` in the test file
+- List all tools: `bun run list`
 
 ## Code Style
 - **Imports**: Group external libraries first, then internal. Use `type` keyword for type imports.

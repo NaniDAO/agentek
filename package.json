@@ -12,8 +12,9 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r dev",
+    "clean": "rm -rf dist packages/*/dist",
     "test": "vitest -c ./test/vitest.config.ts",
-    "clean": "rm -rf dist packages/*/dist"
+    "list": "bun run scripts/tool-count.ts"
   },
   "keywords": [
     "ai",
@@ -30,7 +31,7 @@
   },
   "homepage": "https://nani.ooo",
   "devDependencies": {
-    "@openrouter/ai-sdk-provider": "^0.0.6",
+    "@openrouter/ai-sdk-provider": "^0.4.3",
     "@types/node": "^22.10.6",
     "dotenv": "^16.4.7",
     "tsup": "^8.4.0",
