@@ -1,4 +1,4 @@
-import { getYieldTool, compareYieldTool, defiLlamaYieldTool, getYieldHistoryTool, compareYieldHistoryTool } from '../src/shared/yields';
+import { getYieldTool, compareYieldTool, getYieldHistoryTool, compareYieldHistoryTool } from '../src/shared/yields/tools';
 
 // Example 1: Get top yield opportunities across all protocols
 async function example1() {
@@ -50,7 +50,7 @@ async function example4() {
 // Example 5: Get top stablecoin yield opportunities using DefiLlama
 async function example5() {
   console.log('Example 5: Top 5 stablecoin yield opportunities from DefiLlama');
-  const result = await defiLlamaYieldTool.execute(null, {
+  const result = await getYieldTool.execute(null, {
     stablecoin: true,
     minApy: 5,
     limit: 5
@@ -61,7 +61,7 @@ async function example5() {
 // Example 6: Get Ethereum-specific yields from DefiLlama
 async function example6() {
   console.log('Example 6: Top Ethereum yields from DefiLlama');
-  const result = await defiLlamaYieldTool.execute(null, {
+  const result = await getYieldTool.execute(null, {
     chain: 'Ethereum',
     limit: 5
   });
@@ -72,7 +72,7 @@ async function example6() {
 async function example7() {
   console.log('Example 7: Historical yield data for a specific pool');
   // First get a pool ID from the pools API
-  const poolsResult = await defiLlamaYieldTool.execute(null, {
+  const poolsResult = await getYieldTool.execute(null, {
     project: 'Aave',
     symbol: 'USDC',
     limit: 1
@@ -116,7 +116,7 @@ async function example8() {
   console.log('Example 8: Compare historical yield data across multiple pools');
   
   // First get some pool IDs from the pools API
-  const stablecoinPools = await defiLlamaYieldTool.execute(null, {
+  const stablecoinPools = await getYieldTool.execute(null, {
     stablecoin: true,
     minApy: 3,
     limit: 3

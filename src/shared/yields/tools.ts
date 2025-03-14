@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { createTool } from '../client';
 import { 
   SUPPORTED_YIELD_PROTOCOLS, 
-  YieldProtocol, 
   SUPPORTED_CHAINS,
   PoolComparisonResult
 } from './constants';
@@ -20,12 +19,24 @@ import {
   calculateStabilityScore
 } from './utils';
 
-// Schema for getYieldTool parameters
-const getYieldToolSchema = z.object({
-  protocol: z
-    .enum([SUPPORTED_YIELD_PROTOCOLS[0], ...SUPPORTED_YIELD_PROTOCOLS.slice(1)] as [string, ...string[]])
+// Schema for defiLlamaYieldTool parameters
+const defiLlamaYieldToolSchema = z.object({
+  chain: z
+    .string()
     .optional()
-    .describe('Optional filter for specific protocol (e.g., Aave, Compound)'),
+    .describe('Optional filter for specific chain (e.g., Ethereum, Arbitrum)'),
+  project: z
+    .string()
+    .optional()
+    .describe('Optional filter for specific project (e.g., Aave, Lido)'),
+  symbol: z
+    .string()
+    .optional()
+    .describe('Optional filter for specific token symbol (e.g., ETH, USDC)'),
+  stablecoin: z
+    .boolean()
+    .optional()
+    .describe('Optional filter for stablecoin yields only'),
   minApy: z
     .number()
     .min(0)
@@ -35,6 +46,10 @@ const getYieldToolSchema = z.object({
     .enum(['low', 'medium', 'high'] as [string, ...string[]])
     .optional()
     .describe('Optional maximum risk level (low, medium, high)'),
+  protocol: z
+    .enum([SUPPORTED_YIELD_PROTOCOLS[0], ...SUPPORTED_YIELD_PROTOCOLS.slice(1)] as [string, ...string[]])
+    .optional()
+    .describe('Optional filter for specific protocol (e.g., Aave, Compound)'),
   asset: z
     .string()
     .optional()
@@ -46,70 +61,175 @@ const getYieldToolSchema = z.object({
   limit: z
     .number()
     .min(1)
-    .max(50)
+    .max(100)
     .optional()
-    .default(10)
+    .default(20)
     .describe('Maximum number of results to return'),
 });
 
-type GetYieldToolParams = z.infer<typeof getYieldToolSchema>;
-
-// The main yield analyzer tool
+// Consolidated yield analyzer tool
 export const getYieldTool = createTool({
   name: 'getYieldTool',
-  description: 'Analyzes and compares yield opportunities across major DeFi protocols',
+  description: 'Analyzes and compares yield opportunities from DefiLlama across all DeFi protocols',
   supportedChains: SUPPORTED_CHAINS,
-  parameters: getYieldToolSchema,
+  parameters: defiLlamaYieldToolSchema,
   execute: async (client, args) => {
-    const { protocol, minApy, maxRisk, asset, chainId, limit } = args;
+    const { chain, project, symbol, stablecoin, minApy, maxRisk, protocol, asset, chainId, limit } = args;
     try {
-      // Determine which protocols to fetch data from
-      const protocolsToFetch = protocol ? [protocol] : SUPPORTED_YIELD_PROTOCOLS;
+      let filteredData;
       
-      // Fetch data from all specified protocols
-      const allYieldDataPromises = protocolsToFetch.map(p => fetchProtocolData(p, chainId));
-      const allYieldDataArrays = await Promise.all(allYieldDataPromises);
-      let allYieldData = allYieldDataArrays.flat();
-      
-      // Apply filters
-      if (minApy !== undefined) {
-        allYieldData = allYieldData.filter(data => data.apy >= minApy);
+      // If protocol is specified, use fetchProtocolData
+      if (protocol) {
+        const protocolsToFetch = [protocol];
+        const allYieldDataPromises = protocolsToFetch.map(p => fetchProtocolData(p, chainId));
+        const allYieldDataArrays = await Promise.all(allYieldDataPromises);
+        filteredData = allYieldDataArrays.flat();
+        
+        // Apply additional filters
+        if (minApy !== undefined) {
+          filteredData = filteredData.filter(data => data.apy >= minApy);
+        }
+        
+        if (maxRisk) {
+          const riskLevels = { low: 1, medium: 2, high: 3 };
+          const maxRiskLevel = riskLevels[maxRisk];
+          filteredData = filteredData.filter(
+            data => riskLevels[data.risk] <= maxRiskLevel
+          );
+        }
+        
+        if (asset) {
+          const assetLower = asset.toLowerCase();
+          filteredData = filteredData.filter(
+            data => 
+              data.asset.toLowerCase().includes(assetLower) || 
+              data.symbol.toLowerCase().includes(assetLower)
+          );
+        }
+        
+        // Sort by APY (highest first)
+        filteredData.sort((a, b) => b.apy - a.apy);
+        
+        // Limit results
+        const limitedResults = filteredData.slice(0, limit);
+        
+        return {
+          count: limitedResults.length,
+          yields: limitedResults.map(data => ({
+            protocol: data.protocol,
+            asset: `${data.asset} (${data.symbol})`,
+            chain: getChainName(data.chain),
+            apy: `${data.apy.toFixed(2)}%`,
+            tvl: formatUSD(data.tvl),
+            risk: data.risk,
+          })),
+        };
+      } 
+      // Otherwise use direct DefiLlama API
+      else {
+        // Fetch data from DefiLlama yields API
+        const data = await fetchDefiLlamaPools();
+        
+        // Apply filters
+        filteredData = data.data;
+        
+        if (chain) {
+          const chainLower = chain.toLowerCase();
+          filteredData = filteredData.filter(pool => 
+            pool.chain.toLowerCase().includes(chainLower)
+          );
+        }
+        
+        if (project) {
+          const projectLower = project.toLowerCase();
+          filteredData = filteredData.filter(pool => 
+            pool.project.toLowerCase().includes(projectLower)
+          );
+        }
+        
+        if (symbol) {
+          const symbolLower = symbol.toLowerCase();
+          filteredData = filteredData.filter(pool => 
+            pool.symbol.toLowerCase().includes(symbolLower)
+          );
+        }
+        
+        if (stablecoin !== undefined) {
+          filteredData = filteredData.filter(pool => pool.stablecoin === stablecoin);
+        }
+        
+        if (minApy !== undefined) {
+          filteredData = filteredData.filter(pool => {
+            const apyValue = pool.apy !== null ? pool.apy : 
+                            (pool.apyBase !== null ? pool.apyBase : 0);
+            return apyValue >= minApy;
+          });
+        }
+        
+        if (maxRisk) {
+          const riskLevels = { low: 1, medium: 2, high: 3 };
+          const maxRiskLevel = riskLevels[maxRisk];
+          
+          filteredData = filteredData.filter(pool => {
+            const apyValue = pool.apy !== null ? pool.apy : 
+                            (pool.apyBase !== null ? pool.apyBase : 0);
+            const riskLevel = assessRisk(apyValue);
+            return riskLevels[riskLevel] <= maxRiskLevel;
+          });
+        }
+        
+        if (asset) {
+          const assetLower = asset.toLowerCase();
+          filteredData = filteredData.filter(
+            pool => 
+              pool.project.toLowerCase().includes(assetLower) || 
+              pool.symbol.toLowerCase().includes(assetLower)
+          );
+        }
+        
+        // Sort by APY (highest first)
+        filteredData.sort((a, b) => {
+          const apyA = a.apy !== null ? a.apy : (a.apyBase !== null ? a.apyBase : 0);
+          const apyB = b.apy !== null ? b.apy : (b.apyBase !== null ? b.apyBase : 0);
+          return apyB - apyA;
+        });
+        
+        // Limit results
+        const limitedResults = filteredData.slice(0, limit);
+        
+        // Format results
+        return {
+          count: limitedResults.length,
+          yields: limitedResults.map(pool => {
+            const apyValue = pool.apy !== null ? pool.apy : 
+                            (pool.apyBase !== null ? pool.apyBase : 0);
+            
+            return {
+              project: pool.project,
+              asset: pool.symbol,
+              chain: pool.chain,
+              pool: pool.pool, // Include pool ID for historical data lookup
+              apy: `${apyValue.toFixed(2)}%`,
+              apyBase: pool.apyBase !== null ? `${pool.apyBase.toFixed(2)}%` : null,
+              apyReward: pool.apyReward !== null ? `${pool.apyReward.toFixed(2)}%` : null,
+              tvl: formatUSD(pool.tvlUsd),
+              risk: assessRisk(apyValue),
+              stablecoin: pool.stablecoin ? 'Yes' : 'No',
+              ilRisk: pool.ilRisk,
+              exposure: pool.exposure,
+              trend: {
+                '1d': pool.apyPct1D !== undefined ? `${pool.apyPct1D > 0 ? '+' : ''}${pool.apyPct1D?.toFixed(2)}%` : 'N/A',
+                '7d': pool.apyPct7D !== undefined ? `${pool.apyPct7D > 0 ? '+' : ''}${pool.apyPct7D?.toFixed(2)}%` : 'N/A',
+                '30d': pool.apyPct30D !== undefined ? `${pool.apyPct30D > 0 ? '+' : ''}${pool.apyPct30D?.toFixed(2)}%` : 'N/A',
+              },
+              prediction: pool.predictions ? {
+                class: pool.predictions.predictedClass,
+                confidence: `${pool.predictions.predictedProbability}%`,
+              } : null,
+            };
+          }),
+        };
       }
-      
-      if (maxRisk) {
-        const riskLevels = { low: 1, medium: 2, high: 3 };
-        const maxRiskLevel = riskLevels[maxRisk];
-        allYieldData = allYieldData.filter(
-          data => riskLevels[data.risk] <= maxRiskLevel
-        );
-      }
-      
-      if (asset) {
-        const assetLower = asset.toLowerCase();
-        allYieldData = allYieldData.filter(
-          data => 
-            data.asset.toLowerCase().includes(assetLower) || 
-            data.symbol.toLowerCase().includes(assetLower)
-        );
-      }
-      
-      // Sort by APY (highest first)
-      allYieldData.sort((a, b) => b.apy - a.apy);
-      
-      // Limit results
-      const limitedResults = allYieldData.slice(0, limit);
-      
-      return {
-        count: limitedResults.length,
-        yields: limitedResults.map(data => ({
-          protocol: data.protocol,
-          asset: `${data.asset} (${data.symbol})`,
-          chain: getChainName(data.chain),
-          apy: `${data.apy.toFixed(2)}%`,
-          tvl: formatUSD(data.tvl),
-          risk: data.risk,
-        })),
-      };
     } catch (error) {
       throw new Error(`Failed to fetch yield data: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -267,150 +387,6 @@ export const getYieldHistoryTool = createTool({
       };
     } catch (error) {
       throw new Error(`Failed to fetch yield history data: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  },
-});
-
-// Schema for defiLlamaYieldTool parameters
-const defiLlamaYieldToolSchema = z.object({
-  chain: z
-    .string()
-    .optional()
-    .describe('Optional filter for specific chain (e.g., Ethereum, Arbitrum)'),
-  project: z
-    .string()
-    .optional()
-    .describe('Optional filter for specific project (e.g., Aave, Lido)'),
-  symbol: z
-    .string()
-    .optional()
-    .describe('Optional filter for specific token symbol (e.g., ETH, USDC)'),
-  stablecoin: z
-    .boolean()
-    .optional()
-    .describe('Optional filter for stablecoin yields only'),
-  minApy: z
-    .number()
-    .min(0)
-    .optional()
-    .describe('Optional minimum APY threshold (e.g., 5 for 5%)'),
-  maxRisk: z
-    .enum(['low', 'medium', 'high'] as [string, ...string[]])
-    .optional()
-    .describe('Optional maximum risk level (low, medium, high)'),
-  limit: z
-    .number()
-    .min(1)
-    .max(100)
-    .optional()
-    .default(20)
-    .describe('Maximum number of results to return'),
-});
-
-// DefiLlama-specific yield analyzer tool
-export const defiLlamaYieldTool = createTool({
-  name: 'defiLlamaYieldTool',
-  description: 'Fetches and analyzes yield opportunities from DefiLlama across all DeFi protocols',
-  supportedChains: SUPPORTED_CHAINS,
-  parameters: defiLlamaYieldToolSchema,
-  execute: async (client, args) => {
-    const { chain, project, symbol, stablecoin, minApy, maxRisk, limit } = args;
-    try {
-      // Fetch data from DefiLlama yields API
-      const data = await fetchDefiLlamaPools();
-      
-      // Apply filters
-      let filteredData = data.data;
-      
-      if (chain) {
-        const chainLower = chain.toLowerCase();
-        filteredData = filteredData.filter(pool => 
-          pool.chain.toLowerCase().includes(chainLower)
-        );
-      }
-      
-      if (project) {
-        const projectLower = project.toLowerCase();
-        filteredData = filteredData.filter(pool => 
-          pool.project.toLowerCase().includes(projectLower)
-        );
-      }
-      
-      if (symbol) {
-        const symbolLower = symbol.toLowerCase();
-        filteredData = filteredData.filter(pool => 
-          pool.symbol.toLowerCase().includes(symbolLower)
-        );
-      }
-      
-      if (stablecoin !== undefined) {
-        filteredData = filteredData.filter(pool => pool.stablecoin === stablecoin);
-      }
-      
-      if (minApy !== undefined) {
-        filteredData = filteredData.filter(pool => {
-          const apyValue = pool.apy !== null ? pool.apy : 
-                          (pool.apyBase !== null ? pool.apyBase : 0);
-          return apyValue >= minApy;
-        });
-      }
-      
-      if (maxRisk) {
-        const riskLevels = { low: 1, medium: 2, high: 3 };
-        const maxRiskLevel = riskLevels[maxRisk];
-        
-        filteredData = filteredData.filter(pool => {
-          const apyValue = pool.apy !== null ? pool.apy : 
-                          (pool.apyBase !== null ? pool.apyBase : 0);
-          const riskLevel = assessRisk(apyValue);
-          return riskLevels[riskLevel] <= maxRiskLevel;
-        });
-      }
-      
-      // Sort by APY (highest first)
-      filteredData.sort((a, b) => {
-        const apyA = a.apy !== null ? a.apy : (a.apyBase !== null ? a.apyBase : 0);
-        const apyB = b.apy !== null ? b.apy : (b.apyBase !== null ? b.apyBase : 0);
-        return apyB - apyA;
-      });
-      
-      // Limit results
-      const limitedResults = filteredData.slice(0, limit);
-      
-      // Format results
-      return {
-        count: limitedResults.length,
-        yields: limitedResults.map(pool => {
-          const apyValue = pool.apy !== null ? pool.apy : 
-                          (pool.apyBase !== null ? pool.apyBase : 0);
-          
-          return {
-            project: pool.project,
-            asset: pool.symbol,
-            chain: pool.chain,
-            pool: pool.pool, // Include pool ID for historical data lookup
-            apy: `${apyValue.toFixed(2)}%`,
-            apyBase: pool.apyBase !== null ? `${pool.apyBase.toFixed(2)}%` : null,
-            apyReward: pool.apyReward !== null ? `${pool.apyReward.toFixed(2)}%` : null,
-            tvl: formatUSD(pool.tvlUsd),
-            risk: assessRisk(apyValue),
-            stablecoin: pool.stablecoin ? 'Yes' : 'No',
-            ilRisk: pool.ilRisk,
-            exposure: pool.exposure,
-            trend: {
-              '1d': pool.apyPct1D !== undefined ? `${pool.apyPct1D > 0 ? '+' : ''}${pool.apyPct1D?.toFixed(2)}%` : 'N/A',
-              '7d': pool.apyPct7D !== undefined ? `${pool.apyPct7D > 0 ? '+' : ''}${pool.apyPct7D?.toFixed(2)}%` : 'N/A',
-              '30d': pool.apyPct30D !== undefined ? `${pool.apyPct30D > 0 ? '+' : ''}${pool.apyPct30D?.toFixed(2)}%` : 'N/A',
-            },
-            prediction: pool.predictions ? {
-              class: pool.predictions.predictedClass,
-              confidence: `${pool.predictions.predictedProbability}%`,
-            } : null,
-          };
-        }),
-      };
-    } catch (error) {
-      throw new Error(`Failed to fetch DefiLlama yield data: ${error instanceof Error ? error.message : String(error)}`);
     }
   },
 });
