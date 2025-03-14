@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest -c ./test/vitest.config.ts"
+    "test": "vitest -c ./test/vitest.config.ts",
+    "count": "bun run scripts/tool-count.ts"
   },
   "keywords": [],
   "author": "NaniDAO",

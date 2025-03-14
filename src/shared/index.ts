@@ -16,6 +16,8 @@ import { webTools } from "./web";
 import { coindeskTools } from "./coindesk";
 import { fearGreedIndexTools } from "./feargreed";
 import { createCoinMarketCalTools } from "./coinmarketcal";
+import { slowTransferTools } from "./slowTransfer";
+import { nftTools } from "./erc721";
 
 const allTools = ({
   perplexityApiKey,
@@ -44,6 +46,8 @@ const allTools = ({
     ...securityTools(),
     ...webTools(),
     ...fearGreedIndexTools(),
+    ...slowTransferTools(),
+    ...nftTools(),
   ];
 
   if (perplexityApiKey) {
