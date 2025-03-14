@@ -18,6 +18,7 @@ import { fearGreedIndexTools } from "./feargreed";
 import { createCoinMarketCalTools } from "./coinmarketcal";
 import { slowTransferTools } from "./slowTransfer";
 import { nftTools } from "./erc721";
+import { cryptoPriceTools } from "./cryptoprices";
 
 const allTools = ({
   perplexityApiKey,
@@ -48,6 +49,7 @@ const allTools = ({
     ...fearGreedIndexTools(),
     ...slowTransferTools(),
     ...nftTools(),
+    ...cryptoPriceTools(),
   ];
 
   if (perplexityApiKey) {
