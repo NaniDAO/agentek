@@ -100,14 +100,8 @@ export interface PoolComparisonResult {
   };
 }
 
-// NOTE: Some of these endpoints are mock/placeholders for demonstration only, not actual APIs
+// API endpoints
 export const PROTOCOL_API_ENDPOINTS = {
-  Aave: 'https://aave-api-v2.aave.com/data/markets-data',
-  Compound: 'https://api.compound.finance/api/v2/markets',
-  Morpho: 'https://api.morpho.org/pools',
-  SparkLend: 'https://api.spark.fi/markets',
-  Lido: 'https://api.lido.fi/v1/protocol/steth/apr', 
-  RocketPool: 'https://api.rocketpool.net/api/apr',
   DefiLlama: 'https://yields.llama.fi/pools',
   DefiLlamaChart: 'https://yields.llama.fi/chart',
 };
