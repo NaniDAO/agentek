@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest -c ./test/vitest.config.ts",
-    "count": "bun run scripts/tool-count.ts"
+    "list": "bun run scripts/tool-count.ts"
   },
   "keywords": [],
   "author": "NaniDAO",
