@@ -10,10 +10,10 @@ git clone https://github.com/NaniDAO/agentek.git
 cd agentek
 ```
 
-2. Install project dependencies using pnpm
+2. Install project dependencies using bun
 
 ```bash
-pnpm install
+bun i
 ```
 
 3. Configure your environment variables
@@ -23,7 +23,7 @@ cp .env.example .env
 Open `.env` in your editor and add the required API keys
 
 You're now ready to start developing! You can:
-- Run the test suite: `pnpm test`
+- Run the test suite: `bun test`
 - Try the examples
 - Start building your own tools or contribute to existing ones
 
@@ -90,7 +90,7 @@ execute: async (client: AgentekClient, args) => {
 
 ## Adding a New Tool
 
-1. Create a new directory in `src/tools/` with your tool name (e.g., `myNewTool.ts`)
+1. Create a new directory in `src/shared/` with your tool name (e.g., `myNewTool`)
 2. Implement the Tool interface
 3. Export your tool
 4. Add it to the tools registry at `src/shared/index.ts`
@@ -149,7 +149,7 @@ export function createAskPerplexitySearchTool(
     parameters: z.object({
       searchString: z.string(),
     }),
-    execute: async (_client: AgentekClient, args) => {
+    execute: async (client, args) => {
       const options = {
         method: "POST",
         headers: {
@@ -356,7 +356,7 @@ export const createMatchSwapTool = ({
 1. Export your tools using the collection pattern in your tool directory:
 
 ```typescript
-// src/tools/myNewTool/index.ts
+// src/shared/myNewTool/index.ts
 import { BaseTool, createToolCollection } from "../client";
 import { myNewTool } from "./tools";
 
