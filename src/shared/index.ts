@@ -47,7 +47,7 @@ const allTools = ({
     ...webTools(),
     ...fearGreedIndexTools(),
     ...slowTransferTools(),
-    ...nftTools,
+    ...nftTools(),
   ];
 
   if (perplexityApiKey) {
