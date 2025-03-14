@@ -19,6 +19,7 @@ import { createCoinMarketCalTools } from "./coinmarketcal";
 import { slowTransferTools } from "./slowTransfer";
 import { nftTools } from "./erc721";
 import { cryptoPriceTools } from "./cryptoprices";
+import { gasEstimatorTools } from "./gasestimator";
 
 const allTools = ({
   perplexityApiKey,
@@ -50,6 +51,7 @@ const allTools = ({
     ...slowTransferTools(),
     ...nftTools(),
     ...cryptoPriceTools(),
+    ...gasEstimatorTools(),
   ];
 
   if (perplexityApiKey) {
