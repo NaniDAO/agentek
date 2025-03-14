@@ -11,7 +11,7 @@
   "author": "NaniDAO",
   "license": "AGPL-3.0",
   "devDependencies": {
-    "@openrouter/ai-sdk-provider": "^0.0.6",
+    "@openrouter/ai-sdk-provider": "^0.4.3",
     "@types/node": "^22.10.6",
     "dotenv": "^16.4.7",
     "typescript": "^5.7.3",
