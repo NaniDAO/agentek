@@ -1,6 +1,6 @@
 # Agentek MCP Server
 
-🚧 v0.1.1
+🚧 v0.1.3
 
 Hey! This is a basic MCP server that bundles all Agentek tools into one package. Works with Claude Desktop, Cursor, and other MCP-friendly apps.
 
@@ -11,15 +11,15 @@ Hey! This is a basic MCP server that bundles all Agentek tools into one package.
 - Look up ENS domains, transfer tokens, check security
 - Get crypto news and market data
 
-## 🧰 Tools 
+## 🧰 Tools
 
 - Tokens (ERC20, WETH)
 - DeFi (trading, lending)
 - Block explorers
 - Governance tools
 - Security checks
-- Basic web tools 
-- All Agentek tools based on keys you provide. 
+- Basic web tools
+- All Agentek tools based on keys you provide.
 
 ## Requirements
 
