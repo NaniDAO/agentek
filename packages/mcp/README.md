@@ -1,6 +1,6 @@
 # Agentek MCP Server
 
-🚧 v0.1.3
+🚧 v0.1.5
 
 Hey! This is a basic MCP server that bundles all Agentek tools into one package. Works with Claude Desktop, Cursor, and other MCP-friendly apps.
 
@@ -21,26 +21,6 @@ Hey! This is a basic MCP server that bundles all Agentek tools into one package.
 - Basic web tools
 - All Agentek tools based on keys you provide.
 
-## Requirements
-
-- Node.js >= 18.17.0 (required for Fetch API support)
-- npm, yarn, or pnpm
-
-> **⚠️ Important Note for Claude Desktop Users**
->
-> Claude Desktop may use an older version of Node.js that isn't compatible with this server. If you see errors like `Request is not defined` or `fetch is not defined`, you'll need to specify a modern Node.js version.
->
-> We recommend using Node Version Manager (nvm) or Volta to manage your Node.js versions:
->
-> ```bash
-> # Using nvm
-> nvm install 18.17.0
-> nvm use 18.17.0
->
-> # Or using volta
-> volta install node@18.17.0
-> ```
-
 ### Claude Desktop Setup
 
 Add this to your `claude_desktop_config.json`:
@@ -51,9 +31,7 @@ Add this to your `claude_desktop_config.json`:
     "agentek": {
       "command": "npx",
       "args": [
-        "-y",
-        "--node-version=18.17.0",  // Specify Node.js version here
-        "agentek-mcp-server"
+        "@agentek/mcp-server"
       ],
       "env": {
         "ACCOUNT": "YOUR_ETHEREUM_ADDRESS",

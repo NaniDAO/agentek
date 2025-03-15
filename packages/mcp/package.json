@@ -1,6 +1,6 @@
 {
   "name": "@agentek/mcp-server",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "description": "[PREVIEW] Model Context Protocol (MCP) server for Agentek",
   "license": "AGPL-3.0",
   "author": "NaniDAO",
@@ -11,7 +11,7 @@
   },
   "type": "module",
   "bin": {
-    "agentek-mcp-server": "dist/index.mjs"
+    "@agentek/mcp-server": "dist/index.mjs"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

@@ -10,7 +10,9 @@ export default defineConfig({
   clean: true,
   treeshake: true,
   outDir: 'dist',
-  // No banner - we'll handle the shebang in the build script
+  banner: {
+    js: "#!/usr/bin/env node",
+  },
   outExtension({ format }) {
     return {
       js: format === 'esm' ? '.mjs' : '.js'
