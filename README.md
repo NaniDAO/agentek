@@ -34,13 +34,13 @@ The Agentek toolkit is structured as a monorepo with multiple publishable packag
 You can install the entire toolkit:
 
 ```bash
-npm install agentek
+npm install @agentek/tools
 ```
 
-Or install individual packages:
+AI SDK:
 
 ```bash
-npm install agentek-erc20
+npm install @agentek/ai-sdk
 ```
 
 ## Usage
@@ -57,28 +57,6 @@ const client = createAgentekClient({
   chains: [mainnet],
   transports: [http()],
   tools: allTools({})
-});
-
-// Execute a tool
-const result = await client.execute('getERC20BalanceTool', {
-  address: '0x...',
-  tokenAddress: '0x...'
-});
-```
-
-### Using individual tool packages
-
-```typescript
-import { createAgentekClient } from 'agentek';
-import { erc20Tools } from 'agentek-erc20';
-import { http } from 'viem';
-import { mainnet } from 'viem/chains';
-
-const client = createAgentekClient({
-  accountOrAddress: '0x...',
-  chains: [mainnet],
-  transports: [http()],
-  tools: erc20Tools()
 });
 
 // Execute a tool
@@ -111,7 +89,12 @@ const aiTools = toolkit.getTools();
 
 The MCP (Model Context Protocol) server allows you to expose Agentek tools to LLMs via the Model Context Protocol. For more information, see the [MCP Server README](/src/mcp/README.md)
 
-## Tools (84 total)
+pnpm run list
+
+> agentek@0.1.0 list /Users/shiv/Projects/agentek
+> bun run scripts/tool-count.ts
+
+## Tools (111 total)
 
 ### Available Tools
 
@@ -188,14 +171,41 @@ The MCP (Model Context Protocol) server allows you to expose Agentek tools to LL
 71. getTokenHolders
 72. getTokenTransfers
 73. getBlockscoutSearch
-74. checkMaliciousAddress
-75. checkMaliciousWebsite
-76. scrapeWebContent
-77. askPerplexitySearch
-78. intent0xSwap
-79. tallyProposals
-80. tallyChains
-81. tallyUserDaos
-82. intentGovernorVote
-83. intentGovernorVoteWithReason
-84. getLatestCoindeskNewsTool
+74. getAaveUserData
+75. getAaveReserveData
+76. intentAaveDeposit
+77. intentAaveWithdraw
+78. intentAaveBorrow
+79. intentAaveRepay
+80. checkMaliciousAddress
+81. checkMaliciousWebsite
+82. scrapeWebContent
+83. getFearAndGreedIndex
+84. getSlowStatus
+85. predictTransferId
+86. canUnlockSlow
+87. getCanReverseSlowTransfer
+88. getSlowGuardianInfo
+89. getSlowTransferApprovalRequired
+90. intentDepositToSlow
+91. intentSetSlowGuardian
+92. intentWithdrawFromSlow
+93. intentApproveSlowTransfer
+94. intentUnlockSlow
+95. intentReverseSlowTransfer
+96. getNFTMetadata
+97. getCryptoPrice
+98. estimateGasCost
+99. getYieldTool
+100. compareYieldTool
+101. getYieldHistoryTool
+102. compareYieldHistoryTool
+103. askPerplexitySearch
+104. intent0xSwap
+105. tallyProposals
+106. tallyChains
+107. tallyUserDaos
+108. intentGovernorVote
+109. intentGovernorVoteWithReason
+110. getLatestCoindeskNewsTool
+111. getMarketEvents
