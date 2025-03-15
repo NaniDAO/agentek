@@ -1,10 +1,10 @@
 import { Hex, http } from "viem";
 import { arbitrum, base, mainnet, optimism } from "viem/chains";
-import AgentekToolkit from "../src/ai-sdk/toolkit";
+import AgentekToolkit from "../packages/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { blockscoutTools } from "../src/shared/blockscout";
+import { blockscoutTools } from "../packages/shared/blockscout";
 
 async function main() {
   const openrouter = createOpenRouter({

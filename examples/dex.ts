@@ -1,13 +1,13 @@
 import { Hex, http } from "viem";
 import { base } from "viem/chains";
-import AgentekToolkit from "../src/ai-sdk/toolkit";
+import AgentekToolkit from "../packages/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { dexscreenerTools } from "../src/shared/dexscreener";
-import { swapTools } from "../src/shared/swap";
-import { searchTools } from "../src/shared/search";
-import { erc20Tools } from "../src/shared/erc20";
+import { dexscreenerTools } from "../packages/shared/dexscreener";
+import { swapTools } from "../packages/shared/swap";
+import { searchTools } from "../packages/shared/search";
+import { erc20Tools } from "../packages/shared/erc20";
 
 // 1) Setup
 async function main() {

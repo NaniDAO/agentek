@@ -1,11 +1,11 @@
 import { Hex, http } from "viem";
 import { arbitrum, base, mainnet, optimism } from "viem/chains";
-import AgentekToolkit from "../src/ai-sdk/toolkit";
+import AgentekToolkit from "../packages/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { blockscoutTools } from "../src/shared/blockscout";
-import { slowTransferTools } from "../src/shared/slowTransfer";
+import { blockscoutTools } from "../packages/shared/blockscout";
+import { slowTransferTools } from "../packages/shared/slowTransfer";
 
 async function main() {
   const openrouter = createOpenRouter({

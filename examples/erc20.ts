@@ -1,13 +1,13 @@
 import { Hex, http } from "viem";
 import { base, mainnet, sepolia } from "viem/chains";
-import { ensTools } from "../src/shared/ens";
-import AgentekToolkit from "../src/ai-sdk/toolkit";
+import { ensTools } from "../packages/shared/ens";
+import AgentekToolkit from "../packages/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { transferTools } from "../src/shared/transfer";
-import { erc20Tools } from "../src/shared/erc20";
-import { searchTools } from "../src/shared/search";
+import { transferTools } from "../packages/shared/transfer";
+import { erc20Tools } from "../packages/shared/erc20";
+import { searchTools } from "../packages/shared/search";
 
 async function main() {
   const openrouter = createOpenRouter({

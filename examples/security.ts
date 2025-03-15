@@ -1,7 +1,7 @@
 import { Hex, http } from "viem";
 import { base, mainnet } from "viem/chains";
-import { securityTools } from "../src/shared/security";
-import AgentekToolkit from "../src/ai-sdk/toolkit";
+import { securityTools } from "../packages/shared/security";
+import AgentekToolkit from "../packages/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";

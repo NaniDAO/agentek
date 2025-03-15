@@ -1,11 +1,11 @@
 import { Hex, http } from "viem";
 import { mainnet, sepolia } from "viem/chains";
-import { ensTools } from "../src/shared/ens";
-import AgentekToolkit from "../src/ai-sdk/toolkit";
+import { ensTools } from "../packages/shared/ens";
+import AgentekToolkit from "../packages/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
-import { transferTools } from "../src/shared/transfer";
+import { transferTools } from "../packages/shared/transfer";
 
 async function main() {
   const openrouter = createOpenRouter({

@@ -1,13 +1,13 @@
 import { Hex, http } from "viem";
 import { base, mainnet } from "viem/chains";
-import { webTools } from "../src/shared/web";
-import AgentekToolkit from "../src/ai-sdk/toolkit";
+import { webTools } from "../packages/shared/web";
+import AgentekToolkit from "../packages/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, generateText } from "ai";
-import { coindeskTools } from "../src/shared/coindesk";
-import { fearGreedIndexTools } from "../src/shared/feargreed";
-import { createCoinMarketCalTools } from "../src/shared/coinmarketcal";
+import { coindeskTools } from "../packages/shared/coindesk";
+import { fearGreedIndexTools } from "../packages/shared/feargreed";
+import { createCoinMarketCalTools } from "../packages/shared/coinmarketcal";
 
 async function main() {
   // Get command line arguments
