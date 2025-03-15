@@ -27,14 +27,15 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup && sed -i '1d' dist/index.mjs && sed -i '1i\\#!/usr/bin/env node' dist/index.mjs && chmod +x dist/index.mjs",
+    "build": "rm -rf dist && tsup",
     "dev": "tsup --watch",
     "start": "node dist/index.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "debug": "pnpm run build && pnpx @modelcontextprotocol/inspector node ./dist/index.mjs"
   },
   "dependencies": {
     "@agentek/tools": "0.1.1",
-    "@modelcontextprotocol/sdk": "1.0.1",
+    "@modelcontextprotocol/sdk": "1.7.0",
     "node-fetch": "^3.3.2",
     "viem": "2.22.8",
     "web-streams-polyfill": "^3.3.3",
