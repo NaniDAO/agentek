@@ -1,0 +1,60 @@
+{
+  "name": "@agentek/mcp-server",
+  "version": "0.1.5",
+  "description": "[PREVIEW] Model Context Protocol (MCP) server for Agentek",
+  "license": "AGPL-3.0",
+  "author": "NaniDAO",
+  "homepage": "https://nani.ooo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaniDAO/agentek.git"
+  },
+  "type": "module",
+  "bin": {
+    "@agentek/mcp-server": "dist/index.mjs"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/index.mjs",
+    "test": "vitest run",
+    "debug": "pnpm run build && pnpx @modelcontextprotocol/inspector node ./dist/index.mjs"
+  },
+  "dependencies": {
+    "@agentek/tools": "0.1.2",
+    "@modelcontextprotocol/sdk": "1.7.0",
+    "node-fetch": "^3.3.2",
+    "viem": "2.22.8",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.21.4"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "blockchain",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.10.6",
+    "shx": "^0.3.4",
+    "typescript": "^5.6.2",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}

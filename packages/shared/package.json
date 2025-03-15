@@ -1,0 +1,51 @@
+{
+  "name": "@agentek/tools",
+  "version": "0.1.2",
+  "description": "Blockchain tools for AI agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.mjs",
+      "require": "./dist/client.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "viem": "2.22.8",
+    "zod": "^3.24.1",
+    "cheerio": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.2"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "tools",
+    "ai",
+    "agents"
+  ],
+  "author": "NaniDAO",
+  "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "@agentek/ai-sdk",
+  "version": "0.1.2",
+  "description": "AI SDK integration for Agentek tools",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "blockchain",
+    "ethereum",
+    "tools"
+  ],
+  "author": "NaniDAO",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaniDAO/agentek.git"
+  },
+  "homepage": "https://nani.ooo",
+  "dependencies": {
+    "ai": "^3.4.7 || ^4.0.0",
+    "zod": "^3.24.1"
+  },
+  "peerDependencies": {
+    "@agentek/tools": "^0.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.6",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}

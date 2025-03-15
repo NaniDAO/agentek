@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/esm",
+    "rootDir": ".",
+    "composite": true
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["**/*.test.ts", "node_modules", "dist"],
+  "references": [
+    { "path": "../shared" }
+  ]
+}

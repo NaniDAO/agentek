@@ -1,0 +1,38 @@
+{
+  "name": "agentek-search",
+  "version": "0.1.0",
+  "description": "Search tools for Agentek",
+  "type": "module",
+  "main": "../../../dist/src/shared/search/index.js",
+  "types": "../../../dist/src/shared/search/index.d.ts",
+  "files": [
+    "../../../dist/src/shared/search"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "publish": "npm run build && npm publish"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "blockchain",
+    "ethereum",
+    "tools",
+    "search"
+  ],
+  "author": "NaniDAO",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaniDAO/agentek.git"
+  },
+  "homepage": "https://nani.ooo",
+  "dependencies": {
+    "zod": "^3.24.1",
+    "agentek": "^0.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

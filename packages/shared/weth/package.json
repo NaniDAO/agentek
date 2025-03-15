@@ -1,0 +1,40 @@
+{
+  "name": "agentek-weth",
+  "version": "0.1.0",
+  "description": "WETH token integration for Agentek",
+  "type": "module",
+  "main": "../../../dist/src/shared/weth/index.js",
+  "types": "../../../dist/src/shared/weth/index.d.ts",
+  "files": [
+    "../../../dist/src/shared/weth"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "publish": "npm run build && npm publish"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "blockchain",
+    "ethereum",
+    "tools",
+    "weth",
+    "tokens"
+  ],
+  "author": "NaniDAO",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaniDAO/agentek.git"
+  },
+  "homepage": "https://nani.ooo",
+  "dependencies": {
+    "viem": "2.22.8",
+    "zod": "^3.24.1",
+    "agentek": "^0.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
