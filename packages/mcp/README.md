@@ -29,7 +29,7 @@ Add this to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "agentek": {
-      "command": "npx",
+      "command": "pnpx",
       "args": [
         "@agentek/mcp-server"
       ],
