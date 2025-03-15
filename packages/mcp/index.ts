@@ -17,10 +17,11 @@ const preServerLog = (message) => console.error(message);
 
 async function main() {
   preServerLog("Starting Agentek MCP Server...");
+  const version = require("./package.json").version;
   const server = new Server(
     {
       name: "agentek-mcp-server",
-      version: "0.0.0",
+      version,
     },
     {
       capabilities: {

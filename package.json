@@ -1,6 +1,5 @@
 {
   "name": "agentek",
-  "version": "0.1.0",
   "description": "A collection of AI agent tools for blockchain interaction",
   "type": "module",
   "private": true,

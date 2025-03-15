@@ -21,6 +21,7 @@ import { nftTools } from "./erc721";
 import { cryptoPriceTools } from "./cryptoprices";
 import { gasEstimatorTools } from "./gasestimator";
 import { yieldTools } from "./yields";
+import { acrossTools } from "./across";
 
 const allTools = ({
   perplexityApiKey,
@@ -38,6 +39,7 @@ const allTools = ({
   let tools = [
     ...ensTools(),
     ...erc20Tools(),
+    ...acrossTools(),
     ...transferTools(),
     ...dexscreenerTools(),
     ...rpcTools(),
