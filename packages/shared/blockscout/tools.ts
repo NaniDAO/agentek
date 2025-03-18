@@ -6,14 +6,26 @@ import { addressSchema } from "../utils";
 
 const supportedChains = [mainnet, polygon, arbitrum, optimism, base];
 const chainSchema = z
-  .enum([
-    String(mainnet.id),
-    String(polygon.id),
-    String(arbitrum.id),
-    String(optimism.id),
-    String(base.id),
+  .union([
+    z.enum([
+      String(mainnet.id),
+      String(polygon.id),
+      String(arbitrum.id),
+      String(optimism.id),
+      String(base.id),
+    ]),
+    z.number().transform(String).pipe(
+      z.enum([
+        String(mainnet.id),
+        String(polygon.id),
+        String(arbitrum.id),
+        String(optimism.id),
+        String(base.id),
+      ])
+    )
   ])
-  .transform(Number) as unknown as z.ZodNumber;
+  .transform(Number)
+  .describe("Chain ID for the blockchain network. Supports: 1, 137, 42161, 10, and 8453") as unknown as z.ZodNumber;
 
 // Note: the endpoints already include "/api/v2"
 const BLOCKSCOUT_API_ENDPOINTS = new Map([
@@ -31,7 +43,7 @@ type SupportedChain = (typeof supportedChains)[number]["id"];
  * The endpoint parameter should be the "path" (starting with a slash) after the base URL.
  * An optional query object is appended as query parameters.
  */
-async function fetchFromBlockscoutV2(
+export async function fetchFromBlockscoutV2(
   chain: SupportedChain,
   endpoint: string,
   query?: Record<string, string>,
@@ -115,9 +127,15 @@ export const getAddressInfo = createTool({
       `/addresses/${address}`,
     );
 
-    const coin_balance = formatEther(BigInt(response.coin_balance));
-    const coin_balance_in_usd =
-      parseFloat(coin_balance) * parseFloat(response.exchange_rate);
+    let coin_balance = null;
+    let coin_balance_in_usd = null;
+
+    if (response.coin_balance !== null) {
+      coin_balance = formatEther(BigInt(response.coin_balance));
+      if (response.exchange_rate) {
+        coin_balance_in_usd = parseFloat(coin_balance) * parseFloat(response.exchange_rate);
+      }
+    }
 
     return {
       ...response,

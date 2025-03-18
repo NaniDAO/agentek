@@ -1,6 +1,6 @@
 # Agentek MCP Server
 
-🚧 v0.1.9
+🚧 v0.1.10
 
 Hey! This is a basic MCP server that bundles all Agentek tools into one package. Works with Claude Desktop, Cursor, and other MCP-friendly apps.
 
@@ -61,6 +61,7 @@ You get these networks out of the box:
 - Polygon
 
 We'll make this customizable later.
+
 
 ### Coming Soon
 

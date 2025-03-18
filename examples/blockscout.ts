@@ -43,7 +43,7 @@ async function main() {
     {
       role: "user",
       content:
-        "Create a weekly tx report for 0x1c0aa8ccd568d90d61659f060d1bfb1e6f855a20 cross-chain and DO NOT USE any function that will have a long ass response. Only getAddressInfo lol. Today is 17th February, 2025. Thanks!",
+        "Get address info for 0xf59F1715aCAb48720F20cFe6412f2eA14a4176Fc on Mainnet",
     },
   ] as CoreMessage[];
 
@@ -53,7 +53,7 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("anthropic/claude-3.5-sonnet"),
+    model: openrouter("google/gemini-2.0-flash-001"),
     system: "",
     messages,
     maxSteps: 20,
