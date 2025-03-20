@@ -10,20 +10,10 @@ Interested in contributing? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) gui
 
 The Agentek toolkit is structured as a monorepo with multiple publishable packages:
 
-- `agentek` - The main package containing all tools
-- `agentek-ai` - AI SDK integration for Vercel AI SDK
-- `agentek-mcp-server` - Model Context Protocol server
-- Individual tool packages:
-  - `agentek-erc20` - ERC20 token tools
-  - `agentek-ens` - ENS tools
-  - `agentek-nani` - NaniDAO tools
-  - `agentek-aave` - Aave tools
-  - `agentek-transfer` - Transfer tools
-  - `agentek-security` - Security tools
-  - `agentek-uni-v3` - Uniswap V3 tools
-  - `agentek-weth` - WETH tools
-  - `agentek-tally` - Tally tools
-
+- `@agentek/tools` - The main package containing all tools
+- `@agentek/ai-sdk` - AI SDK integration for Vercel AI SDK
+- `@agentek/mcp-server` - Model Context Protocol server
+- 
 ## Requirements
 
 - Node.js >= 18.0.0
@@ -48,7 +38,7 @@ npm install @agentek/ai-sdk
 ### Using the full toolkit
 
 ```typescript
-import { createAgentekClient, allTools } from 'agentek';
+import { createAgentekClient, allTools } from '@agentek/tools';
 import { http } from 'viem';
 import { mainnet } from 'viem/chains';
 
@@ -69,8 +59,8 @@ const result = await client.execute('getERC20BalanceTool', {
 ### Using with AI SDK
 
 ```typescript
-import { createAgentekClient, allTools } from 'agentek';
-import { AgentekToolkit } from 'agentek-ai';
+import { createAgentekClient, allTools } from '@agentek/tools';
+import { AgentekToolkit } from '@agentek/ai-sdk';
 import { http } from 'viem';
 import { mainnet } from 'viem/chains';
 
@@ -88,11 +78,6 @@ const aiTools = toolkit.getTools();
 ### Using the MCP Server
 
 The MCP (Model Context Protocol) server allows you to expose Agentek tools to LLMs via the Model Context Protocol. For more information, see the [MCP Server README](/src/mcp/README.md)
-
-pnpm run list
-
-> agentek@0.1.0 list /Users/shiv/Projects/agentek
-> bun run scripts/tool-count.ts
 
 ## Tools (111 total)
 
