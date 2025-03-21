@@ -1,7 +1,7 @@
 import type { CoreTool } from "ai";
 import { tool } from "ai";
 import { z } from "zod";
-import { type BaseTool, type AgentekClient } from "../shared/client";
+import { type BaseTool, type AgentekClient } from "../shared/client.js";
 
 // Export these interfaces for consumers
 export interface ToolDefinition {

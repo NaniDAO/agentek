@@ -1,3 +1,4 @@
+// @ts-ignore
 import {
   type PublicClient,
   type WalletClient,

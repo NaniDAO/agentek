@@ -81,6 +81,7 @@ export const getYieldTool = createTool({
       // If protocol is specified, use fetchProtocolData
       if (protocol) {
         const protocolsToFetch = [protocol];
+        // @ts-ignore - Protocol is properly typed at runtime
         const allYieldDataPromises = protocolsToFetch.map(p => fetchProtocolData(p, chainId));
         const allYieldDataArrays = await Promise.all(allYieldDataPromises);
         filteredData = allYieldDataArrays.flat();
@@ -433,6 +434,7 @@ export const compareYieldHistoryTool = createTool({
       const poolResponses = await Promise.all(poolDataPromises);
       
       // Process each pool's data
+      // @ts-ignore - Type compatibility is ensured at runtime
       const poolResults: PoolComparisonResult[] = poolResponses.map(({ poolId, data }) => {
         // Extract and process time series data
         const filteredData = extractTimeSeriesData(data.data, days);

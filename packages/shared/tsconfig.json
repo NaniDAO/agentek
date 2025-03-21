@@ -3,8 +3,39 @@
   "compilerOptions": {
     "outDir": "./dist/esm",
     "rootDir": ".",
-    "composite": true
+    "composite": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
-  "include": ["./**/*.ts"],
+  "ts-node": {
+    "esm": true
+  },
+  "include": [
+    "./**/*.ts",
+    "./transfer/**/*.ts",
+    "./ens/**/*.ts",
+    "./dexscreener/**/*.ts",
+    "./rpc/**/*.ts", 
+    "./uniV3/**/*.ts",
+    "./weth/**/*.ts",
+    "./nani/**/*.ts",
+    "./erc20/**/*.ts",
+    "./search/**/*.ts",
+    "./swap/**/*.ts",
+    "./blockscout/**/*.ts",
+    "./tally/**/*.ts",
+    "./aave/**/*.ts",
+    "./security/**/*.ts",
+    "./web/**/*.ts",
+    "./coindesk/**/*.ts",
+    "./feargreed/**/*.ts",
+    "./coinmarketcal/**/*.ts",
+    "./slowTransfer/**/*.ts",
+    "./erc721/**/*.ts",
+    "./cryptoprices/**/*.ts",
+    "./gasestimator/**/*.ts",
+    "./yields/**/*.ts",
+    "./across/**/*.ts"
+  ],
   "exclude": ["**/*.test.ts"]
 }

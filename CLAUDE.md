@@ -23,6 +23,11 @@
 - **Code organization**: Modular directories with separate files for constants, tools, and intents.
 - **Tool structure**: Follow the `createTool` pattern with name, description, parameters, and execute function.
 - **Security**: Validate all inputs. Never commit API keys. Use environment variables for secrets.
-- **Comments** D
+
 ## TypeScript
-Very strict configuration with all strict flags enabled. ES2020 target.
+- Very strict configuration with all strict flags enabled. ES2022 target.
+- When using ESM format, always use explicit file extensions (.js) in import paths
+- Always add proper dts generation using tsup with `dts: true` 
+- Fix each error during build individually, do not disable dts generation
+- In tsconfig.json, ensure proper moduleResolution is set to match the ESM format
+- Never remove imports or code during build fixing unless completely necessary
