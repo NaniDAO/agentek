@@ -85,4 +85,33 @@ const allTools = ({
   return tools;
 };
 
-export { allTools };
+export { 
+  allTools,
+
+  // Exporting all tool collections for easier composition
+  transferTools,
+  ensTools,
+  dexscreenerTools,
+  rpcTools,
+  uniV3Tools,
+  wethTools,
+  naniTools,
+  erc20Tools,
+  searchTools,
+  swapTools,
+  blockscoutTools,
+  tallyTools,
+  aaveTools,
+  securityTools,
+  webTools,
+  coindeskTools,
+  fearGreedIndexTools,
+  createCoinMarketCalTools,
+  slowTransferTools,
+  nftTools,
+  cryptoPriceTools,
+  gasEstimatorTools,
+  yieldTools,
+  acrossTools
+};
+
