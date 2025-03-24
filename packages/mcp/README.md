@@ -1,7 +1,5 @@
 # Agentek MCP Server
 
-🚧 v0.1.10
-
 A Model Context Protocol server offering tools for cryptocurrency research and Ethereum-based automation.
 
 Works with Claude Desktop, Cursor, and other MCP-friendly apps.

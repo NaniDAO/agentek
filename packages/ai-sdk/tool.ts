@@ -1,7 +1,7 @@
 import type { Tool } from "ai";
 import { tool } from "ai";
 import { z } from "zod";
-import { type BaseTool, type AgentekClient } from "@agentek/tools";
+import type { BaseTool, AgentekClient } from "@agentek/tools/client";
 
 export interface ToolDefinition {
   name: string;

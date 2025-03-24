@@ -13,5 +13,6 @@ export default defineConfig({
     return {
       js: format === 'esm' ? '.mjs' : '.js'
     };
-  }
+  },
+  onSuccess: 'rm -rf dist/cjs dist/esm'
 });

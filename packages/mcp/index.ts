@@ -9,7 +9,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
 import { Hex, http, isHex, zeroAddress } from "viem";
 import { mainnet, optimism, arbitrum, polygon, base } from "viem/chains";
-import { createAgentekClient } from "@agentek/tools/client";
+import { createAgentekClient, type BaseTool } from "@agentek/tools/client";
 import { allTools } from "@agentek/tools";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -77,7 +77,7 @@ async function main() {
   preServerLog("Setting up blockchain account...");
   let account = PRIVATE_KEY
     ? privateKeyToAccount(PRIVATE_KEY as Hex)
-    : ACCOUNT || zeroAddress;
+    : (ACCOUNT && isHex(ACCOUNT) ? ACCOUNT as Hex : zeroAddress);
   preServerLog(`Account configured: ${typeof account === 'object' ? 'Account object' : account}`);
 
   preServerLog("Creating Agentek client...");
@@ -112,7 +112,7 @@ async function main() {
 
       let toolsCollection;
       if (agentekClient.getTools) {
-        toolsCollection = agentekClient.getTools();
+        toolsCollection = agentekClient.getTools() as Map<string, BaseTool>;
         server.sendLoggingMessage({
           level: "debug",
           data: `Raw tools collection size: ${toolsCollection.size}`
@@ -131,7 +131,7 @@ async function main() {
         data: `Tools array length: ${toolsArray.length}`
       });
 
-      const toolsList = toolsArray.map((tool) => {
+      const toolsList = toolsArray.map((tool: BaseTool) => {
         server.sendLoggingMessage({
           level: "debug",
           data: `Processing tool: ${tool.name}`

@@ -1,13 +1,17 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist/esm",
+    "outDir": "./dist",
     "rootDir": ".",
-    "composite": true
+    "composite": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
-  "include": ["./**/*.ts"],
-  "exclude": ["**/*.test.ts", "node_modules", "dist"],
-  "references": [
-    { "path": "../shared" }
-  ]
+  "ts-node": {
+    "esm": true
+  },
+  "include": [
+    "./**/*.ts"
+  ],
+  "exclude": [ "node_modules", "dist", "**/*.test.ts"]
 }
