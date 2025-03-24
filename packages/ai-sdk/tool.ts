@@ -1,9 +1,8 @@
-import type { CoreTool } from "ai";
+import type { Tool } from "ai";
 import { tool } from "ai";
 import { z } from "zod";
-import { type BaseTool, type AgentekClient } from "../shared/client.js";
+import { type BaseTool, type AgentekClient } from "@agentek/tools";
 
-// Export these interfaces for consumers
 export interface ToolDefinition {
   name: string;
   description: string;
@@ -17,7 +16,7 @@ export interface ToolResult {
 export default function AgentekTool(
   agentekClient: AgentekClient,
   baseTool: BaseTool,
-): CoreTool {
+): Tool {
   return tool({
     description: baseTool.description,
     parameters: baseTool.parameters,

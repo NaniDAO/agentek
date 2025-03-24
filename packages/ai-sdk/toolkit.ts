@@ -4,7 +4,7 @@ import {
   type AgentekClient,
 } from "../shared/client.js";
 import type { CoreTool } from "ai";
-import AgentekTool from "./tool.js";
+import AgentekTool from "@/agentek/tools";
 import { Account, Address, Chain, Transport } from "viem";
 
 class AgentekToolkit {

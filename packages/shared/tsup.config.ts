@@ -3,8 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: ['./index.ts', './client.ts'],
   format: ['esm', 'cjs'],
-  // Disable dts generation through tsup, we'll use tsc instead
-  dts: false,
+  dts: true,
   splitting: false,
   sourcemap: true,
   clean: true,
@@ -15,9 +14,7 @@ export default defineConfig({
       js: format === 'esm' ? '.mjs' : '.js'
     };
   },
-  // Set target to match tsconfig
   target: 'es2022',
-  // Fix ESM compatibility
   esbuildOptions(options) {
     options.conditions = ['import', 'module'];
   }

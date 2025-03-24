@@ -1,7 +1,7 @@
 {
   "name": "@agentek/mcp-server",
   "version": "0.1.10",
-  "description": "[PREVIEW] Model Context Protocol (MCP) server for Agentek",
+  "description": "Model Context Protocol (MCP) server for Agentek",
   "license": "AGPL-3.0",
   "author": "NaniDAO",
   "homepage": "https://nani.ooo",

@@ -3,12 +3,12 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: ['./index.ts'],
   format: ['esm', 'cjs'],
-  dts: false, // Disable dts due to type errors
+  dts: true,
   splitting: false,
   sourcemap: true,
   clean: true,
   treeshake: true,
-  noExternal: [], // To avoid dependency bundling issues
+  noExternal: [],
   outDir: 'dist',
   banner: {
     js: "#!/usr/bin/env node",

@@ -3,7 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: ['./index.ts', './tool.ts', './toolkit.ts'],
   format: ['esm', 'cjs'],
-  dts: false, // Disable dts due to cross-package reference issues
+  dts: true,
   splitting: false,
   sourcemap: true,
   clean: true,

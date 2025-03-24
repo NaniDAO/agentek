@@ -7,7 +7,7 @@ import {
 
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { z } from "zod";
-import { http, zeroAddress } from "viem";
+import { Hex, http, isHex, zeroAddress } from "viem";
 import { mainnet, optimism, arbitrum, polygon, base } from "viem/chains";
 import { createAgentekClient } from "@agentek/tools/client";
 import { allTools } from "@agentek/tools";
@@ -58,6 +58,10 @@ async function main() {
   const COINDESK_API_KEY = process.env.COINDESK_API_KEY;
   const COINMARKETCAL_API_KEY = process.env.COINMARKETCAL_API_KEY;
 
+  if (PRIVATE_KEY && !isHex(PRIVATE_KEY)) {
+    throw new Error("Invalid PRIVATE_KEY format, must be hex");
+  }
+
   preServerLog(`PRIVATE_KEY set: ${!!PRIVATE_KEY}`);
   preServerLog(`ACCOUNT set: ${!!ACCOUNT}`);
   preServerLog(`PERPLEXITY_API_KEY set: ${!!PERPLEXITY_API_KEY}`);
@@ -72,7 +76,7 @@ async function main() {
 
   preServerLog("Setting up blockchain account...");
   let account = PRIVATE_KEY
-    ? privateKeyToAccount(PRIVATE_KEY)
+    ? privateKeyToAccount(PRIVATE_KEY as Hex)
     : ACCOUNT || zeroAddress;
   preServerLog(`Account configured: ${typeof account === 'object' ? 'Account object' : account}`);
 
