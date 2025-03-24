@@ -19,7 +19,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup && tsc --project tsconfig.build.json",
+    "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest"
   },
