@@ -1,8 +1,8 @@
 import z from "zod";
-import { createTool } from "../client";
-import type { BaseTool, AgentekClient } from "../client";
-import { getGovernorBySlug } from "./utils";
-import { TALLY_API_URL } from "./constants";
+import { createTool } from "../client.js";
+import type { BaseTool, AgentekClient } from "../client.js";
+import { getGovernorBySlug } from "./utils.js";
+import { TALLY_API_URL } from "./constants.js";
 
 export function createTallyProposalsTool(tallyApiKey: string): BaseTool {
   return createTool({

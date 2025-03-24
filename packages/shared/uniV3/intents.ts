@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { createTool } from "../client";
-import { getPositionManagerAddress, supportedChains } from "./constants";
+import { createTool } from "../client.js";
+import { getPositionManagerAddress, supportedChains } from "./constants.js";
 
 import { Address, encodeFunctionData, erc721Abi, maxUint128 } from "viem";
-import { nonfungiblePositionManagerAbi } from "./constants";
+import { nonfungiblePositionManagerAbi } from "./constants.js";
 
 const intentMintPosition = createTool({
   name: "intentMintPosition",

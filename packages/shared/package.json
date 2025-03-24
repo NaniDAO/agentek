@@ -19,8 +19,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "rm -rf dist && tsc && tsc -p tsconfig.cjs.json",
     "test": "vitest"
   },
   "dependencies": {

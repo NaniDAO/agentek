@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { AgentekClient, createTool, Intent } from "../client";
+import { AgentekClient, createTool, Intent } from "../client.js";
 import { Address, encodeFunctionData, parseEther } from "viem";
-import { supportedChains, WETH_ADDRESS, wethAbi } from "./constants";
+import { supportedChains, WETH_ADDRESS, wethAbi } from "./constants.js";
 
 const depositWETHParameters = z.object({
   chainId: z.number().describe("Chain ID to deposit on"),

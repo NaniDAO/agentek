@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { createTool } from "../client";
-import { SLOW_ADDRESS, slowAbi, slowTransferChains } from "./constants";
-import { addressSchema } from "../utils";
+import { createTool } from "../client.js";
+import { SLOW_ADDRESS, slowAbi, slowTransferChains } from "./constants.js";
+import { addressSchema } from "../utils.js";
 
 export const getSlowStatus = createTool({
   name: "getSlowStatus",

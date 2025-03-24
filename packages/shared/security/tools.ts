@@ -8,7 +8,7 @@
  * to balance between providing free resources and protecting data integrity.
  */
 import { Chain } from "viem";
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { z } from "zod";
 
 const supportedChains: Chain[] = []; // essentially cross chain

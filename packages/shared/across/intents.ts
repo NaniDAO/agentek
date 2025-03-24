@@ -1,4 +1,4 @@
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { z } from "zod";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
 import {
@@ -8,8 +8,8 @@ import {
   parseUnits,
   Address,
 } from "viem";
-import { ACROSS_SPOKE_POOL_ADDRESS, acrossSpokePoolAbi } from "./constants";
-import { getAcrossFeeQuote } from "./tools";
+import { ACROSS_SPOKE_POOL_ADDRESS, acrossSpokePoolAbi } from "./constants.js";
+import { getAcrossFeeQuote } from "./tools.js";
 
 const supportedChains = [mainnet, polygon, arbitrum, optimism, base];
 

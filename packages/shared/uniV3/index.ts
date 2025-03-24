@@ -1,17 +1,17 @@
-import { BaseTool, createToolCollection } from "../client";
+import { BaseTool, createToolCollection } from "../client.js";
 import {
   intentMintPosition,
   intentIncreaseLiquidity,
   intentDecreaseLiquidity,
   intentCollectFees,
   intentTransferPosition,
-} from "./intents";
+} from "./intents.js";
 import {
   getUniV3Pool,
   getUserPositions,
   getPoolFeeData,
   getPositionDetails,
-} from "./tools";
+} from "./tools.js";
 
 export function uniV3Tools(): BaseTool[] {
   return createToolCollection([

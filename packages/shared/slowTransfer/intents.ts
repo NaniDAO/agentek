@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { createTool, Intent } from "../client";
-import { SLOW_ADDRESS, slowAbi, slowTransferChains } from "./constants";
+import { createTool, Intent } from "../client.js";
+import { SLOW_ADDRESS, slowAbi, slowTransferChains } from "./constants.js";
 import { parseEther, encodeFunctionData, erc20Abi, parseUnits } from "viem";
-import { addressSchema } from "../utils";
+import { addressSchema } from "../utils.js";
 
 export const intentDepositToSlow = createTool({
   name: "intentDepositToSlow",

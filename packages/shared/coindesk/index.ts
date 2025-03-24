@@ -1,6 +1,6 @@
-import { createToolCollection } from "../client";
-import type { BaseTool } from "../client";
-import { createCoindeskNewsTool } from "./tools";
+import { createToolCollection } from "../client.js";
+import type { BaseTool } from "../client.js";
+import { createCoindeskNewsTool } from "./tools.js";
 
 export function coindeskTools({
   coindeskApiKey,

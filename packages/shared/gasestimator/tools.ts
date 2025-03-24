@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { type Address, formatUnits, parseUnits } from "viem";
-import { getCryptoPriceTool } from "../cryptoprices/tools";
+import { getCryptoPriceTool } from "../cryptoprices/tools.js";
 
 export const estimateGasCostTool = createTool({
   name: "estimateGasCost",

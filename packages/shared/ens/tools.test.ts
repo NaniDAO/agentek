@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";
-import { resolveENSTool, lookupENSTool } from "./tools";
-import { AgentekClient, createAgentekClient } from "../client";
+import { resolveENSTool, lookupENSTool } from "./tools.js";
+import { AgentekClient, createAgentekClient } from "../client.js";
 import { ensTools } from ".";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 

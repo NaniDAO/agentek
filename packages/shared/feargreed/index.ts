@@ -1,5 +1,5 @@
-import { BaseTool, createToolCollection } from "../client";
-import { fearGreedIndexTool } from "./tools";
+import { BaseTool, createToolCollection } from "../client.js";
+import { fearGreedIndexTool } from "./tools.js";
 
 export function fearGreedIndexTools(): BaseTool[] {
   return createToolCollection([fearGreedIndexTool]);

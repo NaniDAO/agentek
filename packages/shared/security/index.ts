@@ -1,5 +1,5 @@
-import { BaseTool, createToolCollection } from "../client";
-import { checkMaliciousAddress, checkMaliciousWebsite } from "./tools";
+import { BaseTool, createToolCollection } from "../client.js";
+import { checkMaliciousAddress, checkMaliciousWebsite } from "./tools.js";
 
 /**
  * Export an array of tools for security checks.

@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { base, mainnet } from "viem/chains";
 
-import { SignalsAbi } from "./abis";
-import { SIGNALS_ADDRESS } from "./constants";
+import { SignalsAbi } from "./abis.js";
+import { SIGNALS_ADDRESS } from "./constants.js";
 
 const supportedChains = [mainnet, base];
 

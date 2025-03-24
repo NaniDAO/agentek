@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { AgentekClient, createAgentekClient } from "./client";
+import { AgentekClient, createAgentekClient } from "./client.js";
 import { mainnet, sepolia } from "viem/chains";
 import { http } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";

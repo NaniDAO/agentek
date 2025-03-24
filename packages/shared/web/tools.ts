@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import * as cheerio from "cheerio";
 
 export const scrapeWebContent = createTool({

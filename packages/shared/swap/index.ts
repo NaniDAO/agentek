@@ -1,5 +1,5 @@
-import { BaseTool, createToolCollection } from "../client";
-import { createMatchSwapTool } from "./intents";
+import { BaseTool, createToolCollection } from "../client.js";
+import { createMatchSwapTool } from "./intents.js";
 
 /**
  * Export an array of tools for Matcha-based swaps.

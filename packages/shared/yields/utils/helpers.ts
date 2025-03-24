@@ -1,5 +1,5 @@
 import { Chain } from 'viem/chains';
-import { RISK_THRESHOLDS, RiskLevel } from '../constants';
+import { RISK_THRESHOLDS, RiskLevel } from '../constants.js';
 
 // Helper function to format USD values
 export function formatUSD(value: number): string {

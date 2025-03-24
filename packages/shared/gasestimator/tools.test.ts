@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { estimateGasCostTool } from "./tools";
-import type { AgentekClient } from "../client";
+import { estimateGasCostTool } from "./tools.js";
+import type { AgentekClient } from "../client.js";
 
 describe("estimateGasCostTool", () => {
   let mockClient: AgentekClient;

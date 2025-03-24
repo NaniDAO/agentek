@@ -1,8 +1,8 @@
 import z from "zod";
-import { AgentekClient, createTool, Intent } from "../client";
+import { AgentekClient, createTool, Intent } from "../client.js";
 import { Address, encodeFunctionData } from "viem";
-import { GovernorBravoDelegateAbi } from "./constants";
-import { getGovernorBySlug, parseCaip10 } from "./utils";
+import { GovernorBravoDelegateAbi } from "./constants.js";
+import { getGovernorBySlug, parseCaip10 } from "./utils.js";
 
 const VoteSupport = z.enum(["against", "for", "abstain"]);
 type VoteSupport = z.infer<typeof VoteSupport>;

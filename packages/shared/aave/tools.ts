@@ -1,6 +1,6 @@
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { z } from "zod";
-import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants";
+import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants.js";
 import { formatUnits } from "viem";
 
 const formatRate = (rate: bigint) =>

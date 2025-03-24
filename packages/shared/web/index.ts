@@ -1,5 +1,5 @@
-import { BaseTool, createToolCollection } from "../client";
-import { scrapeWebContent } from "./tools";
+import { BaseTool, createToolCollection } from "../client.js";
+import { scrapeWebContent } from "./tools.js";
 
 /**
  * Export an array of tools for researching web content.

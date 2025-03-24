@@ -1,11 +1,11 @@
-import { BaseTool, createToolCollection } from "../client";
-import { getAaveUserData, getAaveReserveData } from "./tools";
+import { BaseTool, createToolCollection } from "../client.js";
+import { getAaveUserData, getAaveReserveData } from "./tools.js";
 import {
   intentAaveDeposit,
   intentAaveWithdraw,
   intentAaveBorrow,
   intentAaveRepay,
-} from "./intents";
+} from "./intents.js";
 
 export function aaveTools(): BaseTool[] {
   return createToolCollection([

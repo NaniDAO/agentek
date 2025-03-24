@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { createTool } from "../client";
-import { clean, addressSchema } from "../utils";
-import { supportedChains } from "./constants";
+import { createTool } from "../client.js";
+import { clean, addressSchema } from "../utils.js";
+import { supportedChains } from "./constants.js";
 import { erc721Abi } from "viem";
 
 export const getNFTMetadataTool = createTool({

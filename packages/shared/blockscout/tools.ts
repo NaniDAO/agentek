@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
 import { formatEther } from "viem";
-import { addressSchema } from "../utils";
+import { addressSchema } from "../utils.js";
 
 const supportedChains = [mainnet, polygon, arbitrum, optimism, base];
 const chainSchema = z

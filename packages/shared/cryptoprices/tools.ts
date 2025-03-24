@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 
 export const getCryptoPriceTool = createTool({
   name: "getCryptoPrice",

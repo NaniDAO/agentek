@@ -1,5 +1,5 @@
-import { getNFTMetadataTool } from "./tools";
-import { createToolCollection, BaseTool } from "../client";
+import { getNFTMetadataTool } from "./tools.js";
+import { createToolCollection, BaseTool } from "../client.js";
 
 export function nftTools(): BaseTool[] {
   return createToolCollection([

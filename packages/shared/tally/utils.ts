@@ -1,4 +1,4 @@
-import { TALLY_API_URL } from "./constants";
+import { TALLY_API_URL } from "./constants.js";
 
 import { getAddress } from "viem";
 

@@ -1,14 +1,14 @@
-import { createToolCollection } from "../client";
-import type { BaseTool } from "../client";
+import { createToolCollection } from "../client.js";
+import type { BaseTool } from "../client.js";
 import {
   createTallyProposalsTool,
   createTallyChainsTool,
   createTallyUserDaosTool,
-} from "./tools";
+} from "./tools.js";
 import {
   createTallyVoteIntent,
   createTallyVoteWithReasonIntent,
-} from "./intents";
+} from "./intents.js";
 
 export function tallyTools({
   tallyApiKey,

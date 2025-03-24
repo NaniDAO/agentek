@@ -1,4 +1,4 @@
-import { BaseTool, createToolCollection } from "../client";
+import { BaseTool, createToolCollection } from "../client.js";
 import {
   getBalance,
   getCode,
@@ -10,7 +10,7 @@ import {
   getFeeHistory,
   getTransaction,
   getTransactionReceipt,
-} from "./tools";
+} from "./tools.js";
 
 export function rpcTools(): BaseTool[] {
   return createToolCollection([

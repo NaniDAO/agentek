@@ -1,4 +1,4 @@
-import { BaseTool, createToolCollection } from "../client";
+import { BaseTool, createToolCollection } from "../client.js";
 import {
   getSlowStatus,
   predictTransferId,
@@ -6,7 +6,7 @@ import {
   reverseSlowTransfer,
   getSlowGuardianInfo,
   approveSlowTransfer,
-} from "./tools";
+} from "./tools.js";
 import {
   intentDepositToSlow,
   intentSetSlowGuardian,
@@ -14,7 +14,7 @@ import {
   intentApproveSlowTransfer,
   intentUnlockSlow,
   intentReverseSlowTransfer,
-} from "./intents";
+} from "./intents.js";
 
 /**
  * Export an array of tools for slow transfer protocol.

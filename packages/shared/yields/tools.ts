@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { createTool } from '../client';
+import { createTool } from '../client.js';
 import { 
   SUPPORTED_YIELD_PROTOCOLS, 
   SUPPORTED_CHAINS,
   PoolComparisonResult
-} from './constants';
+} from './constants.js';
 import {
   formatUSD,
   getChainName,
@@ -17,7 +17,7 @@ import {
   calculateTvlStats,
   extractTimeSeriesData,
   calculateStabilityScore
-} from './utils';
+} from './utils/index.js';
 
 // Schema for defiLlamaYieldTool parameters
 const defiLlamaYieldToolSchema = z.object({

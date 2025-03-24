@@ -1,4 +1,4 @@
-import { BaseTool, createToolCollection } from "../client";
+import { BaseTool, createToolCollection } from "../client.js";
 import {
   getNativeCoinHolders,
   getAddressInfo,
@@ -34,7 +34,7 @@ import {
   getTokenHolders,
   getTokenTransfers,
   getBlockscoutSearch,
-} from "./tools";
+} from "./tools.js";
 
 export function blockscoutTools(): BaseTool[] {
   return createToolCollection([

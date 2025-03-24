@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { naniTools } from "./index";
+import { naniTools } from "./index.js";
 import {
   intentStakeNani,
   intentUnstakeNani,
   intentProposeNani,
   intentVoteNaniProposal,
-} from "./intents";
-import { getNaniProposals } from "./tools";
+} from "./intents.js";
+import { getNaniProposals } from "./tools.js";
 
 describe("Nani Tools Collection", () => {
   const tools = naniTools();

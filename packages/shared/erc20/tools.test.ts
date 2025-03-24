@@ -9,9 +9,9 @@ import {
   getNameTool,
   getSymbolTool,
   getTokenMetadataTool,
-} from "./tools";
-import { erc20Chains } from "./constants";
-import { AgentekClient, createAgentekClient } from "../client";
+} from "./tools.js";
+import { erc20Chains } from "./constants.js";
+import { AgentekClient, createAgentekClient } from "../client.js";
 import { erc20Tools } from ".";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 

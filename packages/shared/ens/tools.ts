@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { Address } from "viem";
 import { normalize } from 'viem/ens'
 

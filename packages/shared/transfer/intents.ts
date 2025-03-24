@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AgentekClient, createTool, Intent } from "../client";
+import { AgentekClient, createTool, Intent } from "../client.js";
 import { arbitrum, base, mainnet, sepolia } from "viem/chains";
 import {
   Address,

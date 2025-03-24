@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { mainnet } from "viem/chains";
 import { http } from "viem";
-import { getAddressInfo, fetchFromBlockscoutV2 } from "./tools";
-import { createAgentekClient, AgentekClient } from "../client";
+import { getAddressInfo, fetchFromBlockscoutV2 } from "./tools.js";
+import { createAgentekClient, AgentekClient } from "../client.js";
 
 vi.mock("./tools", () => {
   return {

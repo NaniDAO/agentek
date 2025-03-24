@@ -1,5 +1,5 @@
 import { base, mainnet } from "viem/chains";
-import { AgentekClient, createTool } from "../client";
+import { AgentekClient, createTool } from "../client.js";
 import z from "zod";
 
 const getLatestTokensParameters = z.object({

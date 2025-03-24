@@ -1,6 +1,6 @@
-import { createAskPerplexitySearchTool } from "./tools";
-import { createToolCollection } from "../client";
-import type { BaseTool } from "../client";
+import { createAskPerplexitySearchTool } from "./tools.js";
+import { createToolCollection } from "../client.js";
+import type { BaseTool } from "../client.js";
 
 export function searchTools({
   perplexityApiKey,

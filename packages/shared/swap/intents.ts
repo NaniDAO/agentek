@@ -7,8 +7,8 @@ import {
   erc20Abi,
   encodeFunctionData,
 } from "viem";
-import { createTool } from "../client";
-import type { BaseTool, AgentekClient } from "../client";
+import { createTool } from "../client.js";
+import type { BaseTool, AgentekClient } from "../client.js";
 
 import { mainnet, optimism, arbitrum, base } from "viem/chains";
 

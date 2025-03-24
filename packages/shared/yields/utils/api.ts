@@ -4,8 +4,8 @@ import {
   DefiLlamaChartResponse,
   YieldProtocol,
   YieldData
-} from '../constants';
-import { assessRisk, chainIdMap, getProjectFilter } from './helpers';
+} from '../constants.js';
+import { assessRisk, chainIdMap, getProjectFilter } from './helpers.js';
 
 // Fetch pool data from DefiLlama
 export async function fetchDefiLlamaPools(): Promise<DefiLlamaResponse> {

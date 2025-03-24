@@ -1,6 +1,6 @@
-import { createToolCollection } from "../client";
-import type { BaseTool } from "../client";
-import { createMarketEventsTool } from "./tools";
+import { createToolCollection } from "../client.js";
+import type { BaseTool } from "../client.js";
+import { createMarketEventsTool } from "./tools.js";
 
 export function createCoinMarketCalTools({
   coinMarketCalApiKey,

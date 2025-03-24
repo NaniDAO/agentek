@@ -1,14 +1,14 @@
 import { z } from "zod";
-import { createTool } from "../client";
-import { clean } from "../utils";
+import { createTool } from "../client.js";
+import { clean } from "../utils.js";
 import {
   nonfungiblePositionManagerAbi,
   getPositionManagerAddress,
   supportedChains,
   uniV3poolAbi,
-} from "./constants";
+} from "./constants.js";
 import { Address, erc721Abi } from "viem";
-import { addressSchema } from "../utils";
+import { addressSchema } from "../utils.js";
 
 const getUniV3Pool = createTool({
   name: "getUniV3Pool",

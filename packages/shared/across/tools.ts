@@ -1,4 +1,4 @@
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { z } from "zod";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
 import { erc20Abi, parseUnits } from "viem";

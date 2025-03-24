@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AgentekClient, createTool, Intent } from "../client";
+import { AgentekClient, createTool, Intent } from "../client.js";
 import {
   Address,
   encodeFunctionData,
@@ -7,7 +7,7 @@ import {
   parseUnits,
   PublicClient,
 } from "viem";
-import { erc20Chains } from "./constants";
+import { erc20Chains } from "./constants.js";
 
 const intentApproveParameters = z.object({
   token: z.string().describe("The token address"),

@@ -1,4 +1,4 @@
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { z } from "zod";
 import {
   erc20Abi,
@@ -7,7 +7,7 @@ import {
   maxUint256,
   encodeFunctionData,
 } from "viem";
-import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants";
+import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants.js";
 
 // Intent: Deposit tokens into Aave (i.e. supply to the pool)
 export const intentAaveDeposit = createTool({

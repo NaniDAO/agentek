@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTool } from "../client";
+import { createTool } from "../client.js";
 import { Address, formatEther, Hex, formatUnits, parseEther } from "viem";
 import {
   arbitrum,
@@ -10,7 +10,7 @@ import {
   polygon,
   sepolia,
 } from "viem/chains";
-import { addressSchema, clean } from "../utils";
+import { addressSchema, clean } from "../utils.js";
 
 const supportedChains = [
   mainnet,

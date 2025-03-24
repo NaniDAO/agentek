@@ -1,6 +1,6 @@
 import z from "zod";
-import { createTool } from "../client";
-import type { BaseTool, AgentekClient } from "../client";
+import { createTool } from "../client.js";
+import type { BaseTool, AgentekClient } from "../client.js";
 
 export function createAskPerplexitySearchTool(
   perplexityApiKey: string,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { rpcTools } from "./index";
+import { rpcTools } from "./index.js";
 import {
   getBalance,
   getCode,
@@ -11,7 +11,7 @@ import {
   getFeeHistory,
   getTransaction,
   getTransactionReceipt,
-} from "./tools";
+} from "./tools.js";
 
 describe("RPC Tools Collection", () => {
   const tools = rpcTools();

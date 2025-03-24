@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTool, AgentekClient } from "../client";
+import { createTool, AgentekClient } from "../client.js";
 
 const getMarketEventsParams = z.object({
   showOnly: z

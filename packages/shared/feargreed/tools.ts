@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { createTool } from "../client";
-import type { AgentekClient } from "../client";
+import { createTool } from "../client.js";
+import type { AgentekClient } from "../client.js";
 
 const getFearAndGreedIndexToolParams = z.object({});
 

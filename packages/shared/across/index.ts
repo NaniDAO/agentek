@@ -1,6 +1,6 @@
-import { BaseTool, createToolCollection } from "../client";
-import { getAcrossFeeQuote } from "./tools";
-import { intentDepositAcross } from "./intents";
+import { BaseTool, createToolCollection } from "../client.js";
+import { getAcrossFeeQuote } from "./tools.js";
+import { intentDepositAcross } from "./intents.js";
 
 export function acrossTools(): BaseTool[] {
   return createToolCollection([getAcrossFeeQuote, intentDepositAcross]);

@@ -1,5 +1,5 @@
-import { DefiLlamaChartDataPoint } from '../constants';
-import { formatUSD } from './helpers';
+import { DefiLlamaChartDataPoint } from '../constants.js';
+import { formatUSD } from './helpers.js';
 
 export interface TimeSeriesStats {
   average: string;

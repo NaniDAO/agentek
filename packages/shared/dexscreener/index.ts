@@ -1,5 +1,5 @@
-import { BaseTool, createToolCollection } from "../client";
-import { getLatestTokens } from "./tools";
+import { BaseTool, createToolCollection } from "../client.js";
+import { getLatestTokens } from "./tools.js";
 
 export function dexscreenerTools(): BaseTool[] {
   return createToolCollection([getLatestTokens]);

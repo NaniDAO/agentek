@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTool, AgentekClient } from "../client";
+import { createTool, AgentekClient } from "../client.js";
 
 const getLatestCoindeskNewsToolParams = z.object({
   limit: z.number().min(1).max(100).default(10),

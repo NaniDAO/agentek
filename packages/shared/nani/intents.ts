@@ -1,11 +1,11 @@
 import z from "zod";
-import { Intent } from "../client";
+import { Intent } from "../client.js";
 import { encodeFunctionData, erc20Abi, maxUint256, parseEther } from "viem";
 import { mainnet, base } from "viem/chains";
 
-import { XNaniAbi, SignalsAbi } from "./abis";
-import { XNANI_TOKEN, SIGNALS_ADDRESS, NANI_TOKEN } from "./constants";
-import { createTool } from "../client";
+import { XNaniAbi, SignalsAbi } from "./abis.js";
+import { XNANI_TOKEN, SIGNALS_ADDRESS, NANI_TOKEN } from "./constants.js";
+import { createTool } from "../client.js";
 
 export const intentStakeNani = createTool({
   name: "intentStakeNani",
