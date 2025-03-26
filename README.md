@@ -79,7 +79,7 @@ const aiTools = toolkit.getTools();
 
 The MCP (Model Context Protocol) server allows you to expose Agentek tools to LLMs via the Model Context Protocol. For more information, see the [MCP Server README](/src/mcp/README.md)
 
-## Tools (113 total)
+## Tools (114 total)
 
 ### Available Tools
 
@@ -187,12 +187,13 @@ The MCP (Model Context Protocol) server allows you to expose Agentek tools to LL
 102. compareYieldTool
 103. getYieldHistoryTool
 104. compareYieldHistoryTool
-105. askPerplexitySearch
-106. intent0xSwap
-107. tallyProposals
-108. tallyChains
-109. tallyUserDaos
-110. intentGovernorVote
-111. intentGovernorVoteWithReason
-112. getLatestCoindeskNewsTool
-113. getMarketEvents
+105. think
+106. askPerplexitySearch
+107. intent0xSwap
+108. tallyProposals
+109. tallyChains
+110. tallyUserDaos
+111. intentGovernorVote
+112. intentGovernorVoteWithReason
+113. getLatestCoindeskNewsTool
+114. getMarketEvents
