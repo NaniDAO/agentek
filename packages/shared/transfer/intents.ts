@@ -9,13 +9,15 @@ import {
   parseUnits,
   PublicClient,
 } from "viem";
+import { addressSchema } from "../utils.js";
+import { resolveENSTool } from "../ens/tools.js";
 
 const intentTransferChains = [mainnet, arbitrum, base, sepolia];
 const intentTransferParameters = z.object({
-  token: z.string().describe("The token address"),
+  token: addressSchema.describe("The token address"),
   amount: z.string().describe("The amount to transfer"),
-  to: z.string().describe("The recipient address or ENS"),
-  chainId: z.number().optional().describe("Optional specific chain to use"),
+  to: z.string().describe("The recipient address or ENS name"),
+  chainId: z.number().optional().describe("Optional specify chainId to use"),
 });
 
 export const ETH_ADDRESS =
@@ -64,9 +66,16 @@ export const intentTransferTool = createTool({
     client: AgentekClient,
     args: z.infer<typeof intentTransferParameters>,
   ): Promise<Intent> => {
-    const { token, amount, to, chainId } = args;
+    let { token, amount, to, chainId } = args;
     const chains = client.filterSupportedChains(intentTransferChains, chainId);
     const from = await client.getAddress();
+
+    // if `to` is an ENS name, resolve it to an address
+    if (to.includes('.')) {
+      to = await resolveENSTool.execute(client, {
+        name: to,
+      })
+    }
 
     const chainsWithBalance = (
       await Promise.all(
@@ -123,13 +132,21 @@ export const intentTransferTool = createTool({
     const walletClient = client.getWalletClient(cheapestChain.chain.id);
 
     let ops = [];
+    let tokenSymbol = "";
     if (token === ETH_ADDRESS) {
+      tokenSymbol = "ETH";
       ops.push({
         target: to as Address,
         value: cheapestChain.amount.toString(),
         data: "0x" as Hex,
       });
     } else {
+      tokenSymbol = await client.getPublicClient(cheapestChain.chain.id).readContract({
+        address: token as Address,
+        abi: erc20Abi,
+        functionName: "symbol",
+      });
+
       ops.push({
         target: token as Address,
         value: "0",
@@ -143,7 +160,7 @@ export const intentTransferTool = createTool({
 
     if (!walletClient) {
       return {
-        intent: `send ${amount.toString()} ${token} to ${to}`,
+        intent: `send ${amount.toString()} ${tokenSymbol} to ${to}`,
         ops,
         chain: cheapestChain.chain.id,
       };
@@ -151,7 +168,7 @@ export const intentTransferTool = createTool({
       const hash = await client.executeOps(ops, cheapestChain.chain.id);
 
       return {
-        intent: `send ${amount.toString()} ${token} from ${from} to ${to}`,
+        intent: `send ${amount.toString()} ${tokenSymbol} to ${to}`,
         ops,
         chain: cheapestChain.chain.id,
         hash: hash,
@@ -179,8 +196,15 @@ export const intentTransferFromTool = createTool({
     client: AgentekClient,
     args: z.infer<typeof intentTransferFromParameters>,
   ): Promise<Intent> => {
-    const { token, amount, to, from, chainId } = args;
+    let { token, amount, to, from, chainId } = args;
     const chains = client.filterSupportedChains(intentTransferChains, chainId);
+
+    // if `to` is an ENS name, resolve it to an address
+    if (to.includes('.')) {
+      to = await resolveENSTool.execute(client, {
+        name: to,
+      })
+    }
 
     const chainsWithBalance = (
       await Promise.all(

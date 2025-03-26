@@ -51,7 +51,7 @@ export interface AgentekClientConfig {
 }
 
 export class AgentekClient {
-  private publicClients: Map<number, PublicClient<Transport, Chain>>; 
+  private publicClients: Map<number, PublicClient<Transport, Chain>>;
   private walletClients: Map<number, WalletClient<Transport, Chain, Account>>;
   private tools: Map<string, BaseTool>;
   private chains: Chain[];
@@ -65,7 +65,7 @@ export class AgentekClient {
 
     config.chains.forEach((chain, index) => {
       const transport = config.transports[index] || config.transports[0];
-      
+
       // Create public client with simple configuration to avoid type issues
       const publicClient = createPublicClient({
         transport,
@@ -112,7 +112,7 @@ export class AgentekClient {
   }
 
   // Get all public clients
-  public getPublicClients(): Map<number, any> { // Use any to avoid type issues
+  public getPublicClients(): Map<number, any> {
     return this.publicClients;
   }
 
@@ -231,7 +231,6 @@ export function createAgentekClient(
   return new AgentekClient(config);
 }
 
-// Tool creation helper remains the same but includes supportedChains
 export function createTool<T extends z.ZodObject<any, any, any, any>>({
   name,
   description,

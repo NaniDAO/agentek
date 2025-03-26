@@ -22,6 +22,7 @@ import { cryptoPriceTools } from "./cryptoprices/index.js";
 import { gasEstimatorTools } from "./gasestimator/index.js";
 import { defillamaTools } from "./defillama/index.js";
 import { acrossTools } from "./across/index.js";
+import { thinkTools } from "./think/index.js";
 
 const allTools = ({
   perplexityApiKey,
@@ -56,6 +57,7 @@ const allTools = ({
     ...cryptoPriceTools(),
     ...gasEstimatorTools(),
     ...defillamaTools(),
+    ...thinkTools(),
   ];
 
   if (perplexityApiKey) {
@@ -112,5 +114,6 @@ export {
   cryptoPriceTools,
   gasEstimatorTools,
   defillamaTools,
-  acrossTools
+  acrossTools,
+  thinkTools
 };

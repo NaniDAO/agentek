@@ -6,6 +6,8 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { CoreMessage, CoreTool, generateText } from "ai";
 import { transferTools } from "../packages/shared/transfer";
+import { intentTransferTool } from "../packages/shared/transfer/intents";
+import { AgentekClient } from "../packages/shared/client";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -32,7 +34,7 @@ async function main() {
     transports: [http(), http(), http()],
     chains,
     accountOrAddress: account,
-    tools: [...ensTools(), ...transferTools()],
+    tools: [...transferTools(), ...ensTools()],
   });
 
   const tools = toolkit.getTools();
@@ -43,7 +45,7 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content: "Send 0.01 eth to shivanshi on Sepolia",
+      content: "Send 0.001 eth to protocolguild.eth on Sepolia",
     },
   ] as CoreMessage[];
 
@@ -54,7 +56,7 @@ async function main() {
 
   const response = await generateText({
     model: openrouter("openai/gpt-4o-mini"),
-    system: "",
+    system: "Use the ENS name directly",
     messages,
     maxSteps: 5,
     tools: tools as Record<string, CoreTool<any, any>>,
@@ -80,6 +82,4 @@ async function main() {
   });
 }
 
-main()
-  .then((_o) => console.log("--fin--"))
-  .catch((e) => console.error(e));
+main();
