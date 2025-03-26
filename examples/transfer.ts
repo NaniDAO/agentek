@@ -30,6 +30,13 @@ async function main() {
     chains.map((chain) => chain.id),
   );
 
+  const client = new AgentekClient({
+    accountOrAddress: account.address,
+    transports: [http(), http(), http()],
+    chains,
+    tools: [...transferTools(), ...ensTools()],
+  });
+
   const toolkit = new AgentekToolkit({
     transports: [http(), http(), http()],
     chains,

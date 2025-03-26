@@ -74,7 +74,9 @@ export const intentTransferTool = createTool({
     if (to.includes('.')) {
       to = await resolveENSTool.execute(client, {
         name: to,
-      })
+      }).catch(() => {
+        throw new Error(`Failed to resolve ENS name ${to}`);
+      });
     }
 
     const chainsWithBalance = (
@@ -203,7 +205,9 @@ export const intentTransferFromTool = createTool({
     if (to.includes('.')) {
       to = await resolveENSTool.execute(client, {
         name: to,
-      })
+      }).catch(() => {
+        throw new Error(`Failed to resolve ENS name ${to}`);
+      });
     }
 
     const chainsWithBalance = (
