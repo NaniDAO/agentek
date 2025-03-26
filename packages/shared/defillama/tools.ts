@@ -53,10 +53,9 @@ const getTokenChartToolSchema = z.object({
     .describe('ISO timestamp for the start time (e.g., "2025-01-01T00:00:00Z")'),
   options: z
     .object({
-      span: z
-        .number()
-        .optional()
-        .describe('Number of data points to return. Default to zero. To create a chart you need many data points.'),
+      span: z.number()
+      .default(10)
+      .describe('Number of data points to return. Defaults to 10. To create a chart you need many data points.'),
       searchWidth: z
         .string()
         .optional()
@@ -96,7 +95,10 @@ export const getTokenChartTool = createTool({
       // Add optional parameters if they exist
       if (options?.span) {
         params.span = options.span.toString();
+      } else {
+        params.span = '10';
       }
+
       if (options?.searchWidth) {
         params.searchWidth = options.searchWidth;
       }
