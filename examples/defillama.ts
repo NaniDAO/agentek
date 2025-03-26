@@ -3,7 +3,8 @@ import {
   compareYieldTool,
   getYieldHistoryTool,
   compareYieldHistoryTool,
-} from "../packages/shared/yields/tools";
+  getTokenChartTool,
+} from "../packages/shared/defillama/tools";
 
 // Example 1: Get top yield opportunities across all protocols
 async function example1() {
@@ -117,7 +118,6 @@ async function example7() {
   console.table(result.timeline.slice(0, 5));
 }
 
-// Run all examples
 // Example 8: Compare historical yield data for multiple pools
 async function example8() {
   console.log("Example 8: Compare historical yield data across multiple pools");
@@ -158,6 +158,30 @@ async function example8() {
   console.log("\nDetailed Results (first pool):");
   console.table(result.details[0]);
 }
+// Example 9: Get token price chart data
+async function example9() {
+  console.log("Example 9: Get price chart data for multiple tokens");
+
+  const result: TokenChartResult = await getTokenChartTool.execute(null, {
+    tokens: ["coingecko:bitcoin", "coingecko:ethereum"],
+    period: "1h",
+  });
+
+  console.log("result", result);
+
+  console.log(`Tokens: ${result.tokens.join(", ")}`);
+  console.log(`Period: ${result.period}`);
+
+  console.log("\nFirst 5 data points:");
+  console.table(
+    Object.keys(result.coins).map((coin) =>
+      result.coins[coin].prices.slice(0, 5).map((price) => ({
+        price: price.price,
+        timestamp: price.timestamp,
+      })),
+    )[0],
+  );
+}
 
 async function runExamples() {
   try {
@@ -183,6 +207,9 @@ async function runExamples() {
     console.log("\n");
 
     await example8();
+    console.log("\n");
+
+    await example9();
   } catch (error) {
     console.error("Error running examples:", error);
   }

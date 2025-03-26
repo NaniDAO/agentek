@@ -44,7 +44,7 @@ Intent tools handle blockchain transactions and must follow this pattern:
 
 ```typescript
 interface Intent {
-  intent: string;         // Human readable description of the operation
+  intent: string;        // Human readable description of the operation
   ops: Operation[];      // Array of operations to execute
   chain: number;         // Chain ID
   hash?: string;         // Transaction hash (only when executed)

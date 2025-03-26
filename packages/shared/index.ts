@@ -20,7 +20,7 @@ import { slowTransferTools } from "./slowTransfer/index.js";
 import { nftTools } from "./erc721/index.js";
 import { cryptoPriceTools } from "./cryptoprices/index.js";
 import { gasEstimatorTools } from "./gasestimator/index.js";
-import { yieldTools } from "./yields/index.js";
+import { defillamaTools } from "./defillama/index.js";
 import { acrossTools } from "./across/index.js";
 
 const allTools = ({
@@ -55,7 +55,7 @@ const allTools = ({
     ...nftTools(),
     ...cryptoPriceTools(),
     ...gasEstimatorTools(),
-    ...yieldTools(),
+    ...defillamaTools(),
   ];
 
   if (perplexityApiKey) {
@@ -85,7 +85,7 @@ const allTools = ({
   return tools;
 };
 
-export { 
+export {
   allTools,
 
   // Exporting all tool collections for easier composition
@@ -111,7 +111,6 @@ export {
   nftTools,
   cryptoPriceTools,
   gasEstimatorTools,
-  yieldTools,
+  defillamaTools,
   acrossTools
 };
-

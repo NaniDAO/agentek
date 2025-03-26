@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createTool } from '../client.js';
-import { 
-  SUPPORTED_YIELD_PROTOCOLS, 
+import {
+  SUPPORTED_YIELD_PROTOCOLS,
   SUPPORTED_CHAINS,
   PoolComparisonResult
 } from './constants.js';
@@ -18,6 +18,111 @@ import {
   extractTimeSeriesData,
   calculateStabilityScore
 } from './utils/index.js';
+
+interface ChartDataPoint {
+  timestamp: number
+  price: number
+}
+
+interface TokenPriceData {
+  symbol: string
+  confidence: number
+  prices: ChartDataPoint[]
+}
+
+interface TokenChartResult {
+  success: boolean
+  tokens: string[]
+  period: string
+  coins: Record<string, TokenPriceData>
+}
+
+// Schema for getTokenChartTool parameters
+const getTokenChartToolSchema = z.object({
+  tokens: z
+    .union([z.string(), z.array(z.string())])
+    .describe('Token identifier in format "chain:address" (e.g., "ethereum:0x...", "coingecko:ethereum") or array of such identifiers'),
+  period: z
+    .string()
+    .optional()
+    .default('1d')
+    .describe('Time interval between data points. Format: 1h, 4h, 1d, 1w (defaults to "1d")'),
+  startTime: z
+    .string()
+    .optional()
+    .describe('ISO timestamp for the start time (e.g., "2025-01-01T00:00:00Z")'),
+  options: z
+    .object({
+      span: z
+        .number()
+        .optional()
+        .describe('Number of data points to return. Default to zero. To create a chart you need many data points.'),
+      searchWidth: z
+        .string()
+        .optional()
+        .describe('Time range on either side to find price data (e.g., "600" for 10 minutes)')
+    })
+    .optional()
+    .describe('Optional configuration for the chart data')
+});
+
+// Token chart tool
+export const getTokenChartTool = createTool({
+  name: 'getTokenChart',
+  description: 'Gets historical price chart data for one or more tokens from DeFi Llama',
+  parameters: getTokenChartToolSchema,
+  execute: async (_client, args): Promise<TokenChartResult> => {
+    const { tokens, period, startTime, options } = args;
+
+    try {
+      const unixStartTime = startTime ? Math.floor(new Date(startTime).getTime() / 1000) : undefined;
+
+      // Handle single token or array of tokens
+      const tickerString = Array.isArray(tokens) ? tokens.join(',') : tokens;
+
+      const baseUrl = 'https://coins.llama.fi';
+      const url = new URL(`${baseUrl}/chart/${tickerString}`);
+
+      // Only add parameters that are defined
+      const params: Record<string, string> = {
+        period
+      };
+
+      // Only add start time if it exists
+      if (unixStartTime !== undefined) {
+        params.start = unixStartTime.toString();
+      }
+
+      // Add optional parameters if they exist
+      if (options?.span) {
+        params.span = options.span.toString();
+      }
+      if (options?.searchWidth) {
+        params.searchWidth = options.searchWidth;
+      }
+
+      url.search = new URLSearchParams(params).toString();
+
+      const response = await fetch(url.toString());
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${url.toString()} ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        tokens: Array.isArray(tokens) ? tokens : [tokens],
+        period,
+        coins: data.coins
+      };
+
+    } catch (error) {
+      throw new Error(`Failed to fetch token chart data: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+});
 
 // Schema for defiLlamaYieldTool parameters
 const defiLlamaYieldToolSchema = z.object({
@@ -77,7 +182,7 @@ export const getYieldTool = createTool({
     const { chain, project, symbol, stablecoin, minApy, maxRisk, protocol, asset, chainId, limit } = args;
     try {
       let filteredData;
-      
+
       // If protocol is specified, use fetchProtocolData
       if (protocol) {
         const protocolsToFetch = [protocol];
@@ -85,12 +190,12 @@ export const getYieldTool = createTool({
         const allYieldDataPromises = protocolsToFetch.map(p => fetchProtocolData(p, chainId));
         const allYieldDataArrays = await Promise.all(allYieldDataPromises);
         filteredData = allYieldDataArrays.flat();
-        
+
         // Apply additional filters
         if (minApy !== undefined) {
           filteredData = filteredData.filter(data => data.apy >= minApy);
         }
-        
+
         if (maxRisk) {
           const riskLevels = { low: 1, medium: 2, high: 3 };
           const maxRiskLevel = riskLevels[maxRisk];
@@ -98,22 +203,22 @@ export const getYieldTool = createTool({
             data => riskLevels[data.risk] <= maxRiskLevel
           );
         }
-        
+
         if (asset) {
           const assetLower = asset.toLowerCase();
           filteredData = filteredData.filter(
-            data => 
-              data.asset.toLowerCase().includes(assetLower) || 
+            data =>
+              data.asset.toLowerCase().includes(assetLower) ||
               data.symbol.toLowerCase().includes(assetLower)
           );
         }
-        
+
         // Sort by APY (highest first)
         filteredData.sort((a, b) => b.apy - a.apy);
-        
+
         // Limit results
         const limitedResults = filteredData.slice(0, limit);
-        
+
         return {
           count: limitedResults.length,
           yields: limitedResults.map(data => ({
@@ -125,86 +230,86 @@ export const getYieldTool = createTool({
             risk: data.risk,
           })),
         };
-      } 
+      }
       // Otherwise use direct DefiLlama API
       else {
         // Fetch data from DefiLlama yields API
         const data = await fetchDefiLlamaPools();
-        
+
         // Apply filters
         filteredData = data.data;
-        
+
         if (chain) {
           const chainLower = chain.toLowerCase();
-          filteredData = filteredData.filter(pool => 
+          filteredData = filteredData.filter(pool =>
             pool.chain.toLowerCase().includes(chainLower)
           );
         }
-        
+
         if (project) {
           const projectLower = project.toLowerCase();
-          filteredData = filteredData.filter(pool => 
+          filteredData = filteredData.filter(pool =>
             pool.project.toLowerCase().includes(projectLower)
           );
         }
-        
+
         if (symbol) {
           const symbolLower = symbol.toLowerCase();
-          filteredData = filteredData.filter(pool => 
+          filteredData = filteredData.filter(pool =>
             pool.symbol.toLowerCase().includes(symbolLower)
           );
         }
-        
+
         if (stablecoin !== undefined) {
           filteredData = filteredData.filter(pool => pool.stablecoin === stablecoin);
         }
-        
+
         if (minApy !== undefined) {
           filteredData = filteredData.filter(pool => {
-            const apyValue = pool.apy !== null ? pool.apy : 
+            const apyValue = pool.apy !== null ? pool.apy :
                             (pool.apyBase !== null ? pool.apyBase : 0);
             return apyValue >= minApy;
           });
         }
-        
+
         if (maxRisk) {
           const riskLevels = { low: 1, medium: 2, high: 3 };
           const maxRiskLevel = riskLevels[maxRisk];
-          
+
           filteredData = filteredData.filter(pool => {
-            const apyValue = pool.apy !== null ? pool.apy : 
+            const apyValue = pool.apy !== null ? pool.apy :
                             (pool.apyBase !== null ? pool.apyBase : 0);
             const riskLevel = assessRisk(apyValue);
             return riskLevels[riskLevel] <= maxRiskLevel;
           });
         }
-        
+
         if (asset) {
           const assetLower = asset.toLowerCase();
           filteredData = filteredData.filter(
-            pool => 
-              pool.project.toLowerCase().includes(assetLower) || 
+            pool =>
+              pool.project.toLowerCase().includes(assetLower) ||
               pool.symbol.toLowerCase().includes(assetLower)
           );
         }
-        
+
         // Sort by APY (highest first)
         filteredData.sort((a, b) => {
           const apyA = a.apy !== null ? a.apy : (a.apyBase !== null ? a.apyBase : 0);
           const apyB = b.apy !== null ? b.apy : (b.apyBase !== null ? b.apyBase : 0);
           return apyB - apyA;
         });
-        
+
         // Limit results
         const limitedResults = filteredData.slice(0, limit);
-        
+
         // Format results
         return {
           count: limitedResults.length,
           yields: limitedResults.map(pool => {
-            const apyValue = pool.apy !== null ? pool.apy : 
+            const apyValue = pool.apy !== null ? pool.apy :
                             (pool.apyBase !== null ? pool.apyBase : 0);
-            
+
             return {
               project: pool.project,
               asset: pool.symbol,
@@ -269,19 +374,19 @@ export const compareYieldTool = createTool({
       const allYieldDataPromises = SUPPORTED_YIELD_PROTOCOLS.map(p => fetchProtocolData(p));
       const allYieldDataArrays = await Promise.all(allYieldDataPromises);
       let allYieldData = allYieldDataArrays.flat();
-      
+
       // Filter for the specified assets
       const assetComparisons = assets.map(assetName => {
         const assetLower = assetName.toLowerCase();
         const matchingYields = allYieldData.filter(
-          data => 
-            data.asset.toLowerCase().includes(assetLower) || 
+          data =>
+            data.asset.toLowerCase().includes(assetLower) ||
             data.symbol.toLowerCase().includes(assetLower)
         );
-        
+
         // Sort by APY (highest first)
         matchingYields.sort((a, b) => b.apy - a.apy);
-        
+
         // If amount and duration provided, calculate projected earnings
         const topYields = matchingYields.slice(0, 5).map(data => {
           const result: any = {
@@ -290,23 +395,23 @@ export const compareYieldTool = createTool({
             apy: `${data.apy.toFixed(2)}%`,
             risk: data.risk,
           };
-          
+
           if (amount !== undefined && duration !== undefined) {
             const projectedEarnings = calculateProjectedEarnings(amount, data.apy, duration);
             result.projectedEarnings = formatUSD(projectedEarnings);
             result.totalValue = formatUSD(amount + projectedEarnings);
           }
-          
+
           return result;
         });
-        
+
         return {
           asset: assetName,
           protocols: topYields,
           count: topYields.length,
         };
       });
-      
+
       return {
         comparisons: assetComparisons,
         investmentDetails: amount !== undefined ? {
@@ -347,21 +452,21 @@ export const getYieldHistoryTool = createTool({
     try {
       // Fetch historical data for the pool
       const data = await fetchPoolHistoricalData(poolId);
-      
+
       // Process the data
       const filteredData = extractTimeSeriesData(data.data, days);
-      
+
       // Extract series data
       const apyValues = filteredData.map(point => point.apy);
       const tvlValues = filteredData.map(point => point.tvlUsd);
-      
+
       // Calculate statistics
       const apyStats = calculateApyStats(apyValues);
       const tvlStats = calculateTvlStats(tvlValues);
-      
+
       // Get most recent data point
       const latestDataPoint = filteredData[filteredData.length - 1];
-      
+
       // Format the timeline data
       const timelineData = filteredData.map(point => ({
         date: new Date(point.timestamp).toISOString().split('T')[0],
@@ -370,7 +475,7 @@ export const getYieldHistoryTool = createTool({
         apyBase: point.apyBase ? `${point.apyBase.toFixed(2)}%` : 'N/A',
         apyReward: point.apyReward ? `${point.apyReward.toFixed(2)}%` : 'N/A',
       }));
-      
+
       return {
         poolId,
         period: `${days} days`,
@@ -429,36 +534,36 @@ export const compareYieldHistoryTool = createTool({
         const data = await fetchPoolHistoricalData(poolId);
         return { poolId, data };
       });
-      
+
       // Wait for all API responses
       const poolResponses = await Promise.all(poolDataPromises);
-      
+
       // Process each pool's data
       // @ts-ignore - Type compatibility is ensured at runtime
       const poolResults: PoolComparisonResult[] = poolResponses.map(({ poolId, data }) => {
         // Extract and process time series data
         const filteredData = extractTimeSeriesData(data.data, days);
-        
+
         // Get data points
         const latestDataPoint = filteredData[filteredData.length - 1];
         const firstDataPoint = filteredData[0];
-        
+
         // Extract series data
         const apyValues = filteredData.map(point => point.apy);
         const tvlValues = filteredData.map(point => point.tvlUsd);
-        
+
         // Calculate APY change
-        const apyChange30d = firstDataPoint && latestDataPoint 
-          ? latestDataPoint.apy - firstDataPoint.apy 
+        const apyChange30d = firstDataPoint && latestDataPoint
+          ? latestDataPoint.apy - firstDataPoint.apy
           : undefined;
-        
+
         // Calculate statistics
         const avgApy = apyValues.reduce((sum, apy) => sum + apy, 0) / apyValues.length;
         const apyVolatility = parseFloat(calculateApyStats(apyValues).volatility.replace('%', ''));
-        
+
         // Calculate stability score
         const stabilityScore = calculateStabilityScore(avgApy, apyVolatility);
-        
+
         return {
           poolId,
           project: '', // Will be filled later
@@ -478,10 +583,10 @@ export const compareYieldHistoryTool = createTool({
           }
         };
       });
-      
+
       // Fetch additional pool metadata
       const poolsData = await fetchDefiLlamaPools();
-      
+
       // Add metadata to each pool result
       for (const result of poolResults) {
         const poolMetadata = poolsData.data.find(pool => pool.pool === result.poolId);
@@ -491,28 +596,28 @@ export const compareYieldHistoryTool = createTool({
           result.chain = poolMetadata.chain;
         }
       }
-      
+
       // Add performance rankings
       // Sort by APY (highest first)
-      const apySorted = [...poolResults].sort((a, b) => 
+      const apySorted = [...poolResults].sort((a, b) =>
         parseFloat(b.statistics.apy.average) - parseFloat(a.statistics.apy.average)
       );
-      
+
       // Assign APY rank
       apySorted.forEach((result, index) => {
         result.performance.apyRank = index + 1;
       });
-      
+
       // Sort by volatility (lowest first)
-      const volatilitySorted = [...poolResults].sort((a, b) => 
+      const volatilitySorted = [...poolResults].sort((a, b) =>
         parseFloat(a.statistics.apy.volatility) - parseFloat(b.statistics.apy.volatility)
       );
-      
+
       // Assign volatility rank
       volatilitySorted.forEach((result, index) => {
         result.performance.volatilityRank = index + 1;
       });
-      
+
       // Sort results based on user preference
       let sortedResults = [...poolResults];
       switch (sortBy) {
@@ -523,23 +628,23 @@ export const compareYieldHistoryTool = createTool({
           sortedResults = volatilitySorted;
           break;
         case 'stability':
-          sortedResults.sort((a, b) => 
+          sortedResults.sort((a, b) =>
             (b.performance.stabilityScore || 0) - (a.performance.stabilityScore || 0)
           );
           break;
         case 'tvl':
-          sortedResults.sort((a, b) => 
-            parseFloat(b.statistics.tvl.average.replace(/[^\d.-]/g, '')) - 
+          sortedResults.sort((a, b) =>
+            parseFloat(b.statistics.tvl.average.replace(/[^\d.-]/g, '')) -
             parseFloat(a.statistics.tvl.average.replace(/[^\d.-]/g, ''))
           );
           break;
       }
-      
+
       // Create stability sorted list for "best stability" recommendation
-      const stabilitySorted = [...poolResults].sort((a, b) => 
+      const stabilitySorted = [...poolResults].sort((a, b) =>
         (b.performance.stabilityScore || 0) - (a.performance.stabilityScore || 0)
       );
-      
+
       return {
         count: poolResults.length,
         period: `${days} days`,

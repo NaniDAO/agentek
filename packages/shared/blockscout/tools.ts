@@ -531,27 +531,6 @@ export const getStats = createTool({
 });
 
 /**
- * Get market chart data.
- * Returns native gas token market data chart.
- * Endpoint: GET /stats/charts/market
- */
-export const getMarketChart = createTool({
-  name: "getMarketChart",
-  description: "Retrieve native gas token market data chart.",
-  supportedChains: supportedChains,
-  parameters: z.object({
-    chain: chainSchema,
-  }),
-  execute: async (_, args) => {
-    const { chain } = args;
-    return await fetchFromBlockscoutV2(
-      chain as SupportedChain,
-      "/stats/charts/market",
-    );
-  },
-});
-
-/**
  * Get transactions chart data.
  * Returns daily transaction statistics.
  * Endpoint: GET /stats/charts/transactions

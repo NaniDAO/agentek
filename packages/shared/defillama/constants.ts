@@ -104,6 +104,7 @@ export interface PoolComparisonResult {
 export const PROTOCOL_API_ENDPOINTS = {
   DefiLlama: 'https://yields.llama.fi/pools',
   DefiLlamaChart: 'https://yields.llama.fi/chart',
+  DefiLlamaCoinsChart: 'https://coins.llama.fi/chart'
 };
 
 // Risk assessment configuration thresholds
