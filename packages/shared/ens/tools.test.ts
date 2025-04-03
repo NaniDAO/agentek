@@ -43,6 +43,15 @@ describe("ENS Tools", () => {
     });
   });
 
+  describe("resolveENSTool", () => {
+    it("should resolve third-party name service domains", async () => {
+      const address = await resolveENSTool.execute(mockClient, {
+        name: "hodl.hey.id",
+      });
+      expect(address).toEqual("0x91769843CEc84Adcf7A48DF9DBd9694A39f44b42");
+    });
+  });
+
   describe("lookupENSTool", () => {
     it("should lookup ENS address to name", async () => {
       const name = await lookupENSTool.execute(mockClient, {
