@@ -5,3 +5,6 @@
 *.map
 *.js
 *.d.ts
+
+# python
+myenv
