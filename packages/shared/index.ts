@@ -23,6 +23,7 @@ import { gasEstimatorTools } from "./gasestimator/index.js";
 import { defillamaTools } from "./defillama/index.js";
 import { acrossTools } from "./across/index.js";
 import { thinkTools } from "./think/index.js";
+import { btcRpcTools } from "./btc-rpc/index.js";
 
 const allTools = ({
   perplexityApiKey,
@@ -58,6 +59,7 @@ const allTools = ({
     ...gasEstimatorTools(),
     ...defillamaTools(),
     ...thinkTools(),
+    ...btcRpcTools()
   ];
 
   if (perplexityApiKey) {
