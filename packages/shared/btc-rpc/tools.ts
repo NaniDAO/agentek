@@ -17,6 +17,23 @@ export const getLatestBtcBlock = createTool({
   },
 });
 
+export const getBlockTxids = createTool({
+  name: "getBtcBlockTxids",
+  description: "Returns a list of transaction IDs in a block, given the block hash.",
+  parameters: z.object({
+    blockHash: z.string().describe("Block hash to fetch txids from"),
+  }),
+  execute: async (_client, args) => {
+    const res = await fetch(`https://blockstream.info/api/block/${args.blockHash}/txids`);
+    if (!res.ok) {
+      throw new Error("Failed to fetch txids from block.");
+    }
+    const txids = await res.json();
+    return { txids };
+  },
+});
+
+
 export const getBtcTxDetails = createTool({
   name: "getBtcTxDetails",
   description: "Fetches details for a given Bitcoin transaction ID (txid).",
