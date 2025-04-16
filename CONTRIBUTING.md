@@ -357,8 +357,8 @@ export const createMatchSwapTool = ({
 
 ```typescript
 // src/shared/myNewTool/index.ts
-import { BaseTool, createToolCollection } from "../client";
-import { myNewTool } from "./tools";
+import { BaseTool, createToolCollection } from "../client.js";
+import { myNewTool } from "./tools.js";
 
 export function myNewToolTools(): BaseTool[] {
   return createToolCollection([myNewTool]);
@@ -376,7 +376,7 @@ export function myNewToolTools({ apiKey }: { apiKey: string }): BaseTool[] {
 3. Import and add your tools to the registry in `src/shared/index.ts`:
 
 ```typescript
-import { myNewToolTools } from "./myNewTool";
+import { myNewToolTools } from "./myNewTool.js";
 
 const allTools = ({
   existingApiKey,
