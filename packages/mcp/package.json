@@ -1,6 +1,6 @@
 {
   "name": "@agentek/mcp-server",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Model Context Protocol (MCP) server for Agentek",
   "license": "AGPL-3.0",
   "author": "NaniDAO",
@@ -32,7 +32,7 @@
     "debug": "pnpm run build && pnpx @modelcontextprotocol/inspector node ./dist/index.mjs"
   },
   "dependencies": {
-    "@agentek/tools": "0.1.10",
+    "@agentek/tools": "0.1.11",
     "@modelcontextprotocol/sdk": "1.7.0",
     "node-fetch": "^3.3.2",
     "viem": "2.22.8",
