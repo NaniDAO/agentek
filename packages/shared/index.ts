@@ -24,6 +24,8 @@ import { defillamaTools } from "./defillama/index.js";
 import { acrossTools } from "./across/index.js";
 import { thinkTools } from "./think/index.js";
 import { btcRpcTools } from "./btc-rpc/index.js";
+import { erc6909Tools } from "./erc6909/index.js";
+import { createImageGenTools } from './imagegen/index.js';
 
 const allTools = ({
   perplexityApiKey,
@@ -31,12 +33,16 @@ const allTools = ({
   tallyApiKey,
   coindeskApiKey,
   coinMarketCalApiKey,
+  fireworksApiKey,
+  pinataJWT,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
   tallyApiKey?: string;
   coindeskApiKey?: string;
   coinMarketCalApiKey?: string;
+  fireworksApiKey?: string;
+  pinataJWT?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -59,7 +65,8 @@ const allTools = ({
     ...gasEstimatorTools(),
     ...defillamaTools(),
     ...thinkTools(),
-    ...btcRpcTools()
+    ...btcRpcTools(),
+    ...erc6909Tools()
   ];
 
   if (perplexityApiKey) {
@@ -84,6 +91,13 @@ const allTools = ({
 
   if (coinMarketCalApiKey) {
     tools.push(...createCoinMarketCalTools({ coinMarketCalApiKey }));
+  }
+
+  if (fireworksApiKey && pinataJWT) {
+    tools.push(...createImageGenTools({
+      fireworksApiKey,
+      pinataJWT,
+    }))
   }
 
   return tools;
@@ -117,5 +131,8 @@ export {
   gasEstimatorTools,
   defillamaTools,
   acrossTools,
-  thinkTools
+  thinkTools,
+  btcRpcTools,
+  erc6909Tools,
+  createImageGenTools
 };
