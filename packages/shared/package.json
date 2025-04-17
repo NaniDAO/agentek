@@ -1,6 +1,6 @@
 {
   "name": "@agentek/tools",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "Blockchain tools for AI agents",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -36,14 +36,14 @@
     "test": "vitest"
   },
   "dependencies": {
+    "cheerio": "^1.0.0",
     "viem": "2.22.8",
-    "zod": "^3.24.1",
-    "cheerio": "^1.0.0"
+    "zod": "^3.24.3"
   },
   "devDependencies": {
-    "@types/node": "^22.10.6",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.2"
+    "@types/node": "^22.14.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
   },
   "keywords": [
     "blockchain",

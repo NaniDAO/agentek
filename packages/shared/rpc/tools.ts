@@ -128,15 +128,10 @@ const getBlock = createTool({
   supportedChains,
   parameters: z.object({
     blockNumber: z.number(),
-    blockHash: z.string(),
     chainId: z.number(),
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
-    if (args.blockHash) {
-      const block = await publicClient.getBlock({ blockHash: args.blockHash as Hex });
-      return clean(block);
-    }
 
     if (args.blockNumber) {
       const block = await publicClient.getBlock({
