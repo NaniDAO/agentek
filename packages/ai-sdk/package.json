@@ -1,6 +1,6 @@
 {
   "name": "@agentek/ai-sdk",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "AI SDK integration for Agentek tools",
   "type": "module",
   "main": "./dist/index.js",
@@ -65,7 +65,7 @@
     "zod": "^3.24.1"
   },
   "peerDependencies": {
-    "@agentek/tools": "^0.1.11"
+    "@agentek/tools": "^0.1.12"
   },
   "devDependencies": {
     "@types/node": "^22.10.6",

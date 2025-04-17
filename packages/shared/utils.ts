@@ -13,9 +13,15 @@ export const clean = (obj: any): any => {
   if (typeof obj === "bigint") {
     return obj.toString();
   }
+
   if (Array.isArray(obj)) {
     return obj.map(clean);
   }
+
+  if (typeof obj === "string") {
+    return obj.trim();
+  }
+
   if (obj && typeof obj === "object") {
     const newObj: any = {};
     for (const key in obj) {
@@ -23,5 +29,6 @@ export const clean = (obj: any): any => {
     }
     return newObj;
   }
+
   return obj;
 };

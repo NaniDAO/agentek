@@ -37,7 +37,7 @@ const getBalance = createTool({
       const balance = await publicClient.getBalance({
         address: args.address as Address,
       });
-      return args.formatEth ? formatEther(balance) : balance.toString();
+      return clean(args.formatEth ? formatEther(balance) : balance.toString());
     }
 
     const results = await Promise.all(
@@ -46,13 +46,13 @@ const getBalance = createTool({
         const balance = await publicClient.getBalance({
           address: args.address as Address,
         });
-        return {
+        return clean({
           chainId: chain.id,
           balance: args.formatEth ? formatEther(balance) : balance.toString(),
-        };
+        });
       }),
     );
-    return results;
+    return clean(results);
   },
 });
 
@@ -67,7 +67,8 @@ const getCode = createTool({
   execute: async (client, args) => {
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
-      return publicClient.getCode({ address: args.address as Address });
+      const code = await publicClient.getCode({ address: args.address as Address });
+      return clean(code);
     }
 
     const results = await Promise.all(
@@ -76,13 +77,13 @@ const getCode = createTool({
         const code = await publicClient.getCode({
           address: args.address as Address,
         });
-        return {
+        return clean({
           chainId: chain.id,
           code,
-        };
+        });
       }),
     );
-    return results;
+    return clean(results);
   },
 });
 
@@ -97,9 +98,10 @@ const getTransactionCount = createTool({
   execute: async (client, args) => {
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
-      return publicClient.getTransactionCount({
+      const count = await publicClient.getTransactionCount({
         address: args.address as Address,
       });
+      return clean(count);
     }
 
     const results = await Promise.all(
@@ -108,13 +110,14 @@ const getTransactionCount = createTool({
         const count = await publicClient.getTransactionCount({
           address: args.address as Address,
         });
-        return {
+        return clean({
           chainId: chain.id,
           count,
-        };
+        });
       }),
     );
-    return results;
+
+    return clean(results);
   },
 });
 
@@ -124,23 +127,26 @@ const getBlock = createTool({
   description: "Get information about a block",
   supportedChains,
   parameters: z.object({
-    blockNumber: z.number().optional(),
-    blockHash: z.string().optional(),
+    blockNumber: z.number(),
+    blockHash: z.string(),
     chainId: z.number(),
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
     if (args.blockHash) {
-      return publicClient.getBlock({ blockHash: args.blockHash as Hex });
+      const block = await publicClient.getBlock({ blockHash: args.blockHash as Hex });
+      return clean(block);
     }
 
     if (args.blockNumber) {
-      return publicClient.getBlock({
+      const block = await publicClient.getBlock({
         blockNumber: BigInt(args.blockNumber),
       });
+      return clean(block);
     }
 
-    return publicClient.getBlock();
+    const block = await publicClient.getBlock();
+    return clean(block);
   },
 });
 
@@ -156,24 +162,24 @@ const getBlockNumber = createTool({
       const publicClient = client.getPublicClient(args.chainId);
       const blockNumber = await publicClient.getBlockNumber();
 
-      return {
+      return clean({
         chainId: args.chainId,
         blockNumber: blockNumber.toString(),
-      };
+      });
     }
 
     const results = await Promise.all(
       client.filterSupportedChains(supportedChains).map(async (chain) => {
         const publicClient = client.getPublicClient(chain.id);
         const blockNumber = await publicClient.getBlockNumber();
-        return {
+        return clean({
           chainId: chain.id,
           blockNumber: blockNumber.toString(),
-        };
+        });
       }),
     );
 
-    return results;
+    return clean(results);
   },
 });
 
@@ -193,28 +199,28 @@ const getGasPrice = createTool({
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
       const gasPrice = await publicClient.getGasPrice();
-      return {
+      return clean({
         chainId: args.chainId,
         gasPrice: args.formatGwei
           ? formatUnits(gasPrice, 9)
           : gasPrice.toString(),
-      };
+      });
     }
 
     const results = await Promise.all(
       chains.map(async (chain) => {
         const publicClient = client.getPublicClient(chain.id);
         const gasPrice = await publicClient.getGasPrice();
-        return {
+        return clean({
           chainId: chain.id,
           gasPrice: args.formatGwei
             ? formatUnits(gasPrice, 9)
             : gasPrice.toString(),
-        };
+        });
       }),
     );
 
-    return results;
+    return clean(results);
   },
 });
 
@@ -232,17 +238,17 @@ const estimateGas = createTool({
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
       const from = await client.getAddress();
-      const gas = publicClient.estimateGas({
+      const gas = await publicClient.estimateGas({
         account: from,
         to: args.to,
         value: args.value ? parseEther(args.value) : undefined,
         data: args.data as `0x${string}` | undefined,
       });
 
-      return {
+      return clean({
         chainId: args.chainId,
         gas: gas.toString(),
-      };
+      });
     }
 
     const from = await client.getAddress();
@@ -255,14 +261,14 @@ const estimateGas = createTool({
           value: args.value ? parseEther(args.value) : undefined,
           data: args.data as `0x${string}` | undefined,
         });
-        return {
+        return clean({
           chainId: chain.id,
           gas: gas.toString(),
-        };
+        });
       }),
     );
 
-    return results;
+    return clean(results);
   },
 });
 
@@ -286,10 +292,11 @@ const getFeeHistory = createTool({
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
-    return publicClient.getFeeHistory({
+    const history = await publicClient.getFeeHistory({
       blockCount: args.blockCount,
       rewardPercentiles: args.rewardPercentiles || [],
     });
+    return clean(history);
   },
 });
 
@@ -303,7 +310,7 @@ const getTransaction = createTool({
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
-    const tx = publicClient.getTransaction({
+    const tx = await publicClient.getTransaction({
       hash: args.hash as Hex,
     });
 

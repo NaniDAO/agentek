@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTool } from "../client.js";
 import type { AgentekClient } from "../client.js";
+import { clean } from "../utils.js";
 
 const getFearAndGreedIndexToolParams = z.object({});
 
@@ -29,7 +30,8 @@ export const fearGreedIndexTool = createTool({
       ) {
         throw new Error("Invalid response format from Fear and Greed API.");
       }
-      return data.data[0];
+
+      return clean(data.data[0]);
     } catch (error: any) {
       throw new Error(`Failed to fetch Fear and Greed Index: ${error.message}`);
     }
