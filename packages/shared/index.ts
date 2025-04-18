@@ -26,6 +26,7 @@ import { thinkTools } from "./think/index.js";
 import { btcRpcTools } from "./btc-rpc/index.js";
 import { erc6909Tools } from "./erc6909/index.js";
 import { createImageGenTools } from './imagegen/index.js';
+import { createOpenRouterTools } from "./openrouter/index.js";
 
 const allTools = ({
   perplexityApiKey,
@@ -35,6 +36,7 @@ const allTools = ({
   coinMarketCalApiKey,
   fireworksApiKey,
   pinataJWT,
+  openrouterApiKey,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
@@ -43,6 +45,7 @@ const allTools = ({
   coinMarketCalApiKey?: string;
   fireworksApiKey?: string;
   pinataJWT?: string;
+  openrouterApiKey?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -100,6 +103,12 @@ const allTools = ({
     }))
   }
 
+  if (openrouterApiKey) {
+    tools.push(...createOpenRouterTools({
+      openrouterApiKey,
+    }));
+  }
+
   return tools;
 };
 
@@ -134,5 +143,6 @@ export {
   thinkTools,
   btcRpcTools,
   erc6909Tools,
-  createImageGenTools
+  createImageGenTools,
+  createOpenRouterTools
 };
