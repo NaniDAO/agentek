@@ -45,12 +45,12 @@ Intent tools handle blockchain transactions and must follow this pattern:
 ```typescript
 interface Intent {
   intent: string;        // Human readable description of the operation
-  ops: Operation[];      // Array of operations to execute
+  ops: Op[];      // Array of operations to execute
   chain: number;         // Chain ID
   hash?: string;         // Transaction hash (only when executed)
 }
 
-interface Operation {
+interface Op {
   target: Address;       // Contract address to interact with
   value: string;        // Amount of native token to send
   data: Hex;           // Encoded function call data
@@ -62,7 +62,7 @@ Example Intent Tool Pattern:
 execute: async (client: AgentekClient, args) => {
   // ... preparation logic ...
 
-  const ops: Operation[] = [
+  const ops: Op[] = [
     // Build your operations
   ];
 
