@@ -1,4 +1,4 @@
-import { Address, Hex } from "viem";
+import { Address, Hex, parseEther } from "viem";
 import { mainnet, polygon, base } from "viem/chains";
 import { z } from "zod";
 import {
@@ -7,6 +7,7 @@ import {
   Op,
   createTool,
 } from "../client.js";
+import { coinbasePaymentAbi } from "./constants.js";
 
 /**
  * Utility: build a human‑readable description for the top‑up intent
@@ -15,115 +16,133 @@ function describeTopUp(amount: number, chainId: number) {
   return `Purchase $${amount.toFixed(2)} of OpenRouter credits on chain ${chainId}`;
 }
 
-/**
- * intentTopUp
- * --------------------
- * Intent‑style tool that creates a Coinbase on‑chain payment intent via
- * OpenRouter, then (optionally) executes it if the caller already has a
- * wallet client wired up.
- */
-export const createIntentTopUpTool = (
-  openrouterApiKey: string,
-): BaseTool =>
+export const createIntentTopUpTool = (openrouterApiKey: string): BaseTool =>
   createTool({
     name: "intentTopUp",
     description:
-      "Create (and optionally execute) an on‑chain transaction that purchases additional OpenRouter credits using Coinbase's on‑chain payment protocol.",
-    // Ethereum, Polygon, Base mainnets only (per OpenRouter docs)
+      "Create & simulate a Coinbase on‑chain payment intent to top‑up OpenRouter credits. Executes automatically if a wallet client is connected.",
     supportedChains: [mainnet, polygon, base],
-    parameters: z
-      .object({
-        /** Credit amount in USD */
-        amount: z.number().positive(),
-        /** Chain ID to send the payment on */
-        chainId: z.union([
-          z.literal(1),
-          z.literal(137),
-          z.literal(8453),
-        ]),
-      })
-      .describe("Arguments for intentTopUp"),
+    parameters: z.object({
+      amount: z.number().positive().describe("Credit amount in USD"),
+      chainId: z.union([z.literal(1), z.literal(137), z.literal(8453)]),
+      sender: z
+        .string()
+        .regex(/^0x[a-fA-F0-9]{40}$/)
+        .optional()
+        .describe("Sender EOA (optional if wallet connected)"),
+      poolFeesTier: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Uniswap pool fee tier; default 500"),
+    }),
 
     execute: async (client: AgentekClient, args) => {
-      const { amount, chainId } = args;
+      const { amount, chainId, poolFeesTier = 500 } = args;
+      const walletClient = client.getWalletClient(chainId);
+      const sender = args.sender ?? (walletClient && (await client.getAddress()));
+      if (!sender)
+        throw new Error("Sender address required when no wallet client is connected.");
 
-      // Resolve user address (may throw if wallet not connected)
-      const userAddress = await client.getAddress();
-
-      // 1️⃣  Create the charge with OpenRouter
-      const chargeResp = await fetch(
-        "https://openrouter.ai/api/v1/credits/coinbase",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${openrouterApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            amount,
-            sender: userAddress,
-            chain_id: chainId,
-          }),
+      /* 1️⃣  Request charge from OpenRouter */
+      const chargeRes = await fetch("https://openrouter.ai/api/v1/credits/coinbase", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openrouterApiKey}`,
+          "Content-Type": "application/json",
         },
-      );
-
-      if (!chargeResp.ok) {
-        throw new Error(
-          `OpenRouter /credits/coinbase request failed: ${chargeResp.status} ${chargeResp.statusText}`,
-        );
-      }
-
-      const chargeJson = (await chargeResp.json()) as {
+        body: JSON.stringify({ amount, sender, chain_id: chainId }),
+      });
+      if (!chargeRes.ok)
+        throw new Error(`OpenRouter /credits/coinbase failed: ${chargeRes.status}`);
+      type Charge = {
         data: {
-          id: string;
           web3_data: {
             transfer_intent: {
-              metadata: {
-                chain_id: number;
-                contract_address: string;
+              metadata: { chain_id: number; contract_address: string };
+              call_data: {
+                recipient_amount: string;
+                deadline: string;
+                recipient: string;
+                recipient_currency: string;
+                refund_destination: string;
+                fee_amount: string;
+                id: string;
+                operator: string;
+                signature: string;
+                prefix: string;
               };
-              call_data: Hex;
             };
           };
         };
       };
+      const { data } = (await chargeRes.json()) as Charge;
+      const { contract_address } = data.web3_data.transfer_intent.metadata;
+      const cd = data.web3_data.transfer_intent.call_data;
 
-      const {
-        transfer_intent: {
-          metadata: { contract_address },
-          call_data,
-        },
-      } = chargeJson.data.web3_data;
+      const intentStruct = {
+        recipientAmount: BigInt(cd.recipient_amount),
+        deadline: BigInt(Math.floor(new Date(cd.deadline).getTime() / 1000)),
+        recipient: cd.recipient as Address,
+        recipientCurrency: cd.recipient_currency as Address,
+        refundDestination: cd.refund_destination as Address,
+        feeAmount: BigInt(cd.fee_amount),
+        id: cd.id as Hex,
+        operator: cd.operator as Address,
+        signature: cd.signature as Hex,
+        prefix: cd.prefix as Hex,
+      } as const;
 
-      // 2️⃣  Build the single Operation required to fulfil the charge
-      const ops: Op[] = [
-        {
-          target: contract_address as Address,
-          value: "0", // value is encoded within call_data if needed
-          data: call_data as Hex,
-        },
-      ];
+      const valueWei = parseEther("0.004");
+      const publicClient = client.getPublicClient(chainId);
+
+      /* 2️⃣  Simulation */
+      let simulationResult: {
+        success: boolean;
+        gasUsed?: bigint;
+        error?: string;
+        request?: any;
+      };
+      try {
+        const { request, gas } = await publicClient.simulateContract({
+          abi: coinbasePaymentAbi,
+          account: sender as Address,
+          address: contract_address as Address,
+          functionName: "swapAndTransferUniswapV3Native",
+          args: [intentStruct, poolFeesTier],
+          value: valueWei,
+        });
+        simulationResult = { success: true, gasUsed: gas, request };
+      } catch (err: any) {
+        simulationResult = { success: false, error: err?.message ?? "Simulation failed" };
+      }
 
       const intentDescription = describeTopUp(amount, chainId);
 
-      // If no wallet client available, return unexecuted intent
-      const walletClient = client.getWalletClient(chainId);
-      if (!walletClient) {
+      /* If simulation failed, just return the intent & error */
+      if (!simulationResult.success) {
+        return { intent: intentDescription, chain: chainId, simulation: simulationResult };
+      }
+
+      /* 3️⃣  Broadcast if wallet available */
+      if (walletClient) {
+        const hash = await walletClient.writeContract(simulationResult.request);
         return {
           intent: intentDescription,
-          ops,
           chain: chainId,
+          hash,
         };
       }
 
-      // 3️⃣  Execute the operation(s)
-      const hash = await client.executeOps(ops, chainId);
-
-      return {
-        intent: intentDescription,
-        ops,
-        chain: chainId,
-        hash,
-      };
+      /* Wallet not connected => user executes later */
+      const ops: Op[] = [
+        {
+          target: contract_address as Address,
+          value: valueWei.toString(),
+          data: simulationResult.request.data as Hex,
+        },
+      ];
+      return { intent: intentDescription, chain: chainId, ops };
     },
   });

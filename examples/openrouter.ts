@@ -63,7 +63,8 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content: "What's your openrouter balance?",
+      content:
+        "Check your openrouter balance and fund your account with 3 USD on Base",
     },
   ] as CoreMessage[];
 
@@ -74,7 +75,9 @@ async function main() {
 
   const response = await generateText({
     model: openrouter("anthropic/claude-3.5-sonnet"),
-    system: `You are an intelligent crypto analytics agent that employs Step-by-Step Reasoning.`,
+    system: `You are an intelligent crypto analytics agent that employs Step-by-Step Reasoning.
+
+    ADDRESS: ${account.address}`,
     messages,
     maxSteps: 5,
     tools: tools as Record<string, CoreTool<any, any>>,
