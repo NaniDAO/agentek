@@ -53,7 +53,7 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("openai/gpt-4o-mini"),
+    model: openrouter("openai/o4-mini"),
     system: "",
     messages,
     maxSteps: 5,

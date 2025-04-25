@@ -74,7 +74,7 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("anthropic/claude-3.5-sonnet"),
+    model: openrouter("openai/o4-mini"),
     system: "RISK TOLERANCE: HIGH",
     messages,
     maxSteps: 5,
