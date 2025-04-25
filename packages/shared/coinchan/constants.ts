@@ -176,4 +176,4 @@ export const CoinchanAbi = [
   },
 ] as const;
 export const CoinchanAddress =
-  "0x000000000000884864c66addde9748779fac8460" as Address;
+  "0x00000000001018D31a8DAFC886363CfB0bF78768" as Address;
