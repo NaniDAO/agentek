@@ -20,7 +20,7 @@ export interface BaseTool {
   supportedChains?: Chain[];
 }
 
-interface Op {
+export interface Op {
   target: Address;
   value: string; // wei encoded
   data: Hex;

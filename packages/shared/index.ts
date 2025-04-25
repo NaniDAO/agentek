@@ -26,6 +26,7 @@ import { thinkTools } from "./think/index.js";
 import { btcRpcTools } from "./btc-rpc/index.js";
 import { erc6909Tools } from "./erc6909/index.js";
 import { createImageGenTools } from './imagegen/index.js';
+import { coinchanTools } from "./coinchan/index.js";
 
 const allTools = ({
   perplexityApiKey,
@@ -66,7 +67,8 @@ const allTools = ({
     ...defillamaTools(),
     ...thinkTools(),
     ...btcRpcTools(),
-    ...erc6909Tools()
+    ...erc6909Tools(),
+    ...coinchanTools(),
   ];
 
   if (perplexityApiKey) {
@@ -134,5 +136,6 @@ export {
   thinkTools,
   btcRpcTools,
   erc6909Tools,
-  createImageGenTools
+  createImageGenTools,
+  coinchanTools
 };
