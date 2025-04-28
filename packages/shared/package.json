@@ -1,6 +1,6 @@
 {
   "name": "@agentek/tools",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Blockchain tools for AI agents",
   "type": "module",
   "main": "./dist/cjs/index.js",
