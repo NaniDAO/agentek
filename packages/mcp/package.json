@@ -1,6 +1,6 @@
 {
   "name": "@agentek/mcp-server",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "Model Context Protocol (MCP) server for Agentek",
   "license": "AGPL-3.0",
   "author": "NaniDAO",
@@ -32,12 +32,20 @@
     "debug": "pnpm run build && pnpx @modelcontextprotocol/inspector node ./dist/index.mjs"
   },
   "dependencies": {
-    "@agentek/tools": "0.1.14",
+    "@agentek/tools": "0.1.15",
     "@modelcontextprotocol/sdk": "1.7.0",
     "node-fetch": "^3.3.2",
-    "viem": "2.22.8",
-    "zod": "^3.24.3",
     "zod-to-json-schema": "^3.24.5"
+  },
+  "peerDependencies": {
+    "viem": "^2.30.6",
+    "zod": "^3.25.34"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "shx": "^0.3.4",
+    "typescript": "^5.8.3",
+    "vitest": "^1.6.1"
   },
   "keywords": [
     "ai",
@@ -46,12 +54,6 @@
     "mcp",
     "model-context-protocol"
   ],
-  "devDependencies": {
-    "@types/node": "^22.14.1",
-    "shx": "^0.3.4",
-    "typescript": "^5.8.3",
-    "vitest": "^1.6.1"
-  },
   "engines": {
     "node": ">=18.17.0"
   }

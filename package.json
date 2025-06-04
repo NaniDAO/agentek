@@ -30,12 +30,12 @@
   },
   "homepage": "https://nani.ooo",
   "devDependencies": {
-    "@openrouter/ai-sdk-provider": "^0.4.5",
+    "@openrouter/ai-sdk-provider": "^0.7.0",
     "@types/node": "^22.14.1",
     "dotenv": "^16.5.0",
     "tsup": "^8.4.0",
     "typescript": "^5.8.3",
-    "viem": "2.22.8",
+    "viem": "2.30.6",
     "vitest": "^3.1.1"
   },
   "engines": {

@@ -75,15 +75,18 @@ export class AgentekClient {
       this.publicClients.set(chain.id, publicClient as PublicClient<Transport, Chain>);
 
       // Create wallet client separately if account is provided as an object
+      // client.ts (inside constructor)
       if (typeof config.accountOrAddress === "object") {
-        this.walletClients.set(
-          chain.id,
-          createWalletClient({
-            transport,
-            chain,
-            account: config.accountOrAddress,
-          }),
-        );
+        const raw = createWalletClient({
+          transport,
+          chain,
+          account: config.accountOrAddress,
+        });
+
+        // Force‐cast so TS doesn’t expand the full generic return type.
+        const walletClient = raw as unknown as WalletClient<Transport, Chain, Account>;
+
+        this.walletClients.set(chain.id, walletClient);
       }
     });
 
