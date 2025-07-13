@@ -27,6 +27,7 @@ import { btcRpcTools } from "./btc-rpc/index.js";
 import { erc6909Tools } from "./erc6909/index.js";
 import { createImageGenTools } from './imagegen/index.js';
 import { coinchanTools } from "./coinchan/index.js";
+import { zammTools } from "./zamm/index.js";
 
 const allTools = ({
   perplexityApiKey,
@@ -69,6 +70,7 @@ const allTools = ({
     ...btcRpcTools(),
     ...erc6909Tools(),
     ...coinchanTools(),
+    ...zammTools(),
   ];
 
   if (perplexityApiKey) {
@@ -137,5 +139,6 @@ export {
   btcRpcTools,
   erc6909Tools,
   createImageGenTools,
-  coinchanTools
+  coinchanTools,
+  zammTools,
 };
