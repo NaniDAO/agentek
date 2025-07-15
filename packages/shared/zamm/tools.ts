@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { createTool } from "../client.js";
 import { ZAMM_API } from "./constants.js";
-import { mainnet } from "viem/chains";
 import { formatEther } from "viem";
 import { addressSchema } from "../utils.js";
 
@@ -56,7 +55,7 @@ export const getHolders = createTool({
       limit: args.limit.toString(),
       offset: args.offset.toString(),
     });
-    const res = await fetch(`/api/holders?${params}`);
+    const res = await fetch(ZAMM_API + `/api/holders?${params}`);
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Failed to fetch holders");
     return json.data;
@@ -78,10 +77,10 @@ export const getAccountPortfolio = createTool({
     const params = new URLSearchParams({
       address: args.address,
     });
-    const res = await fetch(`/api/portfolio?${params}`);
+    const res = await fetch(ZAMM_API + `/api/portfolio?${params}`);
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "Failed to fetch holders");
-    return json.data;
+    return json;
   },
 });
 
