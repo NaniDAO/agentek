@@ -3,13 +3,13 @@ import {
   createAgentekClient,
   AgentekClient,
 } from "@agentek/tools/client";
-import type { CoreTool } from "ai";
+import type { Tool } from "ai";
 import AgentekTool from "./tool.js";
 import { Account, Address, Chain, Transport } from "viem";
 
 class AgentekToolkit {
   private _agent: AgentekClient;
-  tools: { [key: string]: CoreTool };
+  tools: { [key: string]: Tool };
 
   constructor({
     accountOrAddress,
@@ -35,7 +35,7 @@ class AgentekToolkit {
     });
   }
 
-  getTools(): { [key: string]: CoreTool } {
+  getTools(): { [key: string]: Tool } {
     return this.tools;
   }
 }

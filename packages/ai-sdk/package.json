@@ -60,16 +60,16 @@
   },
   "homepage": "https://nani.ooo",
   "dependencies": {
-    "ai": "^4.3.16"
+    "ai": "^4.3.17"
   },
   "peerDependencies": {
     "@agentek/tools": "^0.1.18",
-    "viem": "^2.30.6",
-    "zod": "^3.25.34"
+    "viem": "^2.33.2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^22.14.1",
-    "typescript": "^5.8.3"
+    "@types/node": "^24.1.0",
+    "typescript": "^5.9.2"
   },
   "engines": {
     "node": ">=18.17.0"

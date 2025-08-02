@@ -38,14 +38,14 @@
     "zod-to-json-schema": "^3.24.5"
   },
   "peerDependencies": {
-    "viem": "^2.30.6",
-    "zod": "^3.25.34"
+    "viem": "^2.33.2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",
-    "shx": "^0.3.4",
-    "typescript": "^5.8.3",
-    "vitest": "^1.6.1"
+    "shx": "^0.4.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "keywords": [
     "ai",

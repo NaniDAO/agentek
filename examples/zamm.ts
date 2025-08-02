@@ -1,10 +1,10 @@
 import { Hex, http } from "viem";
 import { mainnet, sepolia } from "viem/chains";
-import { zammTools } from "../packages/shared/zamm";
-import AgentekToolkit from "../packages/ai-sdk/toolkit";
+import { zammTools } from "@agentek/tools";
+import { AgentekToolkit } from "@agentek/ai-sdk";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { CoreMessage, CoreTool, generateText } from "ai";
+import { CoreMessage, generateText } from "ai";
 
 async function main() {
   const openrouter = createOpenRouter({
