@@ -8,6 +8,8 @@ import {
   createWalletClient,
   Address,
   Hex,
+  SignableMessage,
+  TypedData
 } from "viem";
 import { z } from "zod";
 
@@ -26,19 +28,41 @@ export interface Op {
   data: Hex;
 }
 
+// EIP-191 Personal Sign operation
+export interface PersonalSign {
+  type: 'personal_sign';
+  message: SignableMessage;
+}
+
+// EIP-712 Typed Data Sign operation
+export interface TypedDataSign {
+  type: 'typed_data_sign';
+  domain: TypedData['domain'];
+  types: TypedData['types'];
+  primaryType: string;
+  message: TypedData['message'];
+}
+
+// Union type for all signing operations
+export type Sign = PersonalSign | TypedDataSign;
+
+// Extended operation that can be either a transaction or a signature
+export type Operation = Op | Sign;
+
 // RequestIntent - this structure matches what we consume on nani.ooo
 // You can extend it to include hash when saving if approved by user
 interface RequestIntent {
   intent: string;
-  ops: Op[];
+  ops: Operation[];
   chain: number;
 }
 
 interface CompletedIntent {
   intent: string;
-  ops: Op[];
+  ops: Operation[];
   chain: number;
-  hash: string;
+  hash?: string;
+  signatures?: string[];
 }
 
 export type Intent = RequestIntent | CompletedIntent;
@@ -49,6 +73,23 @@ export interface AgentekClientConfig {
   accountOrAddress: Account | Address;
   tools: BaseTool[];
 }
+
+// Type guards for runtime checking
+export const isTransactionOp = (op: Operation): op is Op => {
+  return 'target' in op && 'value' in op && 'data' in op;
+};
+
+export const isPersonalSign = (op: Operation): op is PersonalSign => {
+  return 'type' in op && op.type === 'personal_sign';
+};
+
+export const isTypedDataSign = (op: Operation): op is TypedDataSign => {
+  return 'type' in op && op.type === 'typed_data_sign';
+};
+
+export const isSignOperation = (op: Operation): op is Sign => {
+  return isPersonalSign(op) || isTypedDataSign(op);
+};
 
 export class AgentekClient {
   private publicClients: Map<number, PublicClient<Transport, Chain>>;
@@ -83,7 +124,7 @@ export class AgentekClient {
           account: config.accountOrAddress,
         });
 
-        // Force‐cast so TS doesn’t expand the full generic return type.
+        // Force‐cast so TS doesn't expand the full generic return type.
         const walletClient = raw as unknown as WalletClient<Transport, Chain, Account>;
 
         this.walletClients.set(chain.id, walletClient);
@@ -202,6 +243,66 @@ export class AgentekClient {
     }
 
     return hash;
+  }
+
+  public async executeSign(signs: Sign[], chainId: number): Promise<string[]> {
+    const walletClient = this.getWalletClient(chainId);
+
+    if (!walletClient) {
+      throw new Error(`No wallet client available for chain ${chainId}`);
+    }
+
+    const signatures: string[] = [];
+
+    for (const sign of signs) {
+      let signature: string;
+
+      if (isPersonalSign(sign)) {
+        // EIP-191 Personal Sign
+        // @ts-expect-error - viem type casting issues
+        signature = await walletClient.signMessage({
+          message: sign.message,
+        });
+      } else if (isTypedDataSign(sign)) {
+        // EIP-712 Typed Data Sign
+        // @ts-expect-error - viem type casting issues
+        signature = await walletClient.signTypedData({
+          domain: sign.domain,
+          types: sign.types,
+          primaryType: sign.primaryType,
+          message: sign.message,
+        });
+      } else {
+        throw new Error(`Unsupported sign operation type`);
+      }
+
+      signatures.push(signature);
+    }
+
+    return signatures;
+  }
+
+  // Execute mixed operations (both transactions and signatures)
+  public async executeOperations(operations: Operation[], chainId: number): Promise<{
+    hash?: string;
+    signatures?: string[];
+  }> {
+    const transactionOps = operations.filter(isTransactionOp);
+    const signOps = operations.filter(isSignOperation);
+
+    const results: { hash?: string; signatures?: string[] } = {};
+
+    // Execute transaction operations
+    if (transactionOps.length > 0) {
+      results.hash = await this.executeOps(transactionOps, chainId);
+    }
+
+    // Execute signing operations
+    if (signOps.length > 0) {
+      results.signatures = await this.executeSign(signOps, chainId);
+    }
+
+    return results;
   }
 
   public async execute(method: string, args: any): Promise<any> {
