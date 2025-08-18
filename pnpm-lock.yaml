@@ -39,8 +39,8 @@ importers:
   packages/ai-sdk:
     dependencies:
       '@agentek/tools':
-        specifier: ^0.1.18
-        version: 0.1.18(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)
+        specifier: ^0.1.19
+        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
       ai:
         specifier: ^4.3.17
         version: 4.3.19(react@19.1.1)(zod@3.25.76)
@@ -64,8 +64,8 @@ importers:
   packages/mcp:
     dependencies:
       '@agentek/tools':
-        specifier: 0.1.17
-        version: 0.1.17(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)
+        specifier: 0.1.19
+        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
       '@modelcontextprotocol/sdk':
         specifier: 1.7.0
         version: 1.7.0
@@ -128,19 +128,13 @@ packages:
   '@adraffy/ens-normalize@1.11.0':
     resolution: {integrity: sha512-/3DDPKHqqIqxUULp8yP4zODUY1i+2xvVWsv8A79xGWdCAG+8sb0hRh0Rk2QyOJUnnbyPUAZYcpBuRe3nS2OIUg==}
 
-  '@agentek/tools@0.1.17':
-    resolution: {integrity: sha512-sZULl5OKOm5GaAMSlBKxG3LLB6Nek+F9F0RuI0n5lO7XUlL9RQPdue5SqSdoa8WOEny1uljtRKi+bQiCe/rBWg==}
+  '@agentek/tools@0.1.19':
+    resolution: {integrity: sha512-VMA4rWrG6rGvhrEBdM67Ux/IXB7SIszHdc8nB1NIj0ReenGnACNGHGvWFZzubvdXZ+Qnj2NNoV6kNzFBqnAqmg==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
-      viem: ^2.30.6
-      zod: ^3.25.34
-
-  '@agentek/tools@0.1.18':
-    resolution: {integrity: sha512-d384cAGa5MWb2oppLIH+I8cObXcqL0PHLeIw1n8SlyYbG+0DAejDiketz1tG9/DvJwTwmKDvMTTUGwo3J9sGxQ==}
-    engines: {node: '>=18.17.0'}
-    peerDependencies:
-      viem: ^2.30.6
-      zod: ^3.25.34
+      viem: ^2.33.2
+      zod: ^3.25.76
+      zrouter-sdk: ^0.0.10
 
   '@ai-sdk/gateway@1.0.0':
     resolution: {integrity: sha512-VEm87DyRx1yIPywbTy8ntoyh4jEDv1rJ88m+2I7zOm08jJI5BhFtAWh0OF6YzZu1Vu4NxhOWO4ssGdsqydDQ3A==}
@@ -671,10 +665,6 @@ packages:
   cheerio-select@2.1.0:
     resolution: {integrity: sha512-9v9kG0LvzrlcungtnJtpGNxY+fzECQKhK4EGJX2vByejiMX84MFNQw4UxPJl3bFbTMw+Dfs37XaIkCwTZfLh4g==}
 
-  cheerio@1.0.0:
-    resolution: {integrity: sha512-quS9HgjQpdaXOvsZz82Oz7uxtXiy6UIsIQcpBj7HRw2M63Skasm9qlDocAM7jNuaxdhpPU7c4kJN+gA5MCu4ww==}
-    engines: {node: '>=18.17'}
-
   cheerio@1.1.2:
     resolution: {integrity: sha512-IkxPpb5rS/d1IiLbHMgfPuS0FgiWTtFIm/Nj+2woXDLTZ7fOT2eqzgYbdMlLweqlHbsZjxEChoVK+7iph7jyQg==}
     engines: {node: '>=20.18.1'}
@@ -809,9 +799,6 @@ packages:
   encodeurl@2.0.0:
     resolution: {integrity: sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg==}
     engines: {node: '>= 0.8'}
-
-  encoding-sniffer@0.2.0:
-    resolution: {integrity: sha512-ju7Wq1kg04I3HtiYIOrUrdfdDvkyO9s5XM8QAj/bN61Yo/Vb4vgJxy5vi4Yxk01gWHbrofpPtpxM8bKger9jhg==}
 
   encoding-sniffer@0.2.1:
     resolution: {integrity: sha512-5gvq20T6vfpekVtqrYQsSCFZ1wEg5+wW0/QaZMWkFr6BqD3NfKs0rLCx4rrVlSWJeZb5NBJgVLswK/w2MWU+Gw==}
@@ -986,9 +973,6 @@ packages:
 
   htmlparser2@10.0.0:
     resolution: {integrity: sha512-TwAZM+zE5Tq3lrEHvOlvwgj1XLWQCtaaibSN11Q+gGBAS7Y1uZSWwXXRe4iF6OXnaq1riyQAPFOBtYc77Mxq0g==}
-
-  htmlparser2@9.1.0:
-    resolution: {integrity: sha512-5zfg6mHUoaer/97TxnGpxmbR7zJtPwIYFMZ/H5ucTlPZhKvtum05yiPK3Mgai3a0DyVxv7qYqoweaEd2nrYQzQ==}
 
   http-errors@2.0.0:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
@@ -1565,10 +1549,6 @@ packages:
   undici-types@7.8.0:
     resolution: {integrity: sha512-9UJ2xGDvQ43tYyVMpuHlsgApydB8ZKfVYTsLDhXkFL/6gfkp+U8xTGdh8pMJv1SpZna0zxG1DwsKZsreLbXBxw==}
 
-  undici@6.21.2:
-    resolution: {integrity: sha512-uROZWze0R0itiAKVPsYhFov9LxrPMHLMEQFszeI2gCN6bnIIZ8twzBCJcN2LJrBBLfrP0t1FW0g+JmKVl8Vk1g==}
-    engines: {node: '>=18.17'}
-
   undici@7.13.0:
     resolution: {integrity: sha512-l+zSMssRqrzDcb3fjMkjjLGmuiiK2pMIcV++mJaAc9vhjSGpvM7h43QgP+OAMb1GImHmbPyG2tBXeuyG5iY4gA==}
     engines: {node: '>=20.18.1'}
@@ -1743,17 +1723,12 @@ snapshots:
 
   '@adraffy/ens-normalize@1.11.0': {}
 
-  '@agentek/tools@0.1.17(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)':
-    dependencies:
-      cheerio: 1.0.0
-      viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
-      zod: 3.25.76
-
-  '@agentek/tools@0.1.18(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)':
+  '@agentek/tools@0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))':
     dependencies:
       cheerio: 1.1.2
       viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
       zod: 3.25.76
+      zrouter-sdk: 0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
 
   '@ai-sdk/gateway@1.0.0(zod@4.0.14)':
     dependencies:
@@ -2215,20 +2190,6 @@ snapshots:
       domhandler: 5.0.3
       domutils: 3.2.2
 
-  cheerio@1.0.0:
-    dependencies:
-      cheerio-select: 2.1.0
-      dom-serializer: 2.0.0
-      domhandler: 5.0.3
-      domutils: 3.2.2
-      encoding-sniffer: 0.2.0
-      htmlparser2: 9.1.0
-      parse5: 7.2.1
-      parse5-htmlparser2-tree-adapter: 7.1.0
-      parse5-parser-stream: 7.1.2
-      undici: 6.21.2
-      whatwg-mimetype: 4.0.0
-
   cheerio@1.1.2:
     dependencies:
       cheerio-select: 2.1.0
@@ -2351,11 +2312,6 @@ snapshots:
   emoji-regex@9.2.2: {}
 
   encodeurl@2.0.0: {}
-
-  encoding-sniffer@0.2.0:
-    dependencies:
-      iconv-lite: 0.6.3
-      whatwg-encoding: 3.1.1
 
   encoding-sniffer@0.2.1:
     dependencies:
@@ -2587,13 +2543,6 @@ snapshots:
       domhandler: 5.0.3
       domutils: 3.2.2
       entities: 6.0.1
-
-  htmlparser2@9.1.0:
-    dependencies:
-      domelementtype: 2.3.0
-      domhandler: 5.0.3
-      domutils: 3.2.2
-      entities: 4.5.0
 
   http-errors@2.0.0:
     dependencies:
@@ -3166,8 +3115,6 @@ snapshots:
   undici-types@6.21.0: {}
 
   undici-types@7.8.0: {}
-
-  undici@6.21.2: {}
 
   undici@7.13.0: {}
 
