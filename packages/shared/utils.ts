@@ -2,12 +2,17 @@ import { Address } from "viem";
 import { z } from "zod";
 import { isAddress } from "viem/utils";
 
-export const addressSchema = z
-  .string()
-  .refine((val) => isAddress(val), {
-    message: "Invalid Ethereum address",
-  })
-  .transform((val) => val as Address);
+export const addressSchema = z.string().transform((val, ctx) => {
+  if (!isAddress(val)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Invalid Ethereum address",
+    });
+    // stop here
+    return z.NEVER;
+  }
+  return val as Address; // output is Address
+});
 
 export const clean = (obj: any): any => {
   if (typeof obj === "bigint") {

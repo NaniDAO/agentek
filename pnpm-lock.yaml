@@ -50,6 +50,9 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+      zrouter-sdk:
+        specifier: ^0.0.10
+        version: 0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^24.1.0
@@ -78,6 +81,9 @@ importers:
       zod-to-json-schema:
         specifier: ^3.24.5
         version: 3.24.5(zod@3.25.76)
+      zrouter-sdk:
+        specifier: ^0.0.10
+        version: 0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^22.14.1
@@ -103,6 +109,9 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
+      zrouter-sdk:
+        specifier: ^0.0.10
+        version: 0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^22.14.1
@@ -1723,6 +1732,12 @@ packages:
 
   zod@4.0.14:
     resolution: {integrity: sha512-nGFJTnJN6cM2v9kXL+SOBq3AtjQby3Mv5ySGFof5UGRHrRioSJ5iG680cYNjE/yWk671nROcpPj4hAS8nyLhSw==}
+
+  zrouter-sdk@0.0.10:
+    resolution: {integrity: sha512-90qUZZCr1nMW/8jWOC9q2XVNbbZb/ey/qOZlaFkQoMXARb8Na/BpxuTyTdBynygIf7uIakQx6FoxQJH+d9nWFQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      viem: '>=2.0.0'
 
 snapshots:
 
@@ -3402,3 +3417,7 @@ snapshots:
   zod@3.25.76: {}
 
   zod@4.0.14: {}
+
+  zrouter-sdk@0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)):
+    dependencies:
+      viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)

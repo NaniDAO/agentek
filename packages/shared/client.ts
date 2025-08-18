@@ -9,7 +9,8 @@ import {
   Address,
   Hex,
   SignableMessage,
-  TypedData
+  TypedDataParameter,
+  TypedDataDomain
 } from "viem";
 import { z } from "zod";
 
@@ -36,11 +37,11 @@ export interface PersonalSign {
 
 // EIP-712 Typed Data Sign operation
 export interface TypedDataSign {
-  type: 'typed_data_sign';
-  domain: TypedData['domain'];
-  types: TypedData['types'];
+  type: "typed_data_sign";
+  domain: TypedDataDomain;
+  types: Record<string, readonly TypedDataParameter[]>;
   primaryType: string;
-  message: TypedData['message'];
+  message: Record<string, unknown>;
 }
 
 // Union type for all signing operations
@@ -247,7 +248,7 @@ export class AgentekClient {
 
   public async executeSign(signs: Sign[], chainId: number): Promise<string[]> {
     const walletClient = this.getWalletClient(chainId);
-
+    const account = await this.getAddress()
     if (!walletClient) {
       throw new Error(`No wallet client available for chain ${chainId}`);
     }
@@ -259,15 +260,15 @@ export class AgentekClient {
 
       if (isPersonalSign(sign)) {
         // EIP-191 Personal Sign
-        // @ts-expect-error - viem type casting issues
         signature = await walletClient.signMessage({
-          message: sign.message,
+          account,
+          message: sign.message as SignableMessage,
         });
       } else if (isTypedDataSign(sign)) {
         // EIP-712 Typed Data Sign
-        // @ts-expect-error - viem type casting issues
         signature = await walletClient.signTypedData({
-          domain: sign.domain,
+          account,
+          domain: sign.domain as TypedDataDomain,
           types: sign.types,
           primaryType: sign.primaryType,
           message: sign.message,
