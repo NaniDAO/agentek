@@ -19,7 +19,7 @@ export default function AgentekTool(
 ): Tool {
   return tool({
     description: baseTool.description,
-    parameters: baseTool.parameters,
+    inputSchema: baseTool.parameters,
     execute: async (args: z.infer<typeof baseTool.parameters>) => {
       return agentekClient.execute(baseTool.name, args).catch((e: Error) => {
         return e.message || "Could not process this function";
