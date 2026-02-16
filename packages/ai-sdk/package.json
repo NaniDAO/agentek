@@ -1,6 +1,6 @@
 {
   "name": "@agentek/ai-sdk",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "AI SDK integration for Agentek tools",
   "type": "module",
   "main": "./dist/index.js",
@@ -63,7 +63,7 @@
     "ai": "^6.0.67"
   },
   "peerDependencies": {
-    "@agentek/tools": "^0.1.19",
+    "@agentek/tools": "^0.1.20",
     "viem": "^2.33.2",
     "zod": "^3.25.76",
     "zrouter-sdk": "^0.0.27"
