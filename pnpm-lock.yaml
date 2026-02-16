@@ -48,7 +48,7 @@ importers:
     dependencies:
       '@agentek/tools':
         specifier: ^0.1.19
-        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
+        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
       ai:
         specifier: ^6.0.67
         version: 6.0.67(zod@3.25.76)
@@ -59,8 +59,8 @@ importers:
         specifier: ^3.25.76
         version: 3.25.76
       zrouter-sdk:
-        specifier: ^0.0.11
-        version: 0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+        specifier: ^0.0.27
+        version: 0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^24.1.0
@@ -73,7 +73,7 @@ importers:
     dependencies:
       '@agentek/tools':
         specifier: 0.1.19
-        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
+        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
       '@modelcontextprotocol/sdk':
         specifier: ^1.25.3
         version: 1.25.3(hono@4.11.7)(zod@3.25.76)
@@ -90,8 +90,8 @@ importers:
         specifier: ^3.24.5
         version: 3.24.5(zod@3.25.76)
       zrouter-sdk:
-        specifier: ^0.0.11
-        version: 0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+        specifier: ^0.0.27
+        version: 0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^22.14.1
@@ -114,12 +114,15 @@ importers:
       viem:
         specifier: ^2.33.2
         version: 2.33.2(typescript@5.9.2)(zod@3.25.76)
+      wns-utils:
+        specifier: ^0.2.1
+        version: 0.2.1
       zod:
         specifier: ^3.25.76
         version: 3.25.76
       zrouter-sdk:
-        specifier: ^0.0.11
-        version: 0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+        specifier: ^0.0.27
+        version: 0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^22.14.1
@@ -1411,6 +1414,7 @@ packages:
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
 
   node-fetch@3.3.2:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
@@ -1691,6 +1695,7 @@ packages:
   source-map@0.8.0-beta.0:
     resolution: {integrity: sha512-2ymg6oRBpebeZi9UUNsgQ89bhx01TcTkmNTGnNO88imTmbSgy4nfujrgVEFKWpMTEGA11EDkTt7mqObTPdigIA==}
     engines: {node: '>= 8'}
+    deprecated: The work that was done in this beta branch won't be included in future versions
 
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
@@ -1917,6 +1922,7 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@4.0.0:
     resolution: {integrity: sha512-QaKxh0eNIi2mE9p2vEdzfagOKHCcj1pJ56EEHGQOVxp8r9/iszLUUV7v89x9O1p/T+NlTM5W7jW6+cz4Fq1YVg==}
@@ -1938,6 +1944,9 @@ packages:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
+
+  wns-utils@0.2.1:
+    resolution: {integrity: sha512-gZY1oM4vpusuy5KrtixBmHzkduT+r2rJ3j2Ixh50aQlRxxs7m/yOZMG3fhFeu62IVF7312i9uQyKmju+zAMNxg==}
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
@@ -1970,8 +1979,8 @@ packages:
   zod@4.0.14:
     resolution: {integrity: sha512-nGFJTnJN6cM2v9kXL+SOBq3AtjQby3Mv5ySGFof5UGRHrRioSJ5iG680cYNjE/yWk671nROcpPj4hAS8nyLhSw==}
 
-  zrouter-sdk@0.0.11:
-    resolution: {integrity: sha512-fCNRSP/Ur/MUgGiQUf1rQlahI2TjFA3dO5mu4IWsJ6/Uh8JrWTlvPM2cU4YejdjfQGzSKs3Lqtgq0rn4K+CxMg==}
+  zrouter-sdk@0.0.27:
+    resolution: {integrity: sha512-gV798i1bVYhcAShQ/CDiki7RdSn5cZ9F5YlhPJRjoXBxr9d0x4evLHSSiDL5eakS5t/3ZtqxhfWb5aCFSl1/LA==}
     engines: {node: '>=20'}
     peerDependencies:
       viem: '>=2.0.0'
@@ -1980,12 +1989,12 @@ snapshots:
 
   '@adraffy/ens-normalize@1.11.0': {}
 
-  '@agentek/tools@0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))':
+  '@agentek/tools@0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))':
     dependencies:
       cheerio: 1.1.2
       viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
       zod: 3.25.76
-      zrouter-sdk: 0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+      zrouter-sdk: 0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
 
   '@ai-sdk/gateway@3.0.32(zod@3.25.76)':
     dependencies:
@@ -3760,6 +3769,8 @@ snapshots:
       siginfo: 2.0.0
       stackback: 0.0.2
 
+  wns-utils@0.2.1: {}
+
   wrappy@1.0.2: {}
 
   ws@8.18.2: {}
@@ -3776,6 +3787,6 @@ snapshots:
 
   zod@4.0.14: {}
 
-  zrouter-sdk@0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)):
+  zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)):
     dependencies:
       viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)

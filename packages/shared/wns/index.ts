@@ -1,0 +1,46 @@
+import { type BaseTool, createToolCollection } from "../client.js";
+import {
+  resolveWNSTool,
+  reverseResolveWNSTool,
+  resolveAnyWNSTool,
+  isAvailableWNSTool,
+  isExpiredWNSTool,
+  getWNSExpirationTool,
+  getWNSOwnerTool,
+  getWNSBalanceTool,
+  getWNSTextTool,
+  getWNSContenthashTool,
+  getWNSFeeTool,
+  getWNSTokenURITool,
+  intentRegisterWNSTool,
+  intentRenewWNSTool,
+  intentSetPrimaryWNSTool,
+  intentSetWNSTextTool,
+  intentSetWNSAddrTool,
+  intentSetWNSContenthashTool,
+  intentRegisterSubdomainWNSTool,
+} from "./tools.js";
+
+export function wnsTools(): BaseTool[] {
+  return createToolCollection([
+    resolveWNSTool,
+    reverseResolveWNSTool,
+    resolveAnyWNSTool,
+    isAvailableWNSTool,
+    isExpiredWNSTool,
+    getWNSExpirationTool,
+    getWNSOwnerTool,
+    getWNSBalanceTool,
+    getWNSTextTool,
+    getWNSContenthashTool,
+    getWNSFeeTool,
+    getWNSTokenURITool,
+    intentRegisterWNSTool,
+    intentRenewWNSTool,
+    intentSetPrimaryWNSTool,
+    intentSetWNSTextTool,
+    intentSetWNSAddrTool,
+    intentSetWNSContenthashTool,
+    intentRegisterSubdomainWNSTool,
+  ]);
+}
