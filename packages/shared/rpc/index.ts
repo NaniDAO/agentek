@@ -11,6 +11,7 @@ import {
   getTransaction,
   getTransactionReceipt,
 } from "./tools.js";
+import { intentSendTransaction } from "./intents.js";
 
 export function rpcTools(): BaseTool[] {
   return createToolCollection([
@@ -24,5 +25,6 @@ export function rpcTools(): BaseTool[] {
     getFeeHistory,
     getTransaction,
     getTransactionReceipt,
+    intentSendTransaction,
   ]);
 }
