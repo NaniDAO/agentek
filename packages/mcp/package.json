@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@agentek/tools": "0.1.19",
-    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "node-fetch": "^3.3.2",
     "zod-to-json-schema": "^3.24.5"
   },
