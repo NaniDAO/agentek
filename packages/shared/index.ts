@@ -29,6 +29,7 @@ import { createImageGenTools } from './imagegen/index.js';
 import { coinchanTools } from "./coinchan/index.js";
 import { zammTools } from "./zamm/index.js";
 import { zrouterTools } from "./zrouter/index.js";
+import { wnsTools } from "./wns/index.js";
 
 const allTools = ({
   perplexityApiKey,
@@ -72,7 +73,8 @@ const allTools = ({
     ...erc6909Tools(),
     ...coinchanTools(),
     ...zammTools(),
-    ...zrouterTools()
+    ...zrouterTools(),
+    ...wnsTools()
   ];
 
   if (perplexityApiKey) {
@@ -143,5 +145,6 @@ export {
   createImageGenTools,
   coinchanTools,
   zammTools,
-  zrouterTools
+  zrouterTools,
+  wnsTools
 };

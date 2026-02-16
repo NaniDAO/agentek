@@ -36,12 +36,13 @@
     "test": "vitest"
   },
   "dependencies": {
-    "cheerio": "^1.1.2"
+    "cheerio": "^1.1.2",
+    "wns-utils": "^0.2.1"
   },
   "peerDependencies": {
     "viem": "^2.33.2",
     "zod": "^3.25.76",
-    "zrouter-sdk": "^0.0.10"
+    "zrouter-sdk": "^0.0.27"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

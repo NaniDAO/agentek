@@ -1,160 +1,625 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { mainnet } from "viem/chains";
-import { http } from "viem";
-import { getAddressInfo, fetchFromBlockscoutV2 } from "./tools.js";
-import { createAgentekClient, AgentekClient } from "../client.js";
+import { describe, it, expect } from "vitest";
+import { mainnet, base, arbitrum, optimism, polygon } from "viem/chains";
+import {
+  getNativeCoinHolders,
+  getAddressInfo,
+  getAddressCounters,
+  getAddressTransactions,
+  getAddressTokenTransfers,
+  getAddressInternalTransactions,
+  getAddressLogs,
+  getAddressBlocksValidated,
+  getAddressTokenBalances,
+  getAddressTokens,
+  getAddressCoinBalanceHistory,
+  getAddressCoinBalanceHistoryByDay,
+  getAddressWithdrawals,
+  getAddressNFTs,
+  getAddressNFTCollections,
+  getBlockInfo,
+  getBlockTransactions,
+  getBlockWithdrawals,
+  getStats,
+  getTransactionsChart,
+  getTransactionInfo,
+  getTransactionTokenTransfers,
+  getTransactionInternalTransactions,
+  getTransactionLogs,
+  getTransactionRawTrace,
+  getTransactionStateChanges,
+  getTransactionSummary,
+  getSmartContracts,
+  getSmartContract,
+  getTokenInfo,
+  getTokenHolders,
+  getTokenTransfers,
+  getBlockscoutSearch,
+} from "./tools.js";
+import { blockscoutTools } from "./index.js";
+import {
+  createTestClient,
+  TEST_ADDRESSES,
+  validateToolStructure,
+  withRetry,
+} from "../test-helpers.js";
 
-vi.mock("./tools", () => {
-  return {
-    fetchFromBlockscoutV2: vi.fn(),
-    getAddressInfo: {
-      execute: vi.fn()
-    }
-  };
-});
+// Create a test client with real Blockscout tools
+const client = createTestClient(blockscoutTools());
 
-describe("blockscout getAddressInfo", () => {
-  let mockClient: AgentekClient;
+// Well-known test data
+const VITALIK_ADDRESS = TEST_ADDRESSES.vitalik;
+const USDC_MAINNET = TEST_ADDRESSES.usdc.mainnet;
+const WETH_MAINNET = TEST_ADDRESSES.weth.mainnet;
 
-  beforeEach(() => {
-    mockClient = createAgentekClient({
-      transports: [http()],
-      chains: [mainnet],
-      accountOrAddress: privateKeyToAccount(generatePrivateKey()),
-      tools: [],
-    });
-    vi.clearAllMocks();
-  });
+// A known mainnet transaction hash (Uniswap swap)
+const KNOWN_TX_HASH = "0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060";
 
-  it("should format the address info correctly with coin balance", async () => {
-    const mockResponse = {
-      hash: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-      is_contract: false,
-      name: "Vitalik Buterin",
-      implementation_name: null,
-      is_verified: false,
-      token: null,
-      coin_balance: "1000000000000000000", // 1 ETH in wei
-      exchange_rate: "3000",
-      mining_rewards: []
-    };
+// A known mainnet block number
+const KNOWN_BLOCK_NUMBER = 19000000;
 
-    // Mock the fetchFromBlockscoutV2 function
-    vi.mocked(fetchFromBlockscoutV2).mockResolvedValue(mockResponse);
+// Timeout for API calls (Blockscout can be slow)
+const API_TIMEOUT = 30000;
 
-    // Mock the implementation of getAddressInfo.execute to actually call fetchFromBlockscoutV2
-    vi.mocked(getAddressInfo.execute).mockImplementation(async (_client, params) => {
-      const { chain, address } = params;
-      const data = await fetchFromBlockscoutV2(chain, `/addresses/${address}`);
-
-      return {
-        ...data,
-        coin_balance_raw: data.coin_balance,
-        coin_balance: data.coin_balance ? "1.0" : null,
-        coin_balance_in_usd: data.coin_balance && data.exchange_rate ? 3000 : null
-      };
-    });
-
-    const response = await getAddressInfo.execute(mockClient, {
-      chain: 1,
-      address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
-    });
-
-    expect(fetchFromBlockscoutV2).toHaveBeenCalledWith(
-      1,
-      "/addresses/0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
-    );
-
-    expect(response).toEqual({
-      ...mockResponse,
-      coin_balance_raw: "1000000000000000000",
-      coin_balance: "1.0",
-      coin_balance_in_usd: 3000
-    });
-  });
-
-  it("should handle null coin balance correctly", async () => {
-    const mockResponse = {
-      hash: "0xabc123",
-      is_contract: true,
-      name: "Test Contract",
-      implementation_name: "Test Implementation",
-      is_verified: true,
-      token: null,
-      coin_balance: null,
-      exchange_rate: "3000",
-      mining_rewards: []
-    };
-
-    // Mock the fetchFromBlockscoutV2 function
-    vi.mocked(fetchFromBlockscoutV2).mockResolvedValue(mockResponse);
-
-    // Mock the implementation of getAddressInfo.execute to actually call fetchFromBlockscoutV2
-    vi.mocked(getAddressInfo.execute).mockImplementation(async (_client, params) => {
-      const { chain, address } = params;
-      const data = await fetchFromBlockscoutV2(chain, `/addresses/${address}`);
-
-      return {
-        ...data,
-        coin_balance_raw: data.coin_balance,
-        coin_balance: data.coin_balance ? "2.0" : null,
-        coin_balance_in_usd: data.coin_balance && data.exchange_rate ? 6000 : null
-      };
+describe("Blockscout Tools - Real API Tests", () => {
+  describe("Tool Structure", () => {
+    it("should have valid tool structure for getAddressInfo", () => {
+      const result = validateToolStructure(getAddressInfo);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
     });
 
-    const response = await getAddressInfo.execute(mockClient, {
-      chain: 1,
-      address: "0xabc123"
+    it("should have valid tool structure for getBlockInfo", () => {
+      const result = validateToolStructure(getBlockInfo);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
     });
 
-    expect(response).toEqual({
-      ...mockResponse,
-      coin_balance_raw: null,
-      coin_balance: null,
-      coin_balance_in_usd: null
+    it("should have valid tool structure for getTransactionInfo", () => {
+      const result = validateToolStructure(getTransactionInfo);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("should have valid tool structure for getTokenInfo", () => {
+      const result = validateToolStructure(getTokenInfo);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("blockscoutTools() should return all tools", () => {
+      const tools = blockscoutTools();
+      expect(tools.length).toBeGreaterThan(20);
+      const toolNames = tools.map((t) => t.name);
+      expect(toolNames).toContain("getAddressInfo");
+      expect(toolNames).toContain("getBlockInfo");
+      expect(toolNames).toContain("getTransactionInfo");
+      expect(toolNames).toContain("getTokenInfo");
+      expect(toolNames).toContain("getBlockscoutSearch");
     });
   });
 
-  it("should handle missing exchange rate correctly", async () => {
-    const mockResponse = {
-      hash: "0xabc123",
-      is_contract: true,
-      name: "Test Contract",
-      implementation_name: "Test Implementation",
-      is_verified: true,
-      token: null,
-      coin_balance: "2000000000000000000", // 2 ETH in wei
-      exchange_rate: null,
-      mining_rewards: []
-    };
+  describe("Address Endpoints", () => {
+    it("should get native coin holders", async () => {
+      const result = await withRetry(() =>
+        getNativeCoinHolders.execute(client, { chain: mainnet.id })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
 
-    // Mock the fetchFromBlockscoutV2 function
-    vi.mocked(fetchFromBlockscoutV2).mockResolvedValue(mockResponse);
+    it("should get address info for Vitalik on mainnet", async () => {
+      const result = await withRetry(() =>
+        getAddressInfo.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.hash?.toLowerCase()).toBe(VITALIK_ADDRESS.toLowerCase());
+      expect(result.coin_balance).toBeDefined();
+      expect(result.coin_balance_raw).toBeDefined();
+      // Vitalik has ETH
+      expect(parseFloat(result.coin_balance)).toBeGreaterThan(0);
+    }, API_TIMEOUT);
 
-    // Mock the implementation of getAddressInfo.execute to actually call fetchFromBlockscoutV2
-    vi.mocked(getAddressInfo.execute).mockImplementation(async (_client, params) => {
-      const { chain, address } = params;
-      const data = await fetchFromBlockscoutV2(chain, `/addresses/${address}`);
+    it("should get address info for USDC contract on mainnet", async () => {
+      const result = await withRetry(() =>
+        getAddressInfo.execute(client, {
+          chain: mainnet.id,
+          address: USDC_MAINNET,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.hash?.toLowerCase()).toBe(USDC_MAINNET.toLowerCase());
+      expect(result.is_contract).toBe(true);
+    }, API_TIMEOUT);
 
-      return {
-        ...data,
-        coin_balance_raw: data.coin_balance,
-        coin_balance: data.coin_balance ? "2.0" : null,
-        coin_balance_in_usd: data.coin_balance && data.exchange_rate ? parseInt(data.exchange_rate) * 2 : null
-      };
+    it("should get address counters for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressCounters.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      // Vitalik has many transactions
+      expect(result.transactions_count).toBeDefined();
+    }, API_TIMEOUT);
+
+    it("should get address transactions for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressTransactions.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(result.items.length).toBeGreaterThan(0);
+    }, API_TIMEOUT);
+
+    it("should get address token transfers for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressTokenTransfers.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get address internal transactions for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressInternalTransactions.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get address logs for USDC contract", async () => {
+      const result = await withRetry(() =>
+        getAddressLogs.execute(client, {
+          chain: mainnet.id,
+          address: USDC_MAINNET,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get address token balances for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressTokenBalances.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get address tokens for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressTokens.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get address coin balance history for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressCoinBalanceHistory.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get address coin balance history by day for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressCoinBalanceHistoryByDay.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get address NFTs for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressNFTs.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get address NFT collections for Vitalik", async () => {
+      const result = await withRetry(() =>
+        getAddressNFTCollections.execute(client, {
+          chain: mainnet.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+  });
+
+  describe("Block Endpoints", () => {
+    it("should get block info by number", async () => {
+      const result = await withRetry(() =>
+        getBlockInfo.execute(client, {
+          chain: mainnet.id,
+          blockNumberOrHash: KNOWN_BLOCK_NUMBER,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.height).toBe(KNOWN_BLOCK_NUMBER);
+      expect(result.hash).toBeDefined();
+      expect(result.timestamp).toBeDefined();
+    }, API_TIMEOUT);
+
+    it("should get block transactions", async () => {
+      const result = await withRetry(() =>
+        getBlockTransactions.execute(client, {
+          chain: mainnet.id,
+          blockNumberOrHash: KNOWN_BLOCK_NUMBER,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(result.items.length).toBeGreaterThan(0);
+    }, API_TIMEOUT);
+
+    it("should get block withdrawals (post-Shanghai)", async () => {
+      // Block 17034871 is the first block with withdrawals (Shanghai upgrade)
+      const shanghaiBlock = 17034871;
+      const result = await withRetry(() =>
+        getBlockWithdrawals.execute(client, {
+          chain: mainnet.id,
+          blockNumberOrHash: shanghaiBlock,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+  });
+
+  describe("Stats Endpoints", () => {
+    it("should get chain stats for mainnet", async () => {
+      const result = await withRetry(() =>
+        getStats.execute(client, { chain: mainnet.id })
+      );
+      expect(result).toBeDefined();
+      expect(result.total_blocks).toBeDefined();
+      expect(result.total_addresses).toBeDefined();
+      expect(result.total_transactions).toBeDefined();
+    }, API_TIMEOUT);
+
+    it("should get chain stats for Base", async () => {
+      const result = await withRetry(() =>
+        getStats.execute(client, { chain: base.id })
+      );
+      expect(result).toBeDefined();
+      expect(result.total_blocks).toBeDefined();
+    }, API_TIMEOUT);
+
+    it("should get transactions chart", async () => {
+      const result = await withRetry(() =>
+        getTransactionsChart.execute(client, { chain: mainnet.id })
+      );
+      expect(result).toBeDefined();
+      expect(result.chart_data).toBeDefined();
+      expect(Array.isArray(result.chart_data)).toBe(true);
+    }, API_TIMEOUT);
+  });
+
+  describe("Transaction Endpoints", () => {
+    it("should get transaction info", async () => {
+      const result = await withRetry(() =>
+        getTransactionInfo.execute(client, {
+          chain: mainnet.id,
+          txhash: KNOWN_TX_HASH,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.hash?.toLowerCase()).toBe(KNOWN_TX_HASH.toLowerCase());
+      expect(result.block).toBeDefined();
+      expect(result.status).toBeDefined();
+    }, API_TIMEOUT);
+
+    it("should get transaction token transfers", async () => {
+      // Use a known swap transaction that has token transfers
+      const swapTx = "0x2d4eb16c9df5ebc3e1c5a5ec9ea8e4ce1fc8dc44d2e8dd7fd10f5c9f4c17e6f5";
+      const result = await withRetry(() =>
+        getTransactionTokenTransfers.execute(client, {
+          chain: mainnet.id,
+          txhash: swapTx,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get transaction internal transactions", async () => {
+      const result = await withRetry(() =>
+        getTransactionInternalTransactions.execute(client, {
+          chain: mainnet.id,
+          txhash: KNOWN_TX_HASH,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get transaction logs", async () => {
+      const result = await withRetry(() =>
+        getTransactionLogs.execute(client, {
+          chain: mainnet.id,
+          txhash: KNOWN_TX_HASH,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get transaction raw trace", async () => {
+      const result = await withRetry(() =>
+        getTransactionRawTrace.execute(client, {
+          chain: mainnet.id,
+          txhash: KNOWN_TX_HASH,
+        })
+      );
+      expect(result).toBeDefined();
+    }, API_TIMEOUT);
+
+    it("should get transaction state changes", async () => {
+      const result = await withRetry(() =>
+        getTransactionStateChanges.execute(client, {
+          chain: mainnet.id,
+          txhash: KNOWN_TX_HASH,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+  });
+
+  describe("Smart Contract Endpoints", () => {
+    it("should search for smart contracts", async () => {
+      const result = await withRetry(() =>
+        getSmartContracts.execute(client, {
+          chain: mainnet.id,
+          q: "USDC",
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should get smart contract info for USDC", async () => {
+      const result = await withRetry(() =>
+        getSmartContract.execute(client, {
+          chain: mainnet.id,
+          address: USDC_MAINNET,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.is_verified).toBeDefined();
+      expect(result.name).toBeDefined();
+    }, API_TIMEOUT);
+
+    it("should get smart contract info for WETH", async () => {
+      const result = await withRetry(() =>
+        getSmartContract.execute(client, {
+          chain: mainnet.id,
+          address: WETH_MAINNET,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.is_verified).toBeDefined();
+    }, API_TIMEOUT);
+  });
+
+  describe("Token Endpoints", () => {
+    it("should get token info for USDC", async () => {
+      const result = await withRetry(() =>
+        getTokenInfo.execute(client, {
+          chain: mainnet.id,
+          tokenContract: USDC_MAINNET,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.name).toBeDefined();
+      expect(result.symbol).toBeDefined();
+      expect(result.decimals).toBeDefined();
+      expect(result.symbol).toBe("USDC");
+      expect(result.decimals).toBe("6");
+    }, API_TIMEOUT);
+
+    it("should get token info for WETH", async () => {
+      const result = await withRetry(() =>
+        getTokenInfo.execute(client, {
+          chain: mainnet.id,
+          tokenContract: WETH_MAINNET,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.symbol).toBe("WETH");
+      expect(result.decimals).toBe("18");
+    }, API_TIMEOUT);
+
+    it("should get token holders for USDC", async () => {
+      const result = await withRetry(() =>
+        getTokenHolders.execute(client, {
+          chain: mainnet.id,
+          tokenContract: USDC_MAINNET,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(result.items.length).toBeGreaterThan(0);
+    }, API_TIMEOUT);
+
+    it("should get token transfers for USDC", async () => {
+      const result = await withRetry(() =>
+        getTokenTransfers.execute(client, {
+          chain: mainnet.id,
+          tokenContract: USDC_MAINNET,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(result.items.length).toBeGreaterThan(0);
+    }, API_TIMEOUT);
+  });
+
+  describe("Search Endpoint", () => {
+    it("should search for Vitalik address", async () => {
+      const result = await withRetry(() =>
+        getBlockscoutSearch.execute(client, {
+          chain: mainnet.id,
+          query: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+
+    it("should search for USDC", async () => {
+      const result = await withRetry(() =>
+        getBlockscoutSearch.execute(client, {
+          chain: mainnet.id,
+          query: "USDC",
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(result.items.length).toBeGreaterThan(0);
+    }, API_TIMEOUT);
+
+    it("should search for a block number", async () => {
+      const result = await withRetry(() =>
+        getBlockscoutSearch.execute(client, {
+          chain: mainnet.id,
+          query: String(KNOWN_BLOCK_NUMBER),
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+    }, API_TIMEOUT);
+  });
+
+  describe("Multi-chain Support", () => {
+    it("should get address info on Base", async () => {
+      const result = await withRetry(() =>
+        getAddressInfo.execute(client, {
+          chain: base.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.hash?.toLowerCase()).toBe(VITALIK_ADDRESS.toLowerCase());
+    }, API_TIMEOUT);
+
+    it("should get address info on Arbitrum", async () => {
+      const result = await withRetry(() =>
+        getAddressInfo.execute(client, {
+          chain: arbitrum.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.hash?.toLowerCase()).toBe(VITALIK_ADDRESS.toLowerCase());
+    }, API_TIMEOUT);
+
+    it("should get address info on Optimism", async () => {
+      const result = await withRetry(() =>
+        getAddressInfo.execute(client, {
+          chain: optimism.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.hash?.toLowerCase()).toBe(VITALIK_ADDRESS.toLowerCase());
+    }, API_TIMEOUT);
+
+    it("should get address info on Polygon", async () => {
+      const result = await withRetry(() =>
+        getAddressInfo.execute(client, {
+          chain: polygon.id,
+          address: VITALIK_ADDRESS,
+        })
+      );
+      expect(result).toBeDefined();
+      expect(result.hash?.toLowerCase()).toBe(VITALIK_ADDRESS.toLowerCase());
+    }, API_TIMEOUT);
+
+    it("should get stats on multiple chains", async () => {
+      const chains = [mainnet.id, base.id, arbitrum.id];
+
+      for (const chainId of chains) {
+        const result = await withRetry(() =>
+          getStats.execute(client, { chain: chainId })
+        );
+        expect(result).toBeDefined();
+        expect(result.total_blocks).toBeDefined();
+      }
+    }, API_TIMEOUT * 3);
+  });
+
+  describe("Error Handling", () => {
+    it("should handle invalid address format", async () => {
+      await expect(
+        getAddressInfo.execute(client, {
+          chain: mainnet.id,
+          address: "invalid-address",
+        })
+      ).rejects.toThrow();
     });
 
-    const response = await getAddressInfo.execute(mockClient, {
-      chain: 1,
-      address: "0xabc123"
-    });
-
-    expect(response).toEqual({
-      ...mockResponse,
-      coin_balance_raw: "2000000000000000000",
-      coin_balance: "2.0",
-      coin_balance_in_usd: null
-    });
+    it("should handle non-existent transaction hash", async () => {
+      const fakeTxHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
+      await expect(
+        getTransactionInfo.execute(client, {
+          chain: mainnet.id,
+          txhash: fakeTxHash,
+        })
+      ).rejects.toThrow();
+    }, API_TIMEOUT);
   });
 });

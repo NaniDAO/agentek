@@ -40,7 +40,7 @@
   "peerDependencies": {
     "viem": "^2.33.2",
     "zod": "^3.25.76",
-    "zrouter-sdk": "^0.0.10"
+    "zrouter-sdk": "^0.0.27"
   },
   "devDependencies": {
     "@types/node": "^22.14.1",

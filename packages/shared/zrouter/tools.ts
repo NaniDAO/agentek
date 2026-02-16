@@ -2,8 +2,9 @@ import { z } from "zod";
 import { createTool } from "../client.js";
 import { quote } from "zrouter-sdk";
 import { mainnet } from "viem/chains";
-import { resolveInputToToken, toBaseUnits } from "./utils.js";
+import { resolveInputToToken, toBaseUnits, asToken } from "./utils.js";
 import { SymbolOrTokenSchema } from "./types.js";
+import { fetchApiRoutes } from "./api.js";
 
 export const getQuote = createTool({
   name: "getQuote",
@@ -29,13 +30,35 @@ export const getQuote = createTool({
 
     // --- parse amount into base units depending on standard ---
     const parsedAmount =
-      side === "EXACT_IN" // parsing is same regardless of side; branch kept for clarity/extension
+      side === "EXACT_IN"
         ? toBaseUnits(amountInput, tIn)
         : toBaseUnits(amountInput, tOut);
 
-    const q = await quote(publicClient, {
+    // Try API first (includes Matcha/0x aggregated quotes alongside on-chain)
+    const apiRoutes = await fetchApiRoutes({
+      chainId: mainnet.id,
       tokenIn: { address: tIn.address, ...(tIn.id !== undefined ? { id: tIn.id } : {}) },
       tokenOut: { address: tOut.address, ...(tOut.id !== undefined ? { id: tOut.id } : {}) },
+      side,
+      amount: parsedAmount,
+      owner: "0x0000000000000000000000000000000000010000",
+    });
+
+    if (apiRoutes && apiRoutes.length > 0) {
+      const best = apiRoutes[0];
+      return {
+        expectedAmount: best.expectedAmount,
+        venue: best.venue,
+        sources: best.metadata.sources,
+        routeCount: apiRoutes.length,
+        source: "api" as const,
+      };
+    }
+
+    // Fallback to SDK quote
+    const q = await quote(publicClient, {
+      tokenIn: asToken(tIn),
+      tokenOut: asToken(tOut),
       amount: parsedAmount,
       side,
     });

@@ -1,12 +1,21 @@
 import { z } from "zod";
 import { AgentekClient, createTool, Intent } from "../client.js";
-import { Address, Hex, PublicClient, WalletClient, encodeFunctionData, isAddress, maxUint256, parseUnits } from "viem";
+import { Address, Hex, encodeFunctionData, maxUint256 } from "viem";
 import { mainnet } from "viem/chains";
-import { buildRoutePlan, erc20Abi, erc6909Abi, findRoute, mainnetConfig, zRouterAbi } from "zrouter-sdk";
-import { supportedChains } from './constants.js'
+import {
+  buildRoutePlan,
+  checkRouteApprovals,
+  erc20Abi,
+  erc6909Abi,
+  findRoute,
+  zRouterAbi,
+  type RouteStep,
+} from "zrouter-sdk";
+import { supportedChains } from './constants.js';
 import { AmountSchema, SymbolOrTokenSchema } from "./types.js";
 import { addressSchema } from "../utils.js";
 import { asToken, resolveInputToToken, toBaseUnits } from "./utils.js";
+import { fetchApiRoutes } from "./api.js";
 
 const swapParameters = z.object({
   tokenIn: SymbolOrTokenSchema.describe(`Symbol (e.g. "USDT") or { address, id? }`),
@@ -53,18 +62,37 @@ export const intentSwap = createTool({
     // Deadline/slippage
     const deadline = BigInt(Math.floor(Date.now() / 1000) + args.deadlineSeconds);
 
-    // Route + plan
-    const steps = await findRoute(publicClient, {
+    // --- Try API first for routes (includes Matcha/0x aggregated quotes) ---
+    let steps: RouteStep[] | null = null;
+    const apiRoutes = await fetchApiRoutes({
+      chainId,
       tokenIn: asToken(tIn),
       tokenOut: asToken(tOut),
-      side: args.side as any,
+      side: args.side,
       amount: baseAmount,
-      deadline,
       owner,
       slippageBps: args.slippageBps,
-    } as any);
+    });
 
-    if (!steps?.length) throw new Error("No route found for the requested swap.");
+    if (apiRoutes && apiRoutes.length > 0) {
+      steps = apiRoutes[0].steps;
+    }
+
+    // --- Fallback to SDK findRoute if API didn't return routes ---
+    if (!steps) {
+      const sdkSteps = await findRoute(publicClient, {
+        tokenIn: asToken(tIn),
+        tokenOut: asToken(tOut),
+        side: args.side as any,
+        amount: baseAmount,
+        deadline,
+        owner,
+        slippageBps: args.slippageBps,
+      } as any);
+
+      if (!sdkSteps?.length) throw new Error("No route found for the requested swap.");
+      steps = sdkSteps;
+    }
 
     const router: Address =
       args.router ??
@@ -73,6 +101,61 @@ export const intentSwap = createTool({
         throw new Error("Router address is required (pass 'router' or ensure findRoute returns it).");
       })();
 
+    // --- Check if the best route is a direct Matcha swap ---
+    // Matcha routes have a single MATCHA step with a raw 0x transaction
+    // that should be executed directly (not through zRouter multicall)
+    const isMatchaRoute = steps.length === 1 && steps[0].kind === "MATCHA";
+
+    if (isMatchaRoute) {
+      const matchaStep = steps[0] as Extract<RouteStep, { kind: "MATCHA" }>;
+      const tx = matchaStep.transaction;
+
+      // Build approval ops for the Matcha allowance target
+      const approvalOps: { target: Address; value: string; data: Hex }[] = [];
+      const allowanceTarget = matchaStep.metadata?.allowanceTarget;
+      if (allowanceTarget) {
+        const approvalData = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [allowanceTarget, maxUint256],
+        });
+        approvalOps.push({
+          target: matchaStep.tokenIn.address as Address,
+          value: "0",
+          data: approvalData,
+        });
+      }
+
+      // The raw 0x swap transaction
+      const swapOp = {
+        target: tx.to,
+        value: tx.value.toString(),
+        data: tx.data,
+      };
+
+      const ops = [...approvalOps, swapOp];
+
+      const pretty = `${args.side === "EXACT_IN" ? "Swap" : "Receive"} ${humanAmount} ${
+        typeof args.tokenIn === "string" ? args.tokenIn.toUpperCase() : tIn.symbol ?? "TOKEN"
+      } → ${typeof args.tokenOut === "string" ? args.tokenOut.toUpperCase() : tOut.symbol ?? "TOKEN"} (via Matcha)`;
+
+      if (!walletClient) {
+        return { intent: pretty, ops, chain: chainId };
+      }
+
+      const hash = await client.executeOps(ops, chainId);
+      return { intent: pretty, ops, chain: chainId, hash };
+    }
+
+    // --- Standard zRouter path: check approvals, build plan, multicall ---
+
+    // Use checkRouteApprovals() instead of plan.approvals (empty in SDK >= 0.0.27)
+    const approvals = await checkRouteApprovals(publicClient, {
+      owner,
+      router,
+      steps,
+    });
+
     const plan = await buildRoutePlan(publicClient, {
       owner,
       router,
@@ -80,20 +163,14 @@ export const intentSwap = createTool({
       finalTo,
     });
 
-    // ----- Build ops correctly -----
-    const approvalOps = (plan.approvals ?? []).map((appr: any) => {
-      // ERC20 approval: approve(spender, maxUint256) on token address
+    // Build approval ops from checkRouteApprovals result
+    const approvalOps = approvals.map((appr) => {
       if (appr.kind === "ERC20_APPROVAL") {
-        if (!appr.token?.address || !appr.spender) {
-          throw new Error("Invalid ERC20 approval action returned by router plan.");
-        }
-
         const data = encodeFunctionData({
           abi: erc20Abi,
           functionName: "approve",
           args: [appr.spender as Address, maxUint256],
         });
-
         return {
           target: appr.token.address as Address,
           value: "0",
@@ -101,15 +178,11 @@ export const intentSwap = createTool({
         };
       }
 
-      // ERC6909 / operator approval: setOperator(operator, approved) on token address
-      if (appr.kind === "ERC6909_OPERATOR" || appr.kind === "SET_OPERATOR" || appr.operator !== undefined) {
-        if (!appr.token?.address || appr.operator === undefined || appr.approved === undefined) {
-          throw new Error("Invalid ERC6909 operator approval action returned by router plan.");
-        }
+      if (appr.kind === "ERC6909_SET_OPERATOR") {
         const data = encodeFunctionData({
           abi: erc6909Abi,
           functionName: "setOperator",
-          args: [appr.operator as Address, Boolean(appr.approved)],
+          args: [appr.operator as Address, true],
         });
         return {
           target: appr.token.address as Address,
@@ -118,8 +191,7 @@ export const intentSwap = createTool({
         };
       }
 
-      // Unknown approval type (fail fast so we don't send bad tx)
-      throw new Error(`Unsupported approval action: ${String(appr.kind)}`);
+      throw new Error(`Unsupported approval action: ${String((appr as any).kind)}`);
     });
 
     // Router call: single call or multicall
