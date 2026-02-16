@@ -1,6 +1,6 @@
 import { Hex, http } from "viem";
 import { mainnet, sepolia } from "viem/chains";
-import { zammTools } from "@agentek/tools";
+import { zammTools, zrouterTools } from "@agentek/tools";
 import { AgentekToolkit } from "@agentek/ai-sdk";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
@@ -31,7 +31,7 @@ async function main() {
     transports: [http()],
     chains,
     accountOrAddress: account,
-    tools: [...zammTools()],
+    tools: [...zammTools(), ...zrouterTools()],
   });
 
   const tools = toolkit.getTools();
@@ -42,7 +42,7 @@ async function main() {
   const messages = [
     {
       role: "user",
-      content: "can u tell me about $ZAMM token",
+      content: "fetch quote for 1 $ZAMM in $USDT",
     },
   ] as CoreMessage[];
 
@@ -52,7 +52,7 @@ async function main() {
   });
 
   const response = await generateText({
-    model: openrouter("openai/gpt-4o-mini"),
+    model: openrouter("openai/gpt-5-mini"),
     system: "",
     messages,
     maxSteps: 5,

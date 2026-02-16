@@ -40,7 +40,7 @@ importers:
     dependencies:
       '@agentek/tools':
         specifier: ^0.1.19
-        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
+        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
       ai:
         specifier: ^4.3.17
         version: 4.3.19(react@19.1.1)(zod@3.25.76)
@@ -51,8 +51,8 @@ importers:
         specifier: ^3.25.76
         version: 3.25.76
       zrouter-sdk:
-        specifier: ^0.0.10
-        version: 0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+        specifier: ^0.0.11
+        version: 0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^24.1.0
@@ -65,7 +65,7 @@ importers:
     dependencies:
       '@agentek/tools':
         specifier: 0.1.19
-        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
+        version: 0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
       '@modelcontextprotocol/sdk':
         specifier: 1.7.0
         version: 1.7.0
@@ -82,8 +82,8 @@ importers:
         specifier: ^3.24.5
         version: 3.24.5(zod@3.25.76)
       zrouter-sdk:
-        specifier: ^0.0.10
-        version: 0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+        specifier: ^0.0.11
+        version: 0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^22.14.1
@@ -110,8 +110,8 @@ importers:
         specifier: ^3.25.76
         version: 3.25.76
       zrouter-sdk:
-        specifier: ^0.0.10
-        version: 0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+        specifier: ^0.0.11
+        version: 0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
         specifier: ^22.14.1
@@ -1713,8 +1713,8 @@ packages:
   zod@4.0.14:
     resolution: {integrity: sha512-nGFJTnJN6cM2v9kXL+SOBq3AtjQby3Mv5ySGFof5UGRHrRioSJ5iG680cYNjE/yWk671nROcpPj4hAS8nyLhSw==}
 
-  zrouter-sdk@0.0.10:
-    resolution: {integrity: sha512-90qUZZCr1nMW/8jWOC9q2XVNbbZb/ey/qOZlaFkQoMXARb8Na/BpxuTyTdBynygIf7uIakQx6FoxQJH+d9nWFQ==}
+  zrouter-sdk@0.0.11:
+    resolution: {integrity: sha512-fCNRSP/Ur/MUgGiQUf1rQlahI2TjFA3dO5mu4IWsJ6/Uh8JrWTlvPM2cU4YejdjfQGzSKs3Lqtgq0rn4K+CxMg==}
     engines: {node: '>=20'}
     peerDependencies:
       viem: '>=2.0.0'
@@ -1723,12 +1723,12 @@ snapshots:
 
   '@adraffy/ens-normalize@1.11.0': {}
 
-  '@agentek/tools@0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))':
+  '@agentek/tools@0.1.19(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))':
     dependencies:
       cheerio: 1.1.2
       viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
       zod: 3.25.76
-      zrouter-sdk: 0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+      zrouter-sdk: 0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
 
   '@ai-sdk/gateway@1.0.0(zod@4.0.14)':
     dependencies:
@@ -3365,6 +3365,6 @@ snapshots:
 
   zod@4.0.14: {}
 
-  zrouter-sdk@0.0.10(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)):
+  zrouter-sdk@0.0.11(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)):
     dependencies:
       viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
