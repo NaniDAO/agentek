@@ -8,7 +8,6 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   treeshake: true,
-  noExternal: [],
   outDir: 'dist',
   banner: {
     js: "#!/usr/bin/env node",
