@@ -12,32 +12,24 @@ import type { BaseTool, AgentekClient } from "../client.js";
 
 import { mainnet, optimism, arbitrum, base } from "viem/chains";
 
-/**
- * Returns the appropriate 0x aggregator endpoint for a given chainId.
- */
-function get0xApiEndpoint(chainId: number): string {
-  switch (chainId) {
-    case mainnet.id:
-      return "https://api.0x.org";
-    case optimism.id:
-      return "https://optimism.api.0x.org";
-    case arbitrum.id:
-      return "https://arbitrum.api.0x.org";
-    case base.id:
-      return "https://base.api.0x.org";
-    default:
-      throw new Error(
-        `Chain ID ${chainId} is not supported by 0x aggregator (or endpoint not known).`,
-      );
-  }
-}
+/** Native ETH sentinel address used by 0x v2. */
+const NATIVE_TOKEN = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+/** Supported chain IDs for 0x Swap API v2. */
+const SUPPORTED_CHAIN_IDS: ReadonlySet<number> = new Set([
+  mainnet.id,
+  optimism.id,
+  arbitrum.id,
+  base.id,
+]);
 
 /**
  * Helper to handle 'ETH' vs. token addresses.
+ * Returns the 0x native token sentinel for ETH, otherwise the address as-is.
  */
-function normalize(token: string) {
+function normalize(token: string): string {
   if (!token) return "";
-  if (token.toLowerCase() === "eth") return "ETH";
+  if (token.toLowerCase() === "eth") return NATIVE_TOKEN;
   return token;
 }
 
@@ -45,7 +37,7 @@ const matchaSwapChains = [mainnet, optimism, arbitrum, base];
 
 /**
  * A tool that performs token swaps across multiple networks (Mainnet, Optimism,
- * Arbitrum and Base*) via the 0x/Matcha aggregator.
+ * Arbitrum and Base) via the 0x/Matcha aggregator (v2 AllowanceHolder API).
  *
  * If a wallet client is available, it will execute the swap immediately.
  * If no wallet client is present, it will return a RequestIntent.
@@ -59,7 +51,6 @@ export const createMatchSwapTool = ({
     name: "intent0xSwap",
     description:
       "Perform a token swap on multiple EVM networks via 0x aggregator (Matcha)",
-    // Include all chains you wish to support
     supportedChains: matchaSwapChains,
     parameters: z.object({
       chainId: z.number().describe("Chain ID (e.g. 1, 10, 42161, 8453)"),
@@ -68,13 +59,27 @@ export const createMatchSwapTool = ({
         .describe('Source token address, or "ETH" for native'),
       toToken: z.string().describe("Destination token address"),
       amount: z.number().describe("Amount of source token to swap"),
+      slippageBps: z
+        .number()
+        .int()
+        .min(1)
+        .max(1000)
+        .default(100)
+        .describe("Max slippage in basis points (default 100 = 1%)"),
     }),
     execute: async (client: AgentekClient, args) => {
-      const { chainId, fromToken, toToken, amount } = args;
+      const { chainId, fromToken, toToken, amount, slippageBps } = args;
+
+      if (!SUPPORTED_CHAIN_IDS.has(chainId)) {
+        throw new Error(
+          `Chain ID ${chainId} is not supported by 0x aggregator. Supported: 1, 10, 42161, 8453.`,
+        );
+      }
 
       // Prepare addresses
       const sellToken = normalize(fromToken);
       const buyToken = normalize(toToken);
+      const isNativeETH = sellToken === NATIVE_TOKEN;
 
       // Retrieve the relevant wallet + public clients
       const walletClient = client.getWalletClient(chainId);
@@ -84,14 +89,13 @@ export const createMatchSwapTool = ({
 
       try {
         // Determine decimals
-        const sellDecimals =
-          sellToken === "ETH"
-            ? 18
-            : ((await publicClient.readContract({
-                address: sellToken as Address,
-                abi: erc20Abi,
-                functionName: "decimals",
-              })) as number) || 18;
+        const sellDecimals = isNativeETH
+          ? 18
+          : ((await publicClient.readContract({
+              address: sellToken as Address,
+              abi: erc20Abi,
+              functionName: "decimals",
+            })) as number) || 18;
 
         const sellAmount = parseUnits(`${amount}`, sellDecimals);
 
@@ -99,15 +103,14 @@ export const createMatchSwapTool = ({
         const userAddress = await client.getAddress();
 
         // Check user's balance
-        const userBalance =
-          sellToken === "ETH"
-            ? await publicClient.getBalance({ address: userAddress as Address })
-            : ((await publicClient.readContract({
-                address: sellToken as Address,
-                abi: erc20Abi,
-                functionName: "balanceOf",
-                args: [userAddress],
-              })) as bigint);
+        const userBalance = isNativeETH
+          ? await publicClient.getBalance({ address: userAddress as Address })
+          : ((await publicClient.readContract({
+              address: sellToken as Address,
+              abi: erc20Abi,
+              functionName: "balanceOf",
+              args: [userAddress],
+            })) as bigint);
 
         if (userBalance < sellAmount) {
           throw new Error(
@@ -115,15 +118,43 @@ export const createMatchSwapTool = ({
           );
         }
 
-        // Check allowance if we're selling ERC20
-        if (sellToken !== "ETH") {
-          const EXCHANGE_PROXY = "0xdef1c0ded9bec7f1a1670819833240f027b25eff";
-          const currentAllowance = (await publicClient.readContract({
-            address: sellToken as Address,
-            abi: erc20Abi,
-            functionName: "allowance",
-            args: [userAddress, EXCHANGE_PROXY],
-          })) as bigint;
+        // Fetch quote from 0x v2 (AllowanceHolder)
+        const params = new URLSearchParams({
+          chainId: String(chainId),
+          sellToken,
+          buyToken,
+          sellAmount: sellAmount.toString(),
+          taker: userAddress,
+          slippageBps: String(slippageBps),
+        });
+
+        const quoteUrl = `https://api.0x.org/swap/allowance-holder/quote?${params}`;
+
+        const quoteResp = await fetch(quoteUrl, {
+          headers: {
+            "0x-api-key": zeroxApiKey,
+            "0x-version": "v2",
+          },
+        });
+
+        if (!quoteResp.ok) {
+          const errorBody = await quoteResp.text();
+          throw new Error(
+            `Failed to get swap quote: ${quoteResp.status} ${errorBody}`,
+          );
+        }
+
+        const quote = await quoteResp.json();
+        if (!quote?.transaction) {
+          throw new Error(
+            quote?.message || "Failed to retrieve a valid swap quote",
+          );
+        }
+
+        // Check allowance if selling ERC-20 (v2: issues.allowance tells us the spender)
+        if (!isNativeETH && quote.issues?.allowance) {
+          const spender = quote.issues.allowance.spender as Address;
+          const currentAllowance = BigInt(quote.issues.allowance.actual || "0");
 
           if (sellAmount > currentAllowance) {
             ops.push({
@@ -132,45 +163,17 @@ export const createMatchSwapTool = ({
               data: encodeFunctionData({
                 abi: erc20Abi,
                 functionName: "approve",
-                args: [EXCHANGE_PROXY, maxUint256],
+                args: [spender, maxUint256],
               }),
             });
           }
         }
 
-        // Fetch quote from 0x
-        const zeroXEndpoint = get0xApiEndpoint(chainId);
-        const params = new URLSearchParams({
-          sellToken,
-          buyToken,
-          sellAmount: sellAmount.toString(),
-          takerAddress: userAddress,
-        });
-
-        const quoteUrl = `${zeroXEndpoint}/swap/v1/quote?${params}`;
-
-        const quoteResp = await fetch(quoteUrl, {
-          headers: { "0x-api-key": zeroxApiKey },
-        });
-
-        if (!quoteResp.ok) {
-          throw new Error(
-            `Failed to get swap quote: ${quoteResp.status} ${quoteResp.statusText}`,
-          );
-        }
-
-        const quote = await quoteResp.json();
-        if (!quote || quote.code) {
-          throw new Error(
-            quote.message || "Failed to retrieve a valid swap quote",
-          );
-        }
-
-        // Build aggregator swap call
+        // Build swap call from the v2 nested transaction object
         ops.push({
-          target: quote.to as Address,
-          value: sellToken === "ETH" ? (quote.value as string) : "0",
-          data: quote.data as Hex,
+          target: quote.transaction.to as Address,
+          value: (quote.transaction.value as string) || "0",
+          data: quote.transaction.data as Hex,
         });
 
         // If no wallet client, return an unexecuted intent
@@ -179,6 +182,8 @@ export const createMatchSwapTool = ({
             intent: swapIntentDescription,
             ops,
             chain: chainId,
+            buyAmount: quote.buyAmount,
+            minBuyAmount: quote.minBuyAmount,
           };
         }
 
@@ -190,6 +195,8 @@ export const createMatchSwapTool = ({
           ops,
           chain: chainId,
           hash,
+          buyAmount: quote.buyAmount,
+          minBuyAmount: quote.minBuyAmount,
         };
       } catch (error) {
         throw new Error(
