@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { AgentekClient, createTool, Intent } from "../client.js";
 import { Address, Hex, encodeFunctionData, maxUint256 } from "viem";
-import { mainnet } from "viem/chains";
+import { mainnet, base } from "viem/chains";
 import {
   buildRoutePlan,
   checkRouteApprovals,
   erc20Abi,
   erc6909Abi,
   findRoute,
+  getConfig,
   zRouterAbi,
   type RouteStep,
 } from "zrouter-sdk";
@@ -18,6 +19,7 @@ import { asToken, resolveInputToToken, toBaseUnits } from "./utils.js";
 import { fetchApiRoutes } from "./api.js";
 
 const swapParameters = z.object({
+  chainId: z.number().default(1).describe("Chain ID (1 for Mainnet, 8453 for Base). Default: 1"),
   tokenIn: SymbolOrTokenSchema.describe(`Symbol (e.g. "USDT") or { address, id? }`),
   tokenOut: SymbolOrTokenSchema.describe(`Symbol (e.g. "IZO") or { address, id? }`),
   amount: AmountSchema.describe("Human-readable amount, e.g. 1.5"),
@@ -35,7 +37,10 @@ export const intentSwap = createTool({
   supportedChains,
   parameters: swapParameters,
   execute: async (client: AgentekClient, args: z.infer<typeof swapParameters>): Promise<Intent> => {
-    const chainId = mainnet.id;
+    const chainId = args.chainId as 1 | 8453;
+    if (chainId !== mainnet.id && chainId !== base.id) {
+      throw new Error(`Unsupported chain ID ${chainId}. Supported: 1 (Mainnet), 8453 (Base).`);
+    }
     const walletClient = client.getWalletClient(chainId);
     const publicClient = client.getPublicClient(chainId);
 
@@ -97,9 +102,7 @@ export const intentSwap = createTool({
     const router: Address =
       args.router ??
       (steps[0] as any)?.router ??
-      (() => {
-        throw new Error("Router address is required (pass 'router' or ensure findRoute returns it).");
-      })();
+      getConfig(chainId).router;
 
     // --- Check if the best route is a direct Matcha swap ---
     // Matcha routes have a single MATCHA step with a raw 0x transaction

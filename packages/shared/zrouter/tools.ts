@@ -4,12 +4,15 @@ import { quote } from "zrouter-sdk";
 import { mainnet } from "viem/chains";
 import { resolveInputToToken, toBaseUnits, asToken } from "./utils.js";
 import { SymbolOrTokenSchema } from "./types.js";
+import { supportedChains } from "./constants.js";
 import { fetchApiRoutes } from "./api.js";
 
 export const getQuote = createTool({
   name: "getQuote",
   description: "Get a quote for swapping ERC20 and ERC6909 tokens.",
+  supportedChains,
   parameters: z.object({
+    chainId: z.number().default(1).describe("Chain ID (1 for Mainnet, 8453 for Base). Default: 1"),
     tokenIn: SymbolOrTokenSchema,
     tokenOut: SymbolOrTokenSchema,
     amount: z.union([z.number(), z.string()]),
@@ -17,15 +20,16 @@ export const getQuote = createTool({
   }),
   execute: async (client, args) => {
     const { tokenIn, tokenOut, side } = args;
+    const chainId = (args.chainId || mainnet.id) as 1 | 8453;
     const amountInput =
       typeof args.amount === "number" ? args.amount.toString() : args.amount;
 
-    const publicClient = client.getPublicClient(mainnet.id);
+    const publicClient = client.getPublicClient(chainId);
 
     // --- resolve tokens (symbol -> address[/id]) and decimals/standard ---
     const [tIn, tOut] = await Promise.all([
-      resolveInputToToken(tokenIn, mainnet.id),
-      resolveInputToToken(tokenOut, mainnet.id),
+      resolveInputToToken(tokenIn, chainId),
+      resolveInputToToken(tokenOut, chainId),
     ]);
 
     // --- parse amount into base units depending on standard ---
@@ -36,7 +40,7 @@ export const getQuote = createTool({
 
     // Try API first (includes Matcha/0x aggregated quotes alongside on-chain)
     const apiRoutes = await fetchApiRoutes({
-      chainId: mainnet.id,
+      chainId,
       tokenIn: { address: tIn.address, ...(tIn.id !== undefined ? { id: tIn.id } : {}) },
       tokenOut: { address: tOut.address, ...(tOut.id !== undefined ? { id: tOut.id } : {}) },
       side,
@@ -55,7 +59,7 @@ export const getQuote = createTool({
       };
     }
 
-    // Fallback to SDK quote
+    // Fallback to SDK quote (fully on-chain, no API key needed)
     const q = await quote(publicClient, {
       tokenIn: asToken(tIn),
       tokenOut: asToken(tOut),
