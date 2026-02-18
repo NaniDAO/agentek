@@ -44,8 +44,17 @@ const matchaSwapChains = [mainnet, optimism, arbitrum, base];
  */
 export const createMatchSwapTool = ({
   zeroxApiKey,
+  swapFeeRecipient,
+  swapFeeBps,
+  swapFeeToken,
 }: {
   zeroxApiKey: string;
+  /** Address to receive integrator/affiliate fees. */
+  swapFeeRecipient?: string;
+  /** Fee in basis points (e.g. 10 = 0.1%). */
+  swapFeeBps?: number;
+  /** Which token the fee is taken from: "sellToken" or "buyToken". Default: "sellToken". */
+  swapFeeToken?: "sellToken" | "buyToken";
 }): BaseTool => {
   return createTool({
     name: "intent0xSwap",
@@ -127,6 +136,13 @@ export const createMatchSwapTool = ({
           taker: userAddress,
           slippageBps: String(slippageBps),
         });
+
+        // Integrator/affiliate fee
+        if (swapFeeRecipient && swapFeeBps) {
+          params.set("swapFeeRecipient", swapFeeRecipient);
+          params.set("swapFeeBps", String(swapFeeBps));
+          params.set("swapFeeToken", swapFeeToken || "sellToken");
+        }
 
         const quoteUrl = `https://api.0x.org/swap/allowance-holder/quote?${params}`;
 
