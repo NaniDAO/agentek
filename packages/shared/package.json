@@ -36,6 +36,9 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@x402/core": "latest",
+    "@x402/evm": "latest",
+    "@x402/fetch": "latest",
     "cheerio": "^1.1.2",
     "wns-utils": "^0.2.1"
   },

@@ -30,6 +30,7 @@ import { coinchanTools } from "./coinchan/index.js";
 import { zammTools } from "./zamm/index.js";
 import { zrouterTools } from "./zrouter/index.js";
 import { wnsTools } from "./wns/index.js";
+import { x402Tools } from "./x402/index.js";
 
 const allTools = ({
   perplexityApiKey,
@@ -74,7 +75,8 @@ const allTools = ({
     ...coinchanTools(),
     ...zammTools(),
     ...zrouterTools(),
-    ...wnsTools()
+    ...wnsTools(),
+    ...x402Tools()
   ];
 
   if (perplexityApiKey) {
@@ -146,5 +148,6 @@ export {
   coinchanTools,
   zammTools,
   zrouterTools,
-  wnsTools
+  wnsTools,
+  x402Tools
 };
