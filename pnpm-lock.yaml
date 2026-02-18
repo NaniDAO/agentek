@@ -48,8 +48,8 @@ importers:
   packages/ai-sdk:
     dependencies:
       '@agentek/tools':
-        specifier: ^0.1.20
-        version: 0.1.20(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
+        specifier: workspace:^
+        version: link:../shared
       ai:
         specifier: ^6.0.67
         version: 6.0.67(zod@3.25.76)
@@ -73,8 +73,8 @@ importers:
   packages/mcp:
     dependencies:
       '@agentek/tools':
-        specifier: 0.1.20
-        version: 0.1.20(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
+        specifier: workspace:^
+        version: link:../shared
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.26.0(zod@3.25.76)
@@ -87,9 +87,6 @@ importers:
       zod:
         specifier: ^3.25.76
         version: 3.25.76
-      zod-to-json-schema:
-        specifier: ^3.24.5
-        version: 3.24.5(zod@3.25.76)
       zrouter-sdk:
         specifier: ^0.0.27
         version: 0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
@@ -148,14 +145,6 @@ packages:
 
   '@adraffy/ens-normalize@1.11.0':
     resolution: {integrity: sha512-/3DDPKHqqIqxUULp8yP4zODUY1i+2xvVWsv8A79xGWdCAG+8sb0hRh0Rk2QyOJUnnbyPUAZYcpBuRe3nS2OIUg==}
-
-  '@agentek/tools@0.1.20':
-    resolution: {integrity: sha512-rhqPqNJ+Nc+ApyRbZQMlCD3rE5GnBLzgSIR2Gk/NwbQA2Q++Id6DPJtWmXOGydZPRJ7+Ob2m73JyRqMWRMD+8w==}
-    engines: {node: '>=18.17.0'}
-    peerDependencies:
-      viem: ^2.33.2
-      zod: ^3.25.76
-      zrouter-sdk: ^0.0.27
 
   '@ai-sdk/gateway@3.0.32':
     resolution: {integrity: sha512-7clZRr07P9rpur39t1RrbIe7x8jmwnwUWI8tZs+BvAfX3NFgdSVGGIaT7bTz2pb08jmLXzTSDbrOTqAQ7uBkBQ==}
@@ -2037,11 +2026,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  zod-to-json-schema@3.24.5:
-    resolution: {integrity: sha512-/AuWwMP+YqiPbsJx5D6TfgRTc4kTLjsh5SOcd4bLsfUg2RcEXrFMJl1DGgdHy2aCfsIA/cr/1JM0xcB2GZji8g==}
-    peerDependencies:
-      zod: ^3.24.1
-
   zod-to-json-schema@3.25.1:
     resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
     peerDependencies:
@@ -2062,14 +2046,6 @@ packages:
 snapshots:
 
   '@adraffy/ens-normalize@1.11.0': {}
-
-  '@agentek/tools@0.1.20(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))':
-    dependencies:
-      cheerio: 1.1.2
-      viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
-      wns-utils: 0.2.1
-      zod: 3.25.76
-      zrouter-sdk: 0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
 
   '@ai-sdk/gateway@3.0.32(zod@3.25.76)':
     dependencies:
@@ -3905,10 +3881,6 @@ snapshots:
   ws@8.18.2: {}
 
   ws@8.18.3: {}
-
-  zod-to-json-schema@3.24.5(zod@3.25.76):
-    dependencies:
-      zod: 3.25.76
 
   zod-to-json-schema@3.25.1(zod@3.25.76):
     dependencies:
