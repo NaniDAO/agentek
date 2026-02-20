@@ -31,6 +31,7 @@ import { zammTools } from "./zamm/index.js";
 import { zrouterTools } from "./zrouter/index.js";
 import { wnsTools } from "./wns/index.js";
 import { x402Tools } from "./x402/index.js";
+import { twitterTools } from "./twitter/index.js";
 
 const allTools = ({
   perplexityApiKey,
@@ -40,6 +41,7 @@ const allTools = ({
   coinMarketCalApiKey,
   fireworksApiKey,
   pinataJWT,
+  xBearerToken,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
@@ -48,6 +50,7 @@ const allTools = ({
   coinMarketCalApiKey?: string;
   fireworksApiKey?: string;
   pinataJWT?: string;
+  xBearerToken?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -110,6 +113,10 @@ const allTools = ({
     }))
   }
 
+  if (xBearerToken) {
+    tools.push(...twitterTools({ xBearerToken }));
+  }
+
   return tools;
 };
 
@@ -149,5 +156,6 @@ export {
   zammTools,
   zrouterTools,
   wnsTools,
-  x402Tools
+  x402Tools,
+  twitterTools
 };
