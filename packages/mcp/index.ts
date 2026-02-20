@@ -39,6 +39,9 @@ async function main() {
   const COINMARKETCAL_API_KEY = process.env.COINMARKETCAL_API_KEY;
   const FIREWORKS_API_KEY = process.env.FIREWORKS_API_KEY;
   const PINATA_JWT = process.env.PINATA_JWT;
+  const X_BEARER_TOKEN = process.env.X_BEARER_TOKEN;
+  const X_API_KEY = process.env.X_API_KEY;
+  const X_API_KEY_SECRET = process.env.X_API_KEY_SECRET;
 
   if (PRIVATE_KEY && !isHex(PRIVATE_KEY)) {
     throw new Error("Invalid PRIVATE_KEY format, must be hex");
@@ -56,7 +59,7 @@ async function main() {
     transports,
     chains,
     accountOrAddress: account,
-    tools: allTools({
+    tools: await allTools({
       perplexityApiKey: PERPLEXITY_API_KEY,
       zeroxApiKey: ZEROX_API_KEY,
       tallyApiKey: TALLY_API_KEY,
@@ -64,6 +67,9 @@ async function main() {
       coinMarketCalApiKey: COINMARKETCAL_API_KEY,
       fireworksApiKey: FIREWORKS_API_KEY,
       pinataJWT: PINATA_JWT,
+      xBearerToken: X_BEARER_TOKEN,
+      xApiKey: X_API_KEY,
+      xApiKeySecret: X_API_KEY_SECRET,
     }),
   });
 

@@ -33,7 +33,7 @@ import { wnsTools } from "./wns/index.js";
 import { x402Tools } from "./x402/index.js";
 import { twitterTools } from "./twitter/index.js";
 
-const allTools = ({
+const allTools = async ({
   perplexityApiKey,
   zeroxApiKey,
   tallyApiKey,
@@ -42,6 +42,8 @@ const allTools = ({
   fireworksApiKey,
   pinataJWT,
   xBearerToken,
+  xApiKey,
+  xApiKeySecret,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
@@ -51,6 +53,8 @@ const allTools = ({
   fireworksApiKey?: string;
   pinataJWT?: string;
   xBearerToken?: string;
+  xApiKey?: string;
+  xApiKeySecret?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -114,7 +118,9 @@ const allTools = ({
   }
 
   if (xBearerToken) {
-    tools.push(...twitterTools({ xBearerToken }));
+    tools.push(...await twitterTools({ xBearerToken }));
+  } else if (xApiKey && xApiKeySecret) {
+    tools.push(...await twitterTools({ xApiKey, xApiKeySecret }));
   }
 
   return tools;

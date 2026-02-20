@@ -88,7 +88,7 @@ export function createGetTweetByIdTool(bearerToken: string): BaseTool {
       });
 
       const data = await xFetch(
-        `${X_API_BASE}/tweets/${args.tweetId}?${params}`,
+        `${X_API_BASE}/tweets/${encodeURIComponent(args.tweetId)}?${params}`,
         bearerToken,
       );
 
@@ -118,7 +118,7 @@ export function createGetUserByUsernameTool(
       });
 
       const data = await xFetch(
-        `${X_API_BASE}/users/by/username/${args.username}?${params}`,
+        `${X_API_BASE}/users/by/username/${encodeURIComponent(args.username)}?${params}`,
         bearerToken,
       );
 
@@ -167,7 +167,7 @@ export function createGetUserTweetsTool(
       if (excludes.length > 0) params.set("exclude", excludes.join(","));
 
       const data = await xFetch(
-        `${X_API_BASE}/users/${args.userId}/tweets?${params}`,
+        `${X_API_BASE}/users/${encodeURIComponent(args.userId)}/tweets?${params}`,
         bearerToken,
       );
 
