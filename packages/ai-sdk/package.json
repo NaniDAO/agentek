@@ -1,6 +1,6 @@
 {
   "name": "@agentek/ai-sdk",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "description": "AI SDK integration for Agentek tools",
   "type": "module",
   "main": "./dist/index.js",
