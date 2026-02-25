@@ -1,6 +1,7 @@
 import z from "zod";
 import { createTool } from "../client.js";
 import type { BaseTool, AgentekClient } from "../client.js";
+import type { TwitterApi } from "twitter-api-v2";
 
 const X_API_BASE = "https://api.x.com/2";
 
@@ -172,6 +173,55 @@ export function createGetUserTweetsTool(
       );
 
       return formatTweetResponse(data);
+    },
+  });
+}
+
+export function createGetHomeTimelineTool(
+  twitterClient: TwitterApi,
+): BaseTool {
+  return createTool({
+    name: "getHomeTimeline",
+    description:
+      "Get the authenticated user's home timeline (feed) from X/Twitter. Returns recent tweets from accounts the user follows and suggested content. Requires user OAuth credentials.",
+    supportedChains: [],
+    parameters: z.object({
+      maxResults: z
+        .number()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Number of results (1-100, default 10)"),
+      excludeReplies: z
+        .boolean()
+        .optional()
+        .describe("Exclude replies (default false)"),
+      excludeRetweets: z
+        .boolean()
+        .optional()
+        .describe("Exclude retweets (default false)"),
+    }),
+    execute: async (_client: AgentekClient, args) => {
+      const me = await twitterClient.v2.me();
+      const userId = me.data.id;
+
+      const exclude: Array<"replies" | "retweets"> = [];
+      if (args.excludeReplies) exclude.push("replies");
+      if (args.excludeRetweets) exclude.push("retweets");
+
+      const timeline = await twitterClient.v2.homeTimeline({
+        max_results: args.maxResults || 10,
+        "tweet.fields": DEFAULT_TWEET_FIELDS.split(",") as any,
+        "user.fields": DEFAULT_USER_FIELDS.split(",") as any,
+        expansions: DEFAULT_EXPANSIONS.split(",") as any,
+        ...(exclude.length > 0 ? { exclude } : {}),
+      });
+
+      return formatTweetResponse({
+        data: timeline.data.data,
+        includes: timeline.data.includes,
+        meta: timeline.data.meta,
+      });
     },
   });
 }

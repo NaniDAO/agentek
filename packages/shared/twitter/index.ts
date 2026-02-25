@@ -3,9 +3,11 @@ import {
   createGetTweetByIdTool,
   createGetUserByUsernameTool,
   createGetUserTweetsTool,
+  createGetHomeTimelineTool,
 } from "./tools.js";
 import { createToolCollection } from "../client.js";
 import type { BaseTool } from "../client.js";
+import { TwitterApi } from "twitter-api-v2";
 
 async function fetchBearerToken(
   apiKey: string,
@@ -32,9 +34,13 @@ async function fetchBearerToken(
   return data.access_token;
 }
 
-export type TwitterToolsConfig =
+export type TwitterToolsConfig = (
   | { xBearerToken: string }
-  | { xApiKey: string; xApiKeySecret: string };
+  | { xApiKey: string; xApiKeySecret: string }
+) & {
+  xAccessToken?: string;
+  xAccessTokenSecret?: string;
+};
 
 export async function twitterTools(
   config: TwitterToolsConfig,
@@ -56,10 +62,30 @@ export async function twitterTools(
     );
   }
 
-  return createToolCollection([
+  const tools: BaseTool[] = [
     createSearchRecentTweetsTool(bearerToken),
     createGetTweetByIdTool(bearerToken),
     createGetUserByUsernameTool(bearerToken),
     createGetUserTweetsTool(bearerToken),
-  ]);
+  ];
+
+  // Home timeline requires user OAuth 1.0a credentials
+  if (
+    "xApiKey" in config &&
+    config.xApiKey &&
+    "xApiKeySecret" in config &&
+    config.xApiKeySecret &&
+    config.xAccessToken &&
+    config.xAccessTokenSecret
+  ) {
+    const userClient = new TwitterApi({
+      appKey: config.xApiKey,
+      appSecret: config.xApiKeySecret,
+      accessToken: config.xAccessToken,
+      accessSecret: config.xAccessTokenSecret,
+    });
+    tools.push(createGetHomeTimelineTool(userClient));
+  }
+
+  return createToolCollection(tools);
 }

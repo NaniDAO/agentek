@@ -4,6 +4,7 @@ import {
   createGetTweetByIdTool,
   createGetUserByUsernameTool,
   createGetUserTweetsTool,
+  createGetHomeTimelineTool,
 } from "./tools.js";
 import { twitterTools } from "./index.js";
 import {
@@ -14,14 +15,31 @@ import {
 } from "../test-helpers.js";
 import type { BaseTool, AgentekClient } from "../client.js";
 
+import { TwitterApi } from "twitter-api-v2";
+
 const BEARER_TOKEN = process.env.X_BEARER_TOKEN || "test-token";
 const HAS_TOKEN = hasEnvVar("X_BEARER_TOKEN");
+
+const HAS_USER_KEYS =
+  hasEnvVar("X_API_KEY") &&
+  hasEnvVar("X_API_KEY_SECRET") &&
+  hasEnvVar("X_ACCESS_TOKEN") &&
+  hasEnvVar("X_ACCESS_TOKEN_SECRET");
 
 // Tools created directly (sync, for structure/param tests)
 const searchTool = createSearchRecentTweetsTool(BEARER_TOKEN);
 const getTweetTool = createGetTweetByIdTool(BEARER_TOKEN);
 const getUserTool = createGetUserByUsernameTool(BEARER_TOKEN);
 const getUserTweetsTool = createGetUserTweetsTool(BEARER_TOKEN);
+
+// Home timeline tool requires a TwitterApi instance (use dummy for structure tests)
+const dummyTwitterClient = new TwitterApi({
+  appKey: "test",
+  appSecret: "test",
+  accessToken: "test",
+  accessSecret: "test",
+});
+const homeTimelineTool = createGetHomeTimelineTool(dummyTwitterClient);
 
 // Tools from async factory (tested in its own describe)
 let tools: BaseTool[];
@@ -54,6 +72,21 @@ describe("Twitter Tools", () => {
         twitterTools({ xApiKey: "", xApiKeySecret: "" }),
       ).rejects.toThrow("X (Twitter) credentials required");
     });
+
+    it.skipIf(!HAS_USER_KEYS)(
+      "twitterTools() with user keys should return 5 tools including getHomeTimeline",
+      async () => {
+        const userTools = await twitterTools({
+          xApiKey: process.env.X_API_KEY!,
+          xApiKeySecret: process.env.X_API_KEY_SECRET!,
+          xAccessToken: process.env.X_ACCESS_TOKEN!,
+          xAccessTokenSecret: process.env.X_ACCESS_TOKEN_SECRET!,
+        });
+        expect(userTools).toHaveLength(5);
+        const names = userTools.map((t) => t.name);
+        expect(names).toContain("getHomeTimeline");
+      },
+    );
   });
 
   describe("Tool Structure", () => {
@@ -81,8 +114,14 @@ describe("Twitter Tools", () => {
       expect(result.errors).toEqual([]);
     });
 
+    it("getHomeTimeline should have valid tool structure", () => {
+      const result = validateToolStructure(homeTimelineTool);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
     it("all tools should have empty supportedChains", () => {
-      for (const tool of [searchTool, getTweetTool, getUserTool, getUserTweetsTool]) {
+      for (const tool of [searchTool, getTweetTool, getUserTool, getUserTweetsTool, homeTimelineTool]) {
         expect(tool.supportedChains).toEqual([]);
       }
     });
@@ -156,6 +195,27 @@ describe("Twitter Tools", () => {
       const result = getUserTweetsTool.parameters.safeParse({
         userId: "12345",
         maxResults: 2,
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("getHomeTimeline should accept empty params", () => {
+      const result = homeTimelineTool.parameters.safeParse({});
+      expect(result.success).toBe(true);
+    });
+
+    it("getHomeTimeline should accept optional filters", () => {
+      const result = homeTimelineTool.parameters.safeParse({
+        maxResults: 25,
+        excludeReplies: true,
+        excludeRetweets: false,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("getHomeTimeline should reject maxResults above 100", () => {
+      const result = homeTimelineTool.parameters.safeParse({
+        maxResults: 200,
       });
       expect(result.success).toBe(false);
     });
@@ -248,6 +308,35 @@ describe("Twitter Tools", () => {
             maxResults: 5,
             excludeRetweets: true,
           }),
+        );
+
+        expect(result).toHaveProperty("tweets");
+        expect(Array.isArray(result.tweets)).toBe(true);
+
+        if (result.tweets.length > 0) {
+          const tweet = result.tweets[0];
+          expect(tweet).toHaveProperty("id");
+          expect(tweet).toHaveProperty("text");
+          expect(tweet).toHaveProperty("author");
+        }
+      },
+      30000,
+    );
+
+    it.skipIf(!HAS_USER_KEYS)(
+      "getHomeTimeline should fetch the authenticated user's feed",
+      async () => {
+        const userClient = new TwitterApi({
+          appKey: process.env.X_API_KEY!,
+          appSecret: process.env.X_API_KEY_SECRET!,
+          accessToken: process.env.X_ACCESS_TOKEN!,
+          accessSecret: process.env.X_ACCESS_TOKEN_SECRET!,
+        });
+        const tool = createGetHomeTimelineTool(userClient);
+        const testClient = createTestClient([tool]);
+
+        const result = await withRetry(() =>
+          tool.execute(testClient, { maxResults: 5 }),
         );
 
         expect(result).toHaveProperty("tweets");

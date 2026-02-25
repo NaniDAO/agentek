@@ -40,6 +40,7 @@
     "@x402/evm": "latest",
     "@x402/fetch": "latest",
     "cheerio": "^1.1.2",
+    "twitter-api-v2": "^1.29.0",
     "wns-utils": "^0.2.1"
   },
   "peerDependencies": {

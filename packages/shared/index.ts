@@ -44,6 +44,8 @@ const allTools = async ({
   xBearerToken,
   xApiKey,
   xApiKeySecret,
+  xAccessToken,
+  xAccessTokenSecret,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
@@ -55,6 +57,8 @@ const allTools = async ({
   xBearerToken?: string;
   xApiKey?: string;
   xApiKeySecret?: string;
+  xAccessToken?: string;
+  xAccessTokenSecret?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -118,9 +122,9 @@ const allTools = async ({
   }
 
   if (xBearerToken) {
-    tools.push(...await twitterTools({ xBearerToken }));
+    tools.push(...await twitterTools({ xBearerToken, xAccessToken, xAccessTokenSecret }));
   } else if (xApiKey && xApiKeySecret) {
-    tools.push(...await twitterTools({ xApiKey, xApiKeySecret }));
+    tools.push(...await twitterTools({ xApiKey, xApiKeySecret, xAccessToken, xAccessTokenSecret }));
   }
 
   return tools;
