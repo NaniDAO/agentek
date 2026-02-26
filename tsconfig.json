@@ -34,7 +34,8 @@
   "references": [
     { "path": "./packages/shared" },
     { "path": "./packages/ai-sdk" },
-    { "path": "./packages/mcp" }
+    { "path": "./packages/mcp" },
+    { "path": "./packages/cli" }
   ],
   "files": []
 }

@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { createTool } from "../client.js";
 import { x402Client, wrapFetchWithPayment } from "@x402/fetch";
-import { ExactEvmScheme } from "@x402/evm";
-import type { ClientEvmSigner } from "@x402/evm";
+import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
 import { X402_DISCOVERY_URL, USDC_DECIMALS } from "./constants.js";
 
 export const x402FetchTool = createTool({
@@ -37,10 +36,14 @@ export const x402FetchTool = createTool({
         "Wallet account must support signTypedData for x402 payments",
       );
     }
-    const signer: ClientEvmSigner = {
-      address: account.address,
-      signTypedData: (msg) => account.signTypedData(msg as any),
-    };
+    const publicClient = client.getPublicClient();
+    const signer = toClientEvmSigner(
+      {
+        address: account.address,
+        signTypedData: (msg) => account.signTypedData(msg as any),
+      },
+      publicClient,
+    );
     const maxAmountBaseUnits = BigInt(
       Math.floor(maxPaymentUsd * 10 ** USDC_DECIMALS),
     );

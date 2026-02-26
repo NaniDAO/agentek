@@ -6,7 +6,8 @@
   "workspaces": [
     "packages/ai-sdk",
     "packages/shared",
-    "packages/mcp"
+    "packages/mcp",
+    "packages/cli"
   ],
   "scripts": {
     "build": "pnpm -r build",

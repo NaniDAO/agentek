@@ -21,6 +21,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TOOLS_PKG="$ROOT/packages/shared/package.json"
 AISDK_PKG="$ROOT/packages/ai-sdk/package.json"
 MCP_PKG="$ROOT/packages/mcp/package.json"
+CLI_PKG="$ROOT/packages/cli/package.json"
 
 # --- Helpers ---
 
@@ -63,14 +64,16 @@ set_version() {
 V_TOOLS=$(get_version "$TOOLS_PKG")
 V_AISDK=$(get_version "$AISDK_PKG")
 V_MCP=$(get_version "$MCP_PKG")
+V_CLI=$(get_version "$CLI_PKG")
 
-HIGHEST=$(max_version "$V_TOOLS" "$V_AISDK" "$V_MCP")
+HIGHEST=$(max_version "$V_TOOLS" "$V_AISDK" "$V_MCP" "$V_CLI")
 NEW_VER=$(bump_version "$HIGHEST" "$BUMP")
 
 echo "=== @agentek release ==="
 echo "  @agentek/tools      current: $V_TOOLS"
 echo "  @agentek/ai-sdk     current: $V_AISDK"
 echo "  @agentek/mcp-server current: $V_MCP"
+echo "  @agentek/cli        current: $V_CLI"
 echo "  Highest: $HIGHEST -> New: $NEW_VER"
 echo ""
 
@@ -80,6 +83,7 @@ echo "Setting all packages to $NEW_VER..."
 set_version "$TOOLS_PKG" "$NEW_VER"
 set_version "$AISDK_PKG" "$NEW_VER"
 set_version "$MCP_PKG" "$NEW_VER"
+set_version "$CLI_PKG" "$NEW_VER"
 echo ""
 
 # --- Build all ---
@@ -103,6 +107,11 @@ echo ""
 
 echo "Publishing @agentek/mcp-server..."
 cd "$ROOT/packages/mcp"
+pnpm publish --access public --no-git-checks
+echo ""
+
+echo "Publishing @agentek/cli..."
+cd "$ROOT/packages/cli"
 pnpm publish --access public --no-git-checks
 echo ""
 

@@ -1,0 +1,55 @@
+{
+  "name": "@agentek/cli",
+  "version": "0.1.26",
+  "description": "Command-line interface for Agentek tools",
+  "license": "AGPL-3.0",
+  "author": "NaniDAO",
+  "homepage": "https://nani.ooo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaniDAO/agentek.git"
+  },
+  "type": "module",
+  "bin": {
+    "agentek": "dist/index.mjs"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/index.mjs"
+  },
+  "dependencies": {
+    "@agentek/tools": "workspace:^",
+    "zod-to-json-schema": "^3.24.5"
+  },
+  "peerDependencies": {
+    "viem": "^2.33.2",
+    "zod": "^3.25.76",
+    "zrouter-sdk": "^0.0.27"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "typescript": "^5.9.2"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "blockchain",
+    "cli",
+    "tools"
+  ],
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}

@@ -70,6 +70,31 @@ importers:
         specifier: ^5.9.2
         version: 5.9.2
 
+  packages/cli:
+    dependencies:
+      '@agentek/tools':
+        specifier: workspace:^
+        version: link:../shared
+      viem:
+        specifier: ^2.33.2
+        version: 2.46.2(typescript@5.9.2)(zod@3.25.76)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+      zod-to-json-schema:
+        specifier: ^3.24.5
+        version: 3.25.1(zod@3.25.76)
+      zrouter-sdk:
+        specifier: ^0.0.27
+        version: 0.0.27(viem@2.46.2(typescript@5.9.2)(zod@3.25.76))
+    devDependencies:
+      '@types/node':
+        specifier: ^22.14.1
+        version: 22.14.1
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
   packages/mcp:
     dependencies:
       '@agentek/tools':
@@ -2590,14 +2615,6 @@ snapshots:
       chai: 5.2.0
       tinyrainbow: 2.0.0
 
-  '@vitest/mocker@3.2.4(vite@7.3.1(@types/node@22.14.1))':
-    dependencies:
-      '@vitest/spy': 3.2.4
-      estree-walker: 3.0.3
-      magic-string: 0.30.17
-    optionalDependencies:
-      vite: 7.3.1(@types/node@22.14.1)
-
   '@vitest/mocker@3.2.4(vite@7.3.1(@types/node@24.1.0))':
     dependencies:
       '@vitest/spy': 3.2.4
@@ -2687,6 +2704,11 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.2
       zod: 3.25.76
+
+  abitype@1.2.3(typescript@5.9.2)(zod@4.0.14):
+    optionalDependencies:
+      typescript: 5.9.2
+      zod: 4.0.14
 
   accepts@2.0.0:
     dependencies:
@@ -3353,7 +3375,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.0.8(typescript@5.9.2)(zod@3.25.76)
+      abitype: 1.2.3(typescript@5.9.2)(zod@3.25.76)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.2
@@ -3368,7 +3390,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.0.8(typescript@5.9.2)(zod@4.0.14)
+      abitype: 1.2.3(typescript@5.9.2)(zod@4.0.14)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.2
@@ -3918,7 +3940,7 @@ snapshots:
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@7.3.1(@types/node@22.14.1))
+      '@vitest/mocker': 3.2.4(vite@7.3.1(@types/node@24.1.0))
       '@vitest/pretty-format': 3.2.4
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4
@@ -4046,3 +4068,7 @@ snapshots:
   zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)):
     dependencies:
       viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
+
+  zrouter-sdk@0.0.27(viem@2.46.2(typescript@5.9.2)(zod@3.25.76)):
+    dependencies:
+      viem: 2.46.2(typescript@5.9.2)(zod@3.25.76)
