@@ -211,6 +211,23 @@ function coerceValue(raw: string, schema?: z.ZodTypeAny): unknown {
   return raw;
 }
 
+/** Levenshtein distance between two strings. */
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[] = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
@@ -344,6 +361,30 @@ async function main() {
 
   const toolsMap = agentekClient.getTools() as Map<string, BaseTool>;
 
+  /** Find closest tool name match for "did you mean?" suggestions. */
+  function suggestTool(input: string): string | undefined {
+    const lower = input.toLowerCase();
+    let best: string | undefined;
+    let bestDist = Infinity;
+    for (const name of toolsMap.keys()) {
+      // Case-insensitive exact match
+      if (name.toLowerCase() === lower) return name;
+      // Levenshtein distance for close matches
+      const d = levenshtein(lower, name.toLowerCase());
+      if (d < bestDist) { bestDist = d; best = name; }
+    }
+    // Only suggest if reasonably close (max 3 edits or <40% of input length)
+    if (best && bestDist <= Math.max(3, Math.floor(input.length * 0.4))) return best;
+    return undefined;
+  }
+
+  /** Error with "did you mean?" hint for unknown tool names. */
+  function unknownToolError(toolName: string): never {
+    const suggestion = suggestTool(toolName);
+    const hint = suggestion ? ` — did you mean "${suggestion}"?` : "";
+    outputError(`Unknown tool: ${toolName}${hint}`);
+  }
+
   // ── Commands ─────────────────────────────────────────────────────────
 
   if (command === "list") {
@@ -374,7 +415,7 @@ async function main() {
     if (!toolName) outputError("Usage: agentek info <tool-name>");
 
     const tool = toolsMap.get(toolName);
-    if (!tool) outputError(`Unknown tool: ${toolName}`);
+    if (!tool) unknownToolError(toolName);
 
     outputJson({
       name: tool!.name,
@@ -389,7 +430,7 @@ async function main() {
     if (!toolName) outputError("Usage: agentek exec <tool-name> [--key value ...]");
 
     const tool = toolsMap.get(toolName);
-    if (!tool) outputError(`Unknown tool: ${toolName}`);
+    if (!tool) unknownToolError(toolName);
 
     // Extract --timeout before parsing tool flags
     let timeoutMs = DEFAULT_TIMEOUT_MS;

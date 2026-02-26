@@ -344,6 +344,15 @@ describe("CLI — info", () => {
     expect(err.error).toContain("Unknown tool");
   }, TEST_TIMEOUT);
 
+  it("should suggest closest match for typos", async () => {
+    const { stderr, exitCode } = await run(["info", "getbalance"]);
+    expect(exitCode).toBe(1);
+
+    const err = parseJson(stderr);
+    expect(err.error).toContain("did you mean");
+    expect(err.error).toContain("getBalance");
+  }, TEST_TIMEOUT);
+
   it("should error when no tool name is given", async () => {
     const { stderr, exitCode } = await run(["info"]);
     expect(exitCode).toBe(1);
