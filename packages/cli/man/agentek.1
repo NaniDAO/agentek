@@ -3,6 +3,12 @@
 agentek \- CLI for blockchain and data tools
 .SH SYNOPSIS
 .B agentek
+.BR setup
+.br
+.B agentek
+.BR config " " \fIset|get|list|delete\fR " " [\fIargs ...\fR]
+.br
+.B agentek
 .BR list
 .br
 .B agentek
@@ -16,6 +22,33 @@ is a command-line interface that exposes 150+ blockchain and data tools as simpl
 .PP
 Supported chains include Ethereum, Optimism, Arbitrum, Polygon, and Base.
 .SH COMMANDS
+.TP
+.B setup
+Print a human-readable status table showing all known API keys and whether each is configured (from environment or config file) or missing. Exits 0.
+.TP
+.BI config " set KEY VALUE"
+Save
+.I KEY
+with
+.I VALUE
+to the config file. Prints JSON
+.IR "{ ok, key }" .
+.TP
+.BI config " get KEY" " [--reveal]"
+Print the config file value for
+.IR KEY .
+The value is redacted unless
+.B --reveal
+is given.
+.TP
+.B config list
+Print a JSON array of all known keys with their status, source, and description.
+.TP
+.BI config " delete KEY"
+Remove
+.I KEY
+from the config file. Prints JSON
+.IR "{ ok, key, deleted }" .
 .TP
 .B list
 Print a sorted JSON array of all available tool names to stdout.
@@ -84,6 +117,23 @@ X/Twitter OAuth application key.
 .TP
 .B X_API_KEY_SECRET
 X/Twitter OAuth application secret.
+.TP
+.B X_ACCESS_TOKEN
+X/Twitter OAuth user access token.
+.TP
+.B X_ACCESS_TOKEN_SECRET
+X/Twitter OAuth user access token secret.
+.SH CONFIGURATION
+API keys can be persisted in
+.B ~/.agentek/config.json
+using the
+.B config
+subcommand. The directory is created with mode 0700 and the file with mode 0600.
+.PP
+Override the config directory by setting
+.BR AGENTEK_CONFIG_DIR .
+.PP
+Environment variables always take precedence over config file values.
 .SH EXIT CODES
 .TP
 .B 0

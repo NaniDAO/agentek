@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { execFile } from "node:child_process";
 import { resolve } from "node:path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const CLI = resolve(__dirname, "dist/index.mjs");
 
@@ -13,8 +16,14 @@ const SUBPROCESS_TIMEOUT = 60_000;
 /** Vitest per-test timeout — must exceed SUBPROCESS_TIMEOUT. */
 const TEST_TIMEOUT = 90_000;
 
-/** Run the CLI with given args and return { stdout, stderr, exitCode }. */
-function run(args: string[]): Promise<{
+/** Timeout for config tests that spawn 2-3 subprocesses (~3s each). */
+const CONFIG_TEST_TIMEOUT = 30_000;
+
+/** Run the CLI with given args and optional env overrides. */
+function run(
+  args: string[],
+  env?: Record<string, string>,
+): Promise<{
   stdout: string;
   stderr: string;
   exitCode: number;
@@ -23,7 +32,10 @@ function run(args: string[]): Promise<{
     execFile(
       "node",
       [CLI, ...args],
-      { timeout: SUBPROCESS_TIMEOUT },
+      {
+        timeout: SUBPROCESS_TIMEOUT,
+        env: { ...process.env, ...env },
+      },
       (err, stdout, stderr) => {
         const exitCode = err && "code" in err ? (err as any).code as number : 0;
         resolve({ stdout, stderr, exitCode });
@@ -69,6 +81,157 @@ describe("CLI — usage & help", () => {
     expect(exitCode).toBe(2);
     expect(stderr).toContain("Usage:");
   });
+});
+
+// ── config ───────────────────────────────────────────────────────────────
+
+describe("CLI — config", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "agentek-test-"));
+  });
+
+  const cfgEnv = () => ({ AGENTEK_CONFIG_DIR: tmpDir });
+
+  it("config set should persist a key", async () => {
+    const { stdout, exitCode } = await run(
+      ["config", "set", "PERPLEXITY_API_KEY", "pplx-test-1234567890"],
+      cfgEnv(),
+    );
+    expect(exitCode).toBe(0);
+    const result = parseJson(stdout);
+    expect(result.ok).toBe(true);
+    expect(result.key).toBe("PERPLEXITY_API_KEY");
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("config get should return redacted value by default", async () => {
+    await run(["config", "set", "PERPLEXITY_API_KEY", "pplx-test-1234567890"], cfgEnv());
+    const { stdout, exitCode } = await run(
+      ["config", "get", "PERPLEXITY_API_KEY"],
+      cfgEnv(),
+    );
+    expect(exitCode).toBe(0);
+    const result = parseJson(stdout);
+    expect(result.key).toBe("PERPLEXITY_API_KEY");
+    expect(result.value).toContain("...");
+    expect(result.value).not.toBe("pplx-test-1234567890");
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("config get --reveal should return full value", async () => {
+    await run(["config", "set", "PERPLEXITY_API_KEY", "pplx-test-1234567890"], cfgEnv());
+    const { stdout, exitCode } = await run(
+      ["config", "get", "PERPLEXITY_API_KEY", "--reveal"],
+      cfgEnv(),
+    );
+    expect(exitCode).toBe(0);
+    const result = parseJson(stdout);
+    expect(result.value).toBe("pplx-test-1234567890");
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("config list should show all known keys", async () => {
+    await run(["config", "set", "PERPLEXITY_API_KEY", "pplx-test-1234567890"], cfgEnv());
+    const { stdout, exitCode } = await run(["config", "list"], cfgEnv());
+    expect(exitCode).toBe(0);
+    const list = parseJson(stdout);
+    expect(Array.isArray(list)).toBe(true);
+    expect(list.length).toBeGreaterThanOrEqual(14);
+    const pplx = list.find((k: any) => k.key === "PERPLEXITY_API_KEY");
+    expect(pplx.status).toBe("configured");
+    expect(pplx.source).toBe("config");
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("config delete should remove a key", async () => {
+    await run(["config", "set", "ZEROX_API_KEY", "zrx-test-123"], cfgEnv());
+    const { stdout, exitCode } = await run(
+      ["config", "delete", "ZEROX_API_KEY"],
+      cfgEnv(),
+    );
+    expect(exitCode).toBe(0);
+    const result = parseJson(stdout);
+    expect(result.ok).toBe(true);
+    expect(result.deleted).toBe(true);
+
+    // Verify it's gone
+    const { stdout: getOut } = await run(["config", "get", "ZEROX_API_KEY"], cfgEnv());
+    expect(parseJson(getOut).value).toBeNull();
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("config delete of missing key should report deleted: false", async () => {
+    const { stdout, exitCode } = await run(
+      ["config", "delete", "ZEROX_API_KEY"],
+      cfgEnv(),
+    );
+    expect(exitCode).toBe(0);
+    const result = parseJson(stdout);
+    expect(result.deleted).toBe(false);
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("config set should warn for unknown key", async () => {
+    const { stderr, exitCode } = await run(
+      ["config", "set", "UNKNOWN_KEY_XYZ", "value"],
+      cfgEnv(),
+    );
+    expect(exitCode).toBe(0);
+    expect(stderr).toContain("not a known key");
+  }, CONFIG_TEST_TIMEOUT);
+});
+
+// ── setup ────────────────────────────────────────────────────────────────
+
+describe("CLI — setup", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "agentek-test-"));
+  });
+
+  it("should show key status to stderr", async () => {
+    const { stderr, exitCode } = await run(["setup"], { AGENTEK_CONFIG_DIR: tmpDir });
+    expect(exitCode).toBe(0);
+    expect(stderr).toContain("PERPLEXITY_API_KEY");
+    expect(stderr).toContain("PRIVATE_KEY");
+    expect(stderr).toContain("keys configured");
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("should detect configured keys from config file", async () => {
+    await run(
+      ["config", "set", "PERPLEXITY_API_KEY", "pplx-test-1234567890"],
+      { AGENTEK_CONFIG_DIR: tmpDir },
+    );
+    const { stderr, exitCode } = await run(["setup"], { AGENTEK_CONFIG_DIR: tmpDir });
+    expect(exitCode).toBe(0);
+    expect(stderr).toContain("configured");
+    expect(stderr).toContain("1/14");
+  }, CONFIG_TEST_TIMEOUT);
+});
+
+// ── env overrides config ─────────────────────────────────────────────────
+
+describe("CLI — env overrides config", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "agentek-test-"));
+  });
+
+  it("env var should take precedence over config file value", async () => {
+    // Set config value
+    await run(
+      ["config", "set", "PERPLEXITY_API_KEY", "from-config-file-value"],
+      { AGENTEK_CONFIG_DIR: tmpDir },
+    );
+
+    // config list with env var set should show env as source
+    const { stdout } = await run(["config", "list"], {
+      AGENTEK_CONFIG_DIR: tmpDir,
+      PERPLEXITY_API_KEY: "from-env-variable-value",
+    });
+    const list = parseJson(stdout);
+    const pplx = list.find((k: any) => k.key === "PERPLEXITY_API_KEY");
+    expect(pplx.source).toBe("env");
+    expect(pplx.status).toBe("configured");
+  }, CONFIG_TEST_TIMEOUT);
 });
 
 // ── list ──────────────────────────────────────────────────────────────────
@@ -133,8 +296,7 @@ describe("CLI — info", () => {
 // ── exec ──────────────────────────────────────────────────────────────────
 
 describe("CLI — exec", () => {
-  it("should execute getBlockNumber on Base and coerce chainId to number", async () => {
-    // Uses Base (8453) — faster and more reliable than mainnet in CI
+  it("should execute getBlockNumber on Base with --key value syntax", async () => {
     const { stdout, exitCode } = await run(["exec", "getBlockNumber", "--chainId", "8453"]);
     expect(exitCode).toBe(0);
 
@@ -142,6 +304,15 @@ describe("CLI — exec", () => {
     // chainId is coerced from string "8453" → number 8453 via Zod schema
     expect(result.chainId).toBe(8453);
     expect(typeof result.blockNumber).toBe("string");
+    expect(Number(result.blockNumber)).toBeGreaterThan(0);
+  }, TEST_TIMEOUT);
+
+  it("should support --key=value syntax", async () => {
+    const { stdout, exitCode } = await run(["exec", "getBlockNumber", "--chainId=8453"]);
+    expect(exitCode).toBe(0);
+
+    const result = parseJson(stdout);
+    expect(result.chainId).toBe(8453);
     expect(Number(result.blockNumber)).toBeGreaterThan(0);
   }, TEST_TIMEOUT);
 

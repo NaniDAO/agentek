@@ -5,6 +5,15 @@ import { createAgentekClient, type BaseTool } from "@agentek/tools/client";
 import { allTools } from "@agentek/tools";
 import { privateKeyToAccount } from "viem/accounts";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import {
+  KNOWN_KEYS,
+  readConfig,
+  writeConfig,
+  resolveKeys,
+  resolveAllKeys,
+  redactValue,
+  isKnownKey,
+} from "./config.js";
 
 const VERSION = "0.1.26";
 const TOOL_TIMEOUT_MS = 120_000;
@@ -42,6 +51,11 @@ function printUsage(): never {
   process.stderr.write(`agentek v${VERSION} — CLI for Agentek tools
 
 Usage:
+  agentek setup                             Show configuration status for all keys
+  agentek config set <KEY> <VALUE>          Save a key to ~/.agentek/config.json
+  agentek config get <KEY> [--reveal]       Show a key's value (redacted by default)
+  agentek config list                       List all known keys with status
+  agentek config delete <KEY>               Remove a key from config
   agentek list                              List all available tools
   agentek info <tool-name>                  Show tool description and parameter schema
   agentek exec <tool-name> [--key value]    Execute a tool with the given parameters
@@ -52,11 +66,9 @@ Flags:
   --flag            Boolean true (when schema expects boolean)
   --json '{...}'    Merge a JSON object into parameters
 
-Environment:
-  PRIVATE_KEY, ACCOUNT, PERPLEXITY_API_KEY, ZEROX_API_KEY,
-  TALLY_API_KEY, COINDESK_API_KEY, COINMARKETCAL_API_KEY,
-  FIREWORKS_API_KEY, PINATA_JWT, X_BEARER_TOKEN, X_API_KEY,
-  X_API_KEY_SECRET
+Configuration:
+  Keys are stored in ~/.agentek/config.json (override with AGENTEK_CONFIG_DIR).
+  Environment variables always take precedence over config file values.
 `);
   process.exit(2);
 }
@@ -78,33 +90,50 @@ function parseFlags(argv: string[], schema: z.ZodObject<any>): Record<string, un
       continue;
     }
 
-    const key = arg.slice(2);
+    // Support both --key value and --key=value
+    let key: string;
+    let inlineValue: string | undefined;
+    const eqIdx = arg.indexOf("=", 2);
+    if (eqIdx !== -1) {
+      key = arg.slice(2, eqIdx);
+      inlineValue = arg.slice(eqIdx + 1);
+    } else {
+      key = arg.slice(2);
+    }
 
     // --json escape hatch: merge raw JSON into result
     if (key === "json") {
-      i++;
-      if (i >= argv.length) outputError("--json requires a value");
+      const jsonStr = inlineValue ?? argv[++i];
+      if (jsonStr === undefined) outputError("--json requires a value");
       try {
-        Object.assign(result, JSON.parse(argv[i]));
+        Object.assign(result, JSON.parse(jsonStr));
       } catch {
-        outputError(`Invalid JSON for --json: ${argv[i]}`);
+        outputError(`Invalid JSON for --json: ${jsonStr}`);
       }
       i++;
       continue;
     }
 
-    // Check if next arg exists and is not a flag
-    const hasValue = i + 1 < argv.length && !argv[i + 1].startsWith("--");
     const fieldSchema = shape[key];
 
-    if (!hasValue) {
+    // Determine the value: inline (=) takes priority, then next arg
+    let rawValue: string | undefined = inlineValue;
+    if (rawValue === undefined) {
+      const next = argv[i + 1];
+      // Next arg is a value if it exists and is not a flag (or schema says number, allowing negatives)
+      if (next !== undefined && (!next.startsWith("--") || (fieldSchema && isNumericSchema(fieldSchema) && /^--?\d/.test(next)))) {
+        rawValue = next;
+        i++; // consume the value arg
+      }
+    }
+
+    if (rawValue === undefined) {
       // Boolean flag (no value)
       result[key] = true;
       i++;
       continue;
     }
 
-    const rawValue = argv[i + 1];
     const coerced = coerceValue(rawValue, fieldSchema);
 
     // If the schema expects an array, accumulate values
@@ -119,10 +148,16 @@ function parseFlags(argv: string[], schema: z.ZodObject<any>): Record<string, un
       result[key] = coerced;
     }
 
-    i += 2;
+    i++;
   }
 
   return result;
+}
+
+/** Check if a Zod schema (possibly wrapped) expects a number. */
+function isNumericSchema(schema: z.ZodTypeAny): boolean {
+  const inner = unwrapSchema(schema);
+  return inner instanceof z.ZodNumber;
 }
 
 /** Check if a Zod schema (possibly wrapped in optional/default) is an array type. */
@@ -176,23 +211,91 @@ async function main() {
     printUsage();
   }
 
-  if (!["list", "info", "exec"].includes(command)) {
+  if (!["list", "info", "exec", "setup", "config"].includes(command)) {
     printUsage();
   }
 
-  // ── Environment ──────────────────────────────────────────────────────
-  const PRIVATE_KEY = process.env.PRIVATE_KEY;
-  const ACCOUNT = process.env.ACCOUNT;
-  const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
-  const ZEROX_API_KEY = process.env.ZEROX_API_KEY;
-  const TALLY_API_KEY = process.env.TALLY_API_KEY;
-  const COINDESK_API_KEY = process.env.COINDESK_API_KEY;
-  const COINMARKETCAL_API_KEY = process.env.COINMARKETCAL_API_KEY;
-  const FIREWORKS_API_KEY = process.env.FIREWORKS_API_KEY;
-  const PINATA_JWT = process.env.PINATA_JWT;
-  const X_BEARER_TOKEN = process.env.X_BEARER_TOKEN;
-  const X_API_KEY = process.env.X_API_KEY;
-  const X_API_KEY_SECRET = process.env.X_API_KEY_SECRET;
+  // ── setup (short-circuits before allTools) ─────────────────────────────
+  if (command === "setup") {
+    const resolved = resolveAllKeys();
+    const configured = resolved.filter((r) => r.value !== undefined).length;
+    process.stderr.write(`agentek v${VERSION} — configuration status\n\n`);
+    for (const r of resolved) {
+      const status = r.value
+        ? `configured (${r.source})`
+        : "missing";
+      const symbol = r.value ? "✓" : "✗";
+      process.stderr.write(`  ${symbol} ${r.name.padEnd(26)} ${status.padEnd(20)} ${r.description}\n`);
+    }
+    process.stderr.write(`\n  ${configured}/${resolved.length} keys configured\n`);
+    process.exit(0);
+  }
+
+  // ── config (short-circuits before allTools) ────────────────────────────
+  if (command === "config") {
+    const sub = rest[0];
+
+    if (sub === "set") {
+      const key = rest[1];
+      const value = rest[2];
+      if (!key || value === undefined) outputError("Usage: agentek config set <KEY> <VALUE>");
+      if (!isKnownKey(key)) {
+        process.stderr.write(JSON.stringify({ warning: `${key} is not a known key` }) + "\n");
+      }
+      const config = readConfig();
+      config.keys[key] = value;
+      writeConfig(config);
+      outputJson({ ok: true, key });
+    } else if (sub === "get") {
+      const key = rest[1];
+      if (!key) outputError("Usage: agentek config get <KEY> [--reveal]");
+      const reveal = rest.includes("--reveal");
+      const config = readConfig();
+      const value = config.keys[key];
+      if (value === undefined) {
+        outputJson({ key, value: null });
+      } else {
+        outputJson({ key, value: reveal ? value : redactValue(value) });
+      }
+    } else if (sub === "list") {
+      const resolved = resolveAllKeys();
+      outputJson(resolved.map((r) => ({
+        key: r.name,
+        status: r.value ? "configured" : "missing",
+        source: r.source ?? null,
+        description: r.description,
+      })));
+    } else if (sub === "delete") {
+      const key = rest[1];
+      if (!key) outputError("Usage: agentek config delete <KEY>");
+      const config = readConfig();
+      const existed = key in config.keys;
+      delete config.keys[key];
+      writeConfig(config);
+      outputJson({ ok: true, key, deleted: existed });
+    } else {
+      outputError("Usage: agentek config <set|get|list|delete>");
+    }
+
+    process.exit(0);
+  }
+
+  // ── Environment (env vars override config file) ────────────────────────
+  const keys = resolveKeys();
+  const PRIVATE_KEY = keys.PRIVATE_KEY;
+  const ACCOUNT = keys.ACCOUNT;
+  const PERPLEXITY_API_KEY = keys.PERPLEXITY_API_KEY;
+  const ZEROX_API_KEY = keys.ZEROX_API_KEY;
+  const TALLY_API_KEY = keys.TALLY_API_KEY;
+  const COINDESK_API_KEY = keys.COINDESK_API_KEY;
+  const COINMARKETCAL_API_KEY = keys.COINMARKETCAL_API_KEY;
+  const FIREWORKS_API_KEY = keys.FIREWORKS_API_KEY;
+  const PINATA_JWT = keys.PINATA_JWT;
+  const X_BEARER_TOKEN = keys.X_BEARER_TOKEN;
+  const X_API_KEY = keys.X_API_KEY;
+  const X_API_KEY_SECRET = keys.X_API_KEY_SECRET;
+  const X_ACCESS_TOKEN = keys.X_ACCESS_TOKEN;
+  const X_ACCESS_TOKEN_SECRET = keys.X_ACCESS_TOKEN_SECRET;
 
   if (PRIVATE_KEY && !isHex(PRIVATE_KEY)) {
     outputError("Invalid PRIVATE_KEY format, must be hex");
@@ -221,6 +324,8 @@ async function main() {
       xBearerToken: X_BEARER_TOKEN,
       xApiKey: X_API_KEY,
       xApiKeySecret: X_API_KEY_SECRET,
+      xAccessToken: X_ACCESS_TOKEN,
+      xAccessTokenSecret: X_ACCESS_TOKEN_SECRET,
     }),
   });
 

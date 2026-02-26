@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: ['./index.ts'],
-  format: ['esm', 'cjs'],
+  format: ['esm'],
   dts: false,
   splitting: false,
   sourcemap: true,
@@ -12,9 +12,7 @@ export default defineConfig({
   banner: {
     js: "#!/usr/bin/env node",
   },
-  outExtension({ format }) {
-    return {
-      js: format === 'esm' ? '.mjs' : '.js'
-    };
+  outExtension() {
+    return { js: '.mjs' };
   }
 });

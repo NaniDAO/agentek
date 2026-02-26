@@ -30,6 +30,43 @@ npx @agentek/cli <command>
 
 ## Commands
 
+### Setup and configuration
+
+Check which API keys are configured:
+
+```bash
+agentek setup
+```
+
+Save a key to the config file (`~/.agentek/config.json`):
+
+```bash
+agentek config set PERPLEXITY_API_KEY pplx-xxxxxxxxxxxx
+```
+
+View a saved key (redacted by default):
+
+```bash
+agentek config get PERPLEXITY_API_KEY
+agentek config get PERPLEXITY_API_KEY --reveal
+```
+
+List all known keys with their status:
+
+```bash
+agentek config list
+```
+
+Remove a key from the config:
+
+```bash
+agentek config delete PERPLEXITY_API_KEY
+```
+
+Environment variables always take precedence over config file values.
+
+### Tool discovery and execution
+
 The CLI follows a three-step discovery workflow: **list** -> **info** -> **exec**.
 
 ### 1. List all tools
@@ -95,6 +132,8 @@ Set these before running commands that need them:
 | `X_BEARER_TOKEN` | X/Twitter read tools |
 | `X_API_KEY` | X/Twitter OAuth app key |
 | `X_API_KEY_SECRET` | X/Twitter OAuth app secret |
+| `X_ACCESS_TOKEN` | X/Twitter OAuth user access token |
+| `X_ACCESS_TOKEN_SECRET` | X/Twitter OAuth user access token secret |
 
 ## Examples
 
