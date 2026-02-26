@@ -12,10 +12,16 @@ agentek \- CLI for blockchain and data tools
 .BR list
 .br
 .B agentek
+.BR search " " \fIkeyword\fR
+.br
+.B agentek
 .BR info " " \fItool-name\fR
 .br
 .B agentek
 .BR exec " " \fItool-name\fR " " [\fI--key value ...\fR]
+.br
+.B agentek
+.BR --version | -v
 .SH DESCRIPTION
 .B agentek
 is a command-line interface that exposes 150+ blockchain and data tools as simple shell commands. Each tool has a typed parameter schema, accepts flags, and returns structured JSON on stdout.
@@ -53,6 +59,11 @@ from the config file. Prints JSON
 .B list
 Print a sorted JSON array of all available tool names to stdout.
 .TP
+.BI search " keyword"
+Search tools by name or description (case-insensitive). Returns a sorted JSON array of
+.RI "{ name, description }"
+objects.
+.TP
 .BI info " tool-name"
 Print a JSON object with the tool's name, description, parameter schema (JSON Schema), and supported chains.
 .TP
@@ -80,6 +91,12 @@ Boolean true when the schema expects a boolean.
 .TP
 .BI --json " '{...}'"
 Merge a raw JSON object into the parameters.
+.TP
+.BI --timeout " ms"
+Override the default 120-second tool execution timeout (value in milliseconds).
+.TP
+.BR --version ", " -v
+Print the version number to stdout and exit.
 .SH ENVIRONMENT
 .TP
 .B PRIVATE_KEY
@@ -150,6 +167,14 @@ List all available tools:
 .RS
 .nf
 agentek list
+.fi
+.RE
+.PP
+Search for balance-related tools:
+.PP
+.RS
+.nf
+agentek search balance
 .fi
 .RE
 .PP

@@ -83,6 +83,22 @@ describe("CLI — usage & help", () => {
   });
 });
 
+// ── version ──────────────────────────────────────────────────────────────
+
+describe("CLI — version", () => {
+  it("--version should print version to stdout and exit 0", async () => {
+    const { stdout, exitCode } = await run(["--version"]);
+    expect(exitCode).toBe(0);
+    expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it("-v should print version to stdout and exit 0", async () => {
+    const { stdout, exitCode } = await run(["-v"]);
+    expect(exitCode).toBe(0);
+    expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
 // ── config ───────────────────────────────────────────────────────────────
 
 describe("CLI — config", () => {
@@ -234,6 +250,50 @@ describe("CLI — env overrides config", () => {
   }, CONFIG_TEST_TIMEOUT);
 });
 
+// ── search ───────────────────────────────────────────────────────────────
+
+describe("CLI — search", () => {
+  it("should return matching tools by name", async () => {
+    const { stdout, exitCode } = await run(["search", "balance"]);
+    expect(exitCode).toBe(0);
+
+    const matches = parseJson(stdout);
+    expect(Array.isArray(matches)).toBe(true);
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0]).toHaveProperty("name");
+    expect(matches[0]).toHaveProperty("description");
+    const names = matches.map((m: any) => m.name);
+    expect(names).toContain("getBalance");
+  }, TEST_TIMEOUT);
+
+  it("should return matching tools by description", async () => {
+    const { stdout, exitCode } = await run(["search", "block number"]);
+    expect(exitCode).toBe(0);
+
+    const matches = parseJson(stdout);
+    expect(matches.length).toBeGreaterThan(0);
+  }, TEST_TIMEOUT);
+
+  it("should be case-insensitive", async () => {
+    const { stdout: lower } = await run(["search", "ens"]);
+    const { stdout: upper } = await run(["search", "ENS"]);
+    expect(parseJson(lower).length).toBe(parseJson(upper).length);
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("should return empty array for no matches", async () => {
+    const { stdout, exitCode } = await run(["search", "xyznonexistent999"]);
+    expect(exitCode).toBe(0);
+    expect(parseJson(stdout)).toEqual([]);
+  }, TEST_TIMEOUT);
+
+  it("should error when no keyword is given", async () => {
+    const { stderr, exitCode } = await run(["search"]);
+    expect(exitCode).toBe(1);
+    const err = parseJson(stderr);
+    expect(err.error).toContain("Usage");
+  }, TEST_TIMEOUT);
+});
+
 // ── list ──────────────────────────────────────────────────────────────────
 
 describe("CLI — list", () => {
@@ -330,5 +390,23 @@ describe("CLI — exec", () => {
 
     const err = parseJson(stderr);
     expect(err.error).toContain("Usage");
+  }, TEST_TIMEOUT);
+
+  it("should support --timeout flag", async () => {
+    const { stdout, exitCode } = await run([
+      "exec", "getBlockNumber", "--chainId", "8453", "--timeout", "60000",
+    ]);
+    expect(exitCode).toBe(0);
+    const result = parseJson(stdout);
+    expect(result.chainId).toBe(8453);
+  }, TEST_TIMEOUT);
+
+  it("should error with invalid --timeout value", async () => {
+    const { stderr, exitCode } = await run([
+      "exec", "getBlockNumber", "--chainId", "8453", "--timeout", "abc",
+    ]);
+    expect(exitCode).toBe(1);
+    const err = parseJson(stderr);
+    expect(err.error).toContain("--timeout");
   }, TEST_TIMEOUT);
 });

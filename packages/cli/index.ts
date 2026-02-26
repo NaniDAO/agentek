@@ -16,7 +16,7 @@ import {
 } from "./config.js";
 
 const VERSION = "0.1.26";
-const TOOL_TIMEOUT_MS = 120_000;
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 /** Wrap a promise with a timeout. */
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -46,6 +46,12 @@ function outputError(msg: string): never {
   process.exit(1);
 }
 
+/** Print version to stdout and exit 0. */
+function printVersion(): never {
+  process.stdout.write(`${VERSION}\n`);
+  process.exit(0);
+}
+
 /** Print usage text to stderr and exit 2. */
 function printUsage(): never {
   process.stderr.write(`agentek v${VERSION} — CLI for Agentek tools
@@ -57,6 +63,7 @@ Usage:
   agentek config list                       List all known keys with status
   agentek config delete <KEY>               Remove a key from config
   agentek list                              List all available tools
+  agentek search <keyword>                  Search tools by name or description
   agentek info <tool-name>                  Show tool description and parameter schema
   agentek exec <tool-name> [--key value]    Execute a tool with the given parameters
 
@@ -65,6 +72,8 @@ Flags:
   --key val --key v Repeated flags become arrays
   --flag            Boolean true (when schema expects boolean)
   --json '{...}'    Merge a JSON object into parameters
+  --timeout <ms>    Override the default 120s tool execution timeout
+  --version, -v     Print version number
 
 Configuration:
   Keys are stored in ~/.agentek/config.json (override with AGENTEK_CONFIG_DIR).
@@ -211,7 +220,11 @@ async function main() {
     printUsage();
   }
 
-  if (!["list", "info", "exec", "setup", "config"].includes(command)) {
+  if (command === "--version" || command === "-v") {
+    printVersion();
+  }
+
+  if (!["list", "info", "exec", "search", "setup", "config"].includes(command)) {
     printUsage();
   }
 
@@ -338,6 +351,24 @@ async function main() {
     outputJson(names);
   }
 
+  if (command === "search") {
+    const keyword = rest[0];
+    if (!keyword) outputError("Usage: agentek search <keyword>");
+
+    const pattern = keyword.toLowerCase();
+    const matches: { name: string; description: string }[] = [];
+    for (const [name, tool] of toolsMap) {
+      if (
+        name.toLowerCase().includes(pattern) ||
+        tool.description.toLowerCase().includes(pattern)
+      ) {
+        matches.push({ name, description: tool.description });
+      }
+    }
+    matches.sort((a, b) => a.name.localeCompare(b.name));
+    outputJson(matches);
+  }
+
   if (command === "info") {
     const toolName = rest[0];
     if (!toolName) outputError("Usage: agentek info <tool-name>");
@@ -360,12 +391,26 @@ async function main() {
     const tool = toolsMap.get(toolName);
     if (!tool) outputError(`Unknown tool: ${toolName}`);
 
-    const flags = parseFlags(rest.slice(1), tool!.parameters);
+    // Extract --timeout before parsing tool flags
+    let timeoutMs = DEFAULT_TIMEOUT_MS;
+    const flagArgs = rest.slice(1);
+    const timeoutIdx = flagArgs.indexOf("--timeout");
+    if (timeoutIdx !== -1) {
+      const raw = flagArgs[timeoutIdx + 1];
+      const parsed = Number(raw);
+      if (!raw || Number.isNaN(parsed) || parsed <= 0) {
+        outputError("--timeout requires a positive number (milliseconds)");
+      }
+      timeoutMs = parsed;
+      flagArgs.splice(timeoutIdx, 2);
+    }
+
+    const flags = parseFlags(flagArgs, tool!.parameters);
 
     try {
       const result = await withTimeout(
         agentekClient.execute(toolName, flags),
-        TOOL_TIMEOUT_MS,
+        timeoutMs,
         toolName,
       );
       outputJson(result);

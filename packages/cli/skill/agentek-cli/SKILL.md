@@ -67,7 +67,7 @@ Environment variables always take precedence over config file values.
 
 ### Tool discovery and execution
 
-The CLI follows a three-step discovery workflow: **list** -> **info** -> **exec**.
+The CLI follows a discovery workflow: **list** / **search** -> **info** -> **exec**.
 
 ### 1. List all tools
 
@@ -77,7 +77,16 @@ agentek list
 
 Returns a sorted JSON array of every available tool name.
 
-### 2. Inspect a tool
+### 2. Search for tools
+
+```bash
+agentek search balance
+# [{"name":"getBalance","description":"..."},{"name":"getTokenBalance","description":"..."}]
+```
+
+Searches tool names and descriptions (case-insensitive).
+
+### 3. Inspect a tool
 
 ```bash
 agentek info <tool-name>
@@ -85,7 +94,7 @@ agentek info <tool-name>
 
 Returns a JSON object with the tool's `name`, `description`, `parameters` (JSON Schema), and `supportedChains`.
 
-### 3. Execute a tool
+### 4. Execute a tool
 
 ```bash
 agentek exec <tool-name> [--key value ...]
@@ -102,6 +111,7 @@ Runs the tool with the given parameters and prints the JSON result to stdout.
 | `--key v1 --key v2` | Repeated flags become an array `[v1, v2]` |
 | `--flag` | Boolean `true` (when schema expects boolean) |
 | `--json '{"k":"v"}'` | Merge a raw JSON object into the parameters |
+| `--timeout <ms>` | Override the default 120s tool execution timeout |
 
 Values are automatically coerced to the type expected by the tool's schema (number, boolean, string).
 
