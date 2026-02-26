@@ -1,6 +1,6 @@
 {
   "name": "@agentek/cli",
-  "version": "0.1.26",
+  "version": "0.0.1",
   "description": "Command-line interface for Agentek tools",
   "license": "AGPL-3.0",
   "author": "NaniDAO",

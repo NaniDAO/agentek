@@ -349,8 +349,9 @@ describe("CLI — info", () => {
     expect(exitCode).toBe(1);
 
     const err = parseJson(stderr);
-    expect(err.error).toContain("did you mean");
-    expect(err.error).toContain("getBalance");
+    expect(err.code).toBe("UNKNOWN_TOOL");
+    expect(err.hint).toContain("Did you mean");
+    expect(err.hint).toContain("getBalance");
   }, TEST_TIMEOUT);
 
   it("should error when no tool name is given", async () => {
@@ -417,5 +418,45 @@ describe("CLI — exec", () => {
     expect(exitCode).toBe(1);
     const err = parseJson(stderr);
     expect(err.error).toContain("--timeout");
+  }, TEST_TIMEOUT);
+});
+
+// ── structured errors ─────────────────────────────────────────────────────
+
+describe("CLI — structured errors", () => {
+  it("missing required param should return VALIDATION_ERROR with hint", async () => {
+    // getBalance requires `address` — omitting it should trigger a Zod validation error
+    const { stderr, exitCode } = await run(["exec", "getBalance"]);
+    expect(exitCode).toBe(1);
+
+    const err = parseJson(stderr);
+    expect(err.code).toBe("VALIDATION_ERROR");
+    expect(err.error).toContain("address");
+    expect(err.hint).toContain("agentek info getBalance");
+    expect(err.retryable).toBe(true);
+  }, TEST_TIMEOUT);
+
+  it("unsupported chain should return CHAIN_NOT_SUPPORTED with chain list hint", async () => {
+    // chainId 999999 is not configured — should produce a chain-not-supported error
+    const { stderr, exitCode } = await run([
+      "exec", "getBlockNumber", "--chainId", "999999",
+    ]);
+    expect(exitCode).toBe(1);
+
+    const err = parseJson(stderr);
+    expect(err.code).toBe("CHAIN_NOT_SUPPORTED");
+    expect(err.hint).toContain("Supported chains:");
+    expect(err.retryable).toBe(true);
+  }, TEST_TIMEOUT);
+
+  it("key-gated tool without key should return MISSING_API_KEY with config set hint", async () => {
+    const { stderr, exitCode } = await run(["exec", "askPerplexitySearch", "--query", "test"]);
+    expect(exitCode).toBe(1);
+
+    const err = parseJson(stderr);
+    expect(err.code).toBe("MISSING_API_KEY");
+    expect(err.error).toContain("PERPLEXITY_API_KEY");
+    expect(err.hint).toContain("config set");
+    expect(err.retryable).toBe(true);
   }, TEST_TIMEOUT);
 });

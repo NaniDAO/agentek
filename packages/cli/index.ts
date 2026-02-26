@@ -15,8 +15,41 @@ import {
   isKnownKey,
 } from "./config.js";
 
-const VERSION = "0.1.26";
+const VERSION = "0.0.1";
 const DEFAULT_TIMEOUT_MS = 120_000;
+
+/** Structured error codes for agent-friendly error classification. */
+type ErrorCode =
+  | "UNKNOWN_TOOL"
+  | "MISSING_API_KEY"
+  | "VALIDATION_ERROR"
+  | "CHAIN_NOT_SUPPORTED"
+  | "TIMEOUT"
+  | "EXECUTION_ERROR"
+  | "INVALID_ARGS";
+
+/**
+ * Map of tool names that are only available when their API key(s) are configured.
+ * When an unknown-tool error matches one of these, we surface a MISSING_API_KEY
+ * error with a `config set` hint instead of a generic "Unknown tool" message.
+ */
+const KEY_GATED_TOOLS: Record<string, string[]> = {
+  askPerplexitySearch: ["PERPLEXITY_API_KEY"],
+  intent0xSwap: ["ZEROX_API_KEY"],
+  tallyProposals: ["TALLY_API_KEY"],
+  tallyChains: ["TALLY_API_KEY"],
+  tallyUserDaos: ["TALLY_API_KEY"],
+  intentGovernorVote: ["TALLY_API_KEY"],
+  intentGovernorVoteWithReason: ["TALLY_API_KEY"],
+  getLatestCoindeskNewsTool: ["COINDESK_API_KEY"],
+  getMarketEvents: ["COINMARKETCAL_API_KEY"],
+  generateAndPinImage: ["FIREWORKS_API_KEY", "PINATA_JWT"],
+  searchRecentTweets: ["X_BEARER_TOKEN"],
+  getTweetById: ["X_BEARER_TOKEN"],
+  getXUserByUsername: ["X_BEARER_TOKEN"],
+  getXUserTweets: ["X_BEARER_TOKEN"],
+  getHomeTimeline: ["X_API_KEY", "X_API_KEY_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_TOKEN_SECRET"],
+};
 
 /** Wrap a promise with a timeout. */
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -41,9 +74,73 @@ function outputJson(data: unknown): never {
 }
 
 /** Write JSON error to stderr and exit 1. */
-function outputError(msg: string): never {
-  process.stderr.write(JSON.stringify({ error: msg }) + "\n");
+function outputError(
+  msg: string,
+  opts?: { code?: ErrorCode; hint?: string; retryable?: boolean },
+): never {
+  const payload: Record<string, unknown> = { error: msg };
+  if (opts?.code) payload.code = opts.code;
+  if (opts?.hint) payload.hint = opts.hint;
+  if (opts?.retryable !== undefined) payload.retryable = opts.retryable;
+  process.stderr.write(JSON.stringify(payload) + "\n");
   process.exit(1);
+}
+
+/**
+ * Detect serialized ZodError JSON in an error message and format it into
+ * a human-readable string with a hint to run `agentek info <tool>`.
+ */
+function formatZodError(
+  errMessage: string,
+  toolName: string,
+): { message: string; hint: string } | undefined {
+  // ZodError.message can be either:
+  //   - a JSON array of issues: [{"code":...,"path":...}]
+  //   - a JSON object: {"issues":[...],"name":"ZodError"}
+  const trimmed = errMessage.trim();
+  if (!trimmed.startsWith("[") && !trimmed.startsWith("{")) return undefined;
+  try {
+    const parsed = JSON.parse(trimmed);
+    const issues = Array.isArray(parsed)
+      ? parsed
+      : (parsed?.name === "ZodError" && Array.isArray(parsed?.issues))
+        ? parsed.issues
+        : null;
+    if (!issues || issues.length === 0) return undefined;
+    // Verify it looks like Zod issues (must have `code` and `path`)
+    if (!issues[0].code || !Array.isArray(issues[0].path)) return undefined;
+    const parts = issues.map((issue: Record<string, unknown>) => {
+      const path = (issue.path as string[]).join(".") || "unknown";
+      const expected = issue.expected ? ` (expected ${issue.expected})` : "";
+      if (issue.code === "invalid_type" && issue.received === "undefined") {
+        return `Missing required parameter: ${path}${expected}`;
+      }
+      return `Invalid parameter "${path}": ${issue.message}${expected}`;
+    });
+    return {
+      message: parts.join("; "),
+      hint: `Run: agentek info ${toolName}`,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Detect "not supported" chain errors and append the tool's supported chains.
+ */
+function formatChainError(
+  errMessage: string,
+  tool: BaseTool,
+): { message: string; hint: string } | undefined {
+  if (!errMessage.toLowerCase().includes("not supported")) return undefined;
+  const chains = tool.supportedChains;
+  if (!chains || chains.length === 0) return undefined;
+  const chainList = chains.map((c) => `${c.name} (${c.id})`).join(", ");
+  return {
+    message: errMessage,
+    hint: `Supported chains: ${chainList}`,
+  };
 }
 
 /** Print version to stdout and exit 0. */
@@ -378,11 +475,27 @@ async function main() {
     return undefined;
   }
 
-  /** Error with "did you mean?" hint for unknown tool names. */
+  /** Error with "did you mean?" hint for unknown tool names, or MISSING_API_KEY for key-gated tools. */
   function unknownToolError(toolName: string): never {
+    const requiredKeys = KEY_GATED_TOOLS[toolName];
+    if (requiredKeys) {
+      const keyList = requiredKeys.join(", ");
+      const setCommands = requiredKeys.map((k) => `agentek config set ${k} <value>`).join("\n  ");
+      outputError(
+        `Tool "${toolName}" requires API key${requiredKeys.length > 1 ? "s" : ""}: ${keyList}`,
+        {
+          code: "MISSING_API_KEY",
+          hint: `Configure with:\n  ${setCommands}`,
+          retryable: true,
+        },
+      );
+    }
     const suggestion = suggestTool(toolName);
-    const hint = suggestion ? ` — did you mean "${suggestion}"?` : "";
-    outputError(`Unknown tool: ${toolName}${hint}`);
+    const hint = suggestion ? `Did you mean "${suggestion}"?` : undefined;
+    outputError(`Unknown tool: ${toolName}`, {
+      code: "UNKNOWN_TOOL",
+      hint,
+    });
   }
 
   // ── Commands ─────────────────────────────────────────────────────────
@@ -456,7 +569,40 @@ async function main() {
       );
       outputJson(result);
     } catch (err: any) {
-      outputError(err.message || String(err));
+      const msg: string = err.message || String(err);
+
+      // ── Timeout errors ──────────────────────────────────────────────
+      if (msg.includes("timed out after")) {
+        const doubled = timeoutMs * 2;
+        outputError(msg, {
+          code: "TIMEOUT",
+          hint: `Retry with a longer timeout: --timeout ${doubled}`,
+          retryable: true,
+        });
+      }
+
+      // ── Zod validation errors ───────────────────────────────────────
+      const zodFormatted = formatZodError(msg, toolName);
+      if (zodFormatted) {
+        outputError(zodFormatted.message, {
+          code: "VALIDATION_ERROR",
+          hint: zodFormatted.hint,
+          retryable: true,
+        });
+      }
+
+      // ── Chain not-supported errors ──────────────────────────────────
+      const chainFormatted = formatChainError(msg, tool!);
+      if (chainFormatted) {
+        outputError(chainFormatted.message, {
+          code: "CHAIN_NOT_SUPPORTED",
+          hint: chainFormatted.hint,
+          retryable: true,
+        });
+      }
+
+      // ── Generic execution error ─────────────────────────────────────
+      outputError(msg, { code: "EXECUTION_ERROR" });
     }
   }
 }
