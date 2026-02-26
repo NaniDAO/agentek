@@ -13,16 +13,11 @@
   "bin": {
     "agentek": "dist/index.mjs"
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
+  "man": "./man/agentek.1",
   "files": [
-    "dist"
+    "dist",
+    "man",
+    "skill"
   ],
   "scripts": {
     "build": "rm -rf dist && tsup",
@@ -31,11 +26,9 @@
   },
   "dependencies": {
     "@agentek/tools": "workspace:^",
-    "zod-to-json-schema": "^3.24.5"
-  },
-  "peerDependencies": {
     "viem": "^2.33.2",
     "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.24.5",
     "zrouter-sdk": "^0.0.27"
   },
   "devDependencies": {

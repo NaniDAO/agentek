@@ -1,0 +1,140 @@
+.TH AGENTEK 1 "2026-02-26" "agentek 0.1.26" "Agentek CLI Manual"
+.SH NAME
+agentek \- CLI for blockchain and data tools
+.SH SYNOPSIS
+.B agentek
+.BR list
+.br
+.B agentek
+.BR info " " \fItool-name\fR
+.br
+.B agentek
+.BR exec " " \fItool-name\fR " " [\fI--key value ...\fR]
+.SH DESCRIPTION
+.B agentek
+is a command-line interface that exposes 150+ blockchain and data tools as simple shell commands. Each tool has a typed parameter schema, accepts flags, and returns structured JSON on stdout.
+.PP
+Supported chains include Ethereum, Optimism, Arbitrum, Polygon, and Base.
+.SH COMMANDS
+.TP
+.B list
+Print a sorted JSON array of all available tool names to stdout.
+.TP
+.BI info " tool-name"
+Print a JSON object with the tool's name, description, parameter schema (JSON Schema), and supported chains.
+.TP
+.BI exec " tool-name" " [--key value ...]"
+Execute the named tool with the given parameters and print the JSON result to stdout.
+.SH FLAGS
+.TP
+.BI --key " value"
+Set parameter
+.I key
+to
+.IR value .
+Values are coerced to the type expected by the tool's schema (number, boolean, string).
+.TP
+.BI --key = value
+Inline form, equivalent to
+.BI --key " value" .
+.TP
+.BI --key " v1" " --key" " v2"
+Repeated flags for the same key produce an array
+.IR [v1,\ v2] .
+.TP
+.B --flag
+Boolean true when the schema expects a boolean.
+.TP
+.BI --json " '{...}'"
+Merge a raw JSON object into the parameters.
+.SH ENVIRONMENT
+.TP
+.B PRIVATE_KEY
+Hex-encoded private key for signing transactions.
+.TP
+.B ACCOUNT
+Hex address to use as the sender (read-only, no signing).
+.TP
+.B PERPLEXITY_API_KEY
+API key for Perplexity AI search tools.
+.TP
+.B ZEROX_API_KEY
+API key for 0x swap and quote tools.
+.TP
+.B TALLY_API_KEY
+API key for Tally governance tools.
+.TP
+.B COINDESK_API_KEY
+API key for CoinDesk news and data tools.
+.TP
+.B COINMARKETCAL_API_KEY
+API key for CoinMarketCal event tools.
+.TP
+.B FIREWORKS_API_KEY
+API key for Fireworks AI tools.
+.TP
+.B PINATA_JWT
+JWT for Pinata IPFS tools.
+.TP
+.B X_BEARER_TOKEN
+Bearer token for X/Twitter read tools.
+.TP
+.B X_API_KEY
+X/Twitter OAuth application key.
+.TP
+.B X_API_KEY_SECRET
+X/Twitter OAuth application secret.
+.SH EXIT CODES
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Runtime error (tool execution failed, invalid input, or timeout).
+.TP
+.B 2
+Usage error (unknown command, missing arguments).
+.SH EXAMPLES
+List all available tools:
+.PP
+.RS
+.nf
+agentek list
+.fi
+.RE
+.PP
+Inspect a tool's schema:
+.PP
+.RS
+.nf
+agentek info getBalance
+.fi
+.RE
+.PP
+Get the latest block number on Ethereum:
+.PP
+.RS
+.nf
+agentek exec getBlockNumber --chainId 1
+.fi
+.RE
+.PP
+Check an address's ETH balance:
+.PP
+.RS
+.nf
+agentek exec getBalance --address 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 --chainId 1
+.fi
+.RE
+.PP
+Resolve an ENS name:
+.PP
+.RS
+.nf
+agentek exec getEnsAddress --name vitalik.eth --chainId 1
+.fi
+.RE
+.SH SEE ALSO
+.UR https://github.com/NaniDAO/agentek
+Agentek on GitHub
+.UE
