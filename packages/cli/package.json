@@ -1,6 +1,6 @@
 {
   "name": "@agentek/cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Command-line interface for Agentek tools",
   "license": "AGPL-3.0",
   "author": "NaniDAO",
@@ -25,15 +25,15 @@
     "start": "node dist/index.mjs"
   },
   "dependencies": {
-    "@agentek/tools": "workspace:^",
-    "viem": "^2.33.2",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.24.5",
-    "zrouter-sdk": "^0.0.27"
+    "@agentek/tools": "0.1.26",
+    "viem": "2.33.2",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.25.1",
+    "zrouter-sdk": "0.0.27"
   },
   "devDependencies": {
-    "@types/node": "^22.14.1",
-    "typescript": "^5.9.2"
+    "@types/node": "22.14.1",
+    "typescript": "5.9.2"
   },
   "keywords": [
     "ai",

@@ -78,26 +78,26 @@ importers:
   packages/cli:
     dependencies:
       '@agentek/tools':
-        specifier: workspace:^
-        version: link:../shared
+        specifier: 0.1.26
+        version: 0.1.26(ethers@6.16.0)(typescript@5.9.2)(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))
       viem:
         specifier: 2.33.2
         version: 2.33.2(typescript@5.9.2)(zod@3.25.76)
       zod:
-        specifier: ^3.25.76
+        specifier: 3.25.76
         version: 3.25.76
       zod-to-json-schema:
-        specifier: ^3.24.5
+        specifier: 3.25.1
         version: 3.25.1(zod@3.25.76)
       zrouter-sdk:
-        specifier: ^0.0.27
+        specifier: 0.0.27
         version: 0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
     devDependencies:
       '@types/node':
-        specifier: ^22.14.1
+        specifier: 22.14.1
         version: 22.14.1
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.2
         version: 5.9.2
 
   packages/mcp:
@@ -181,6 +181,14 @@ packages:
 
   '@adraffy/ens-normalize@1.11.0':
     resolution: {integrity: sha512-/3DDPKHqqIqxUULp8yP4zODUY1i+2xvVWsv8A79xGWdCAG+8sb0hRh0Rk2QyOJUnnbyPUAZYcpBuRe3nS2OIUg==}
+
+  '@agentek/tools@0.1.26':
+    resolution: {integrity: sha512-S6wxXR7q+RE2pMhWvBs2L9DViVwGcnQHAZTP/nPS6mur25zILPGK9IGJ8ELca7/1uROCuucHj6G2yfA5gVqN3w==}
+    engines: {node: '>=18.17.0'}
+    peerDependencies:
+      viem: 2.33.2
+      zod: ^3.25.76
+      zrouter-sdk: ^0.0.27
 
   '@ai-sdk/gateway@3.0.32':
     resolution: {integrity: sha512-7clZRr07P9rpur39t1RrbIe7x8jmwnwUWI8tZs+BvAfX3NFgdSVGGIaT7bTz2pb08jmLXzTSDbrOTqAQ7uBkBQ==}
@@ -799,14 +807,26 @@ packages:
   '@x402/core@2.4.0':
     resolution: {integrity: sha512-g4K5dAVjevQftxCcpFlUDjO2AHE43FkO43VxwLCQ8ET3ki4aj2fzCcgvnXEj2eloJoocFS/Evt4pSTnP/4cFJw==}
 
+  '@x402/core@2.5.0':
+    resolution: {integrity: sha512-nUr8HW8WhkU1DvrpUfsRvALy5NF8UWKoFezZOtX61mohxp2lWZpJ2GnvscxDM8nmBAbtIollmksd5z5pj8InXw==}
+
   '@x402/evm@2.4.0':
     resolution: {integrity: sha512-k9qIEhJ5m8jZLPA44hcLEP9I1WC8nF375A7pX/3XGPA+H2UPUoY8fzBaQA2U+4lMv/eIyfz05klSj/8LzP1saA==}
+
+  '@x402/evm@2.5.0':
+    resolution: {integrity: sha512-MBSTQZwLobMVcmYO7itOMJRkxfHstsDyr7F94o9Rk/Oinz0kjvCe4DFgZmFXyz3nQUgQFmDVgTK5KIzfYR5uIA==}
 
   '@x402/extensions@2.4.0':
     resolution: {integrity: sha512-tg/mSAS+NgwUaOdjt8agSjVkO1s9NYy+kSPubVlZf/Fy884qu7dSW81Ixu1NRYEz+vBk0rtz6b+eEvS0v72tMQ==}
 
+  '@x402/extensions@2.5.0':
+    resolution: {integrity: sha512-e7IQShbGUM/XQmzI8DQh2tX/k2XDUGI9DNF+ij2NHUyPEqAt5/mJCwOlaxS/60FWFdfFRfWjTsqaoS7Z8WLi+A==}
+
   '@x402/fetch@2.4.0':
     resolution: {integrity: sha512-OOMaPAT85qcKnKWRvB4zZlC/CUod0YogCpbLmi555Puxeh7u69mA30MWkNsyzMfhKS1y+GHiG9eZZbpYFmLMTg==}
+
+  '@x402/fetch@2.5.0':
+    resolution: {integrity: sha512-D2jH3bn0nf8w9Jg3Vxo+6reE6Z9GickzkSIw+udITJFvsrGOpfjZvhcTeflLcthCODk4Nuu9Oe8x7Q3NLUdaRQ==}
 
   abitype@1.0.8:
     resolution: {integrity: sha512-ZeiI6h3GnW06uYDLx0etQtX/p8E24UaHHBj57RSjK7YBFe7iuVn07EDpOeP451D06sF27VOz9JJPlIKJmXgkEg==}
@@ -1997,6 +2017,22 @@ snapshots:
 
   '@adraffy/ens-normalize@1.11.0': {}
 
+  '@agentek/tools@0.1.26(ethers@6.16.0)(typescript@5.9.2)(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))(zod@3.25.76)(zrouter-sdk@0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76)))':
+    dependencies:
+      '@x402/core': 2.5.0
+      '@x402/evm': 2.5.0(ethers@6.16.0)(typescript@5.9.2)
+      '@x402/fetch': 2.5.0(typescript@5.9.2)
+      cheerio: 1.1.2
+      viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
+      wns-utils: 0.2.1
+      zod: 3.25.76
+      zrouter-sdk: 0.0.27(viem@2.33.2(typescript@5.9.2)(zod@3.25.76))
+    transitivePeerDependencies:
+      - bufferutil
+      - ethers
+      - typescript
+      - utf-8-validate
+
   '@ai-sdk/gateway@3.0.32(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 3.0.7
@@ -2451,10 +2487,26 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
+  '@x402/core@2.5.0':
+    dependencies:
+      zod: 3.25.76
+
   '@x402/evm@2.4.0(ethers@6.16.0)(typescript@5.9.2)':
     dependencies:
       '@x402/core': 2.4.0
       '@x402/extensions': 2.4.0(ethers@6.16.0)(typescript@5.9.2)
+      viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - bufferutil
+      - ethers
+      - typescript
+      - utf-8-validate
+
+  '@x402/evm@2.5.0(ethers@6.16.0)(typescript@5.9.2)':
+    dependencies:
+      '@x402/core': 2.5.0
+      '@x402/extensions': 2.5.0(ethers@6.16.0)(typescript@5.9.2)
       viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:
@@ -2478,9 +2530,34 @@ snapshots:
       - typescript
       - utf-8-validate
 
+  '@x402/extensions@2.5.0(ethers@6.16.0)(typescript@5.9.2)':
+    dependencies:
+      '@scure/base': 1.2.6
+      '@x402/core': 2.5.0
+      ajv: 8.18.0
+      siwe: 2.3.2(ethers@6.16.0)
+      tweetnacl: 1.0.3
+      viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - bufferutil
+      - ethers
+      - typescript
+      - utf-8-validate
+
   '@x402/fetch@2.4.0(typescript@5.9.2)':
     dependencies:
       '@x402/core': 2.4.0
+      viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+
+  '@x402/fetch@2.5.0(typescript@5.9.2)':
+    dependencies:
+      '@x402/core': 2.5.0
       viem: 2.33.2(typescript@5.9.2)(zod@3.25.76)
       zod: 3.25.76
     transitivePeerDependencies:

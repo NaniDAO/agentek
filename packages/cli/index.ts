@@ -15,7 +15,7 @@ import {
   isKnownKey,
 } from "./config.js";
 
-const VERSION = "0.0.1";
+const VERSION = "0.0.2";
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 /** Structured error codes for agent-friendly error classification. */
