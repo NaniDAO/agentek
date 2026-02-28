@@ -7,10 +7,10 @@ export function createAskPerplexitySearchTool(
 ): BaseTool {
   return createTool({
     name: "askPerplexitySearch",
-    description: "Ask perplexity search",
+    description: "Search the web using Perplexity AI and get a concise, sourced answer. Good for current events, crypto news, protocol documentation, and general knowledge questions.",
     supportedChains: [],
     parameters: z.object({
-      searchString: z.string(),
+      searchString: z.string().describe("The question or search query to ask Perplexity (e.g. 'What is the current TVL of Aave?')"),
     }),
     execute: async (_client: AgentekClient, args) => {
       const options = {

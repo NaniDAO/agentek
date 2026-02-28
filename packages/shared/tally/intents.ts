@@ -19,22 +19,22 @@ const voteSupportToNumber = (vote: VoteSupport): number => {
 };
 
 const createTallyVoteIntentParams = z.object({
-  space: z.string(),
-  vote: VoteSupport,
-  proposalId: z.number(),
+  space: z.string().describe("The Tally governance space slug (e.g. 'uniswap', 'compound', 'aave')"),
+  vote: VoteSupport.describe("Vote direction: 'for', 'against', or 'abstain'"),
+  proposalId: z.number().describe("The numeric proposal ID to vote on"),
 });
 
 const createTallyVoteWithReasonIntentParams = z.object({
-  space: z.string(),
-  vote: VoteSupport,
-  proposalId: z.number(),
-  reason: z.string(),
+  space: z.string().describe("The Tally governance space slug (e.g. 'uniswap', 'compound', 'aave')"),
+  vote: VoteSupport.describe("Vote direction: 'for', 'against', or 'abstain'"),
+  proposalId: z.number().describe("The numeric proposal ID to vote on"),
+  reason: z.string().describe("A text explanation for your vote that will be recorded on-chain"),
 });
 
 export const createTallyVoteIntent = (tallyApiKey: string) => {
   return createTool({
     name: "intentGovernorVote",
-    description: "Creates an intent to vote on a Governor bravo proposal",
+    description: "Cast a vote on a Governor Bravo governance proposal via Tally. Resolves the governor contract address from the space slug automatically.",
     parameters: createTallyVoteIntentParams,
     execute: async (
       client: AgentekClient,
@@ -90,7 +90,7 @@ export const createTallyVoteWithReasonIntent = (tallyApiKey: string) => {
   return createTool({
     name: "intentGovernorVoteWithReason",
     description:
-      "Creates an intent to vote on a Governor bravo proposal with a reason",
+      "Cast a vote with an on-chain reason on a Governor Bravo governance proposal via Tally. Resolves the governor contract address from the space slug automatically.",
     parameters: createTallyVoteWithReasonIntentParams,
     execute: async (
       client: AgentekClient,

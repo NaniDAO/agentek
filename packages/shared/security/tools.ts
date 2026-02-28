@@ -62,10 +62,10 @@ async function getDomainBlacklist() {
 export const checkMaliciousAddress = createTool({
   name: "checkMaliciousAddress",
   description:
-    "Check if an Ethereum address has been associated with malicious activity",
+    "Check if an Ethereum address has been flagged as malicious in the ScamSniffer blacklist database. Returns whether the address is known to be associated with scams or exploits.",
   supportedChains,
   parameters: z.object({
-    address: z.string(),
+    address: z.string().describe("The Ethereum address to check (0x...)"),
   }),
   execute: async (_client, args) => {
     const blacklist = await getAddressBlacklist();
@@ -83,9 +83,9 @@ export const checkMaliciousAddress = createTool({
 export const checkMaliciousWebsite = createTool({
   name: "checkMaliciousWebsite",
   description:
-    "Check if a website has been associated with crypto scams or malicious activity",
+    "Check if a website domain has been flagged in the ScamSniffer blacklist as associated with crypto scams, phishing, or malicious activity.",
   parameters: z.object({
-    website: z.string(),
+    website: z.string().describe("The website URL or domain to check (e.g. 'https://example.com' or 'example.com')"),
   }),
   execute: async (_client, args) => {
     const blacklist = await getDomainBlacklist();

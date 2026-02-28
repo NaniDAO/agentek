@@ -83,13 +83,13 @@ describe("WETH Tools", () => {
   describe("intentDepositWETH", () => {
     it("should have correct tool metadata", () => {
       expect(intentDepositWETH.name).toBe("depositWETH");
-      expect(intentDepositWETH.description).toContain("Deposit ETH");
+      expect(intentDepositWETH.description).toContain("Wrap native ETH");
       expect(intentDepositWETH.supportedChains).toEqual(supportedChains);
     });
 
     it("should generate valid intent for mainnet deposit", async () => {
       const client = createReadOnlyTestClient(wethTools(), [mainnet]);
-      const amount = 0.1;
+      const amount = "0.1";
 
       const result = await intentDepositWETH.execute(client, {
         chainId: mainnet.id,
@@ -125,7 +125,7 @@ describe("WETH Tools", () => {
 
     it("should generate valid intent for base deposit", async () => {
       const client = createReadOnlyTestClient(wethTools(), [base]);
-      const amount = 0.5;
+      const amount = "0.5";
 
       const result = await intentDepositWETH.execute(client, {
         chainId: base.id,
@@ -144,7 +144,7 @@ describe("WETH Tools", () => {
     it("should handle different deposit amounts correctly", async () => {
       const client = createReadOnlyTestClient(wethTools(), [mainnet]);
 
-      const testAmounts = [0.001, 0.1, 1, 10, 100.5];
+      const testAmounts = ["0.001", "0.1", "1", "10", "100.5"];
 
       for (const amount of testAmounts) {
         const result = await intentDepositWETH.execute(client, {
@@ -152,8 +152,8 @@ describe("WETH Tools", () => {
           amount,
         });
 
-        expect(result.ops[0].value).toBe(parseEther(amount.toString()).toString());
-        expect(result.intent).toContain(amount.toString());
+        expect(result.ops[0].value).toBe(parseEther(amount).toString());
+        expect(result.intent).toContain(amount);
       }
     });
 
@@ -162,7 +162,7 @@ describe("WETH Tools", () => {
 
       const result = await intentDepositWETH.execute(client, {
         chainId: mainnet.id,
-        amount: 0.1,
+        amount: "0.1",
       });
 
       expect(result.hash).toBeUndefined();
@@ -172,13 +172,13 @@ describe("WETH Tools", () => {
   describe("intentWithdrawWETH", () => {
     it("should have correct tool metadata", () => {
       expect(intentWithdrawWETH.name).toBe("withdrawWETH");
-      expect(intentWithdrawWETH.description).toContain("Withdraw WETH");
+      expect(intentWithdrawWETH.description).toContain("Unwrap WETH");
       expect(intentWithdrawWETH.supportedChains).toEqual(supportedChains);
     });
 
     it("should generate valid intent for mainnet withdrawal", async () => {
       const client = createReadOnlyTestClient(wethTools(), [mainnet]);
-      const amount = 0.1;
+      const amount = "0.1";
 
       const result = await intentWithdrawWETH.execute(client, {
         chainId: mainnet.id,
@@ -214,7 +214,7 @@ describe("WETH Tools", () => {
 
     it("should generate valid intent for base withdrawal", async () => {
       const client = createReadOnlyTestClient(wethTools(), [base]);
-      const amount = 0.5;
+      const amount = "0.5";
 
       const result = await intentWithdrawWETH.execute(client, {
         chainId: base.id,
@@ -233,7 +233,7 @@ describe("WETH Tools", () => {
     it("should handle different withdrawal amounts correctly", async () => {
       const client = createReadOnlyTestClient(wethTools(), [mainnet]);
 
-      const testAmounts = [0.001, 0.1, 1, 10, 100.5];
+      const testAmounts = ["0.001", "0.1", "1", "10", "100.5"];
 
       for (const amount of testAmounts) {
         const result = await intentWithdrawWETH.execute(client, {
@@ -244,12 +244,12 @@ describe("WETH Tools", () => {
         const expectedData = encodeFunctionData({
           abi: wethAbi,
           functionName: "withdraw",
-          args: [parseEther(amount.toString())],
+          args: [parseEther(amount)],
         });
 
         expect(result.ops[0].data).toBe(expectedData);
         expect(result.ops[0].value).toBe("0");
-        expect(result.intent).toContain(amount.toString());
+        expect(result.intent).toContain(amount);
       }
     });
 
@@ -258,7 +258,7 @@ describe("WETH Tools", () => {
 
       const result = await intentWithdrawWETH.execute(client, {
         chainId: mainnet.id,
-        amount: 0.1,
+        amount: "0.1",
       });
 
       expect(result.hash).toBeUndefined();
@@ -442,7 +442,7 @@ describe("WETH Tools", () => {
 
       const result = await client.execute("depositWETH", {
         chainId: mainnet.id,
-        amount: 0.1,
+        amount: "0.1",
       });
 
       expect(result.intent).toContain("Deposit");
@@ -455,7 +455,7 @@ describe("WETH Tools", () => {
 
       const result = await client.execute("withdrawWETH", {
         chainId: mainnet.id,
-        amount: 0.1,
+        amount: "0.1",
       });
 
       expect(result.intent).toContain("Withdraw");
@@ -470,7 +470,7 @@ describe("WETH Tools", () => {
       await expect(
         client.execute("depositWETH", {
           chainId: 999,
-          amount: 0.1,
+          amount: "0.1",
         }),
       ).rejects.toThrow();
     });
@@ -481,7 +481,7 @@ describe("WETH Tools", () => {
       await expect(
         client.execute("withdrawWETH", {
           chainId: 999,
-          amount: 0.1,
+          amount: "0.1",
         }),
       ).rejects.toThrow();
     });
@@ -505,7 +505,7 @@ describe("WETH Tools", () => {
       await expect(
         client.execute("withdrawWETH", {
           // chainId is missing
-          amount: 0.1,
+          amount: "0.1",
         }),
       ).rejects.toThrow();
     });

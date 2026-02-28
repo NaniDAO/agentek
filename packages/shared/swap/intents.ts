@@ -59,15 +59,15 @@ export const createMatchSwapTool = ({
   return createTool({
     name: "intent0xSwap",
     description:
-      "Perform a token swap on multiple EVM networks via 0x aggregator (Matcha)",
+      "Swap tokens on Ethereum, Optimism, Arbitrum, or Base via the 0x/Matcha aggregator. Automatically handles ERC20 approval if needed. Checks balance before swapping.",
     supportedChains: matchaSwapChains,
     parameters: z.object({
       chainId: z.number().describe("Chain ID (e.g. 1, 10, 42161, 8453)"),
       fromToken: z
         .string()
-        .describe('Source token address, or "ETH" for native'),
-      toToken: z.string().describe("Destination token address"),
-      amount: z.number().describe("Amount of source token to swap"),
+        .describe('Source token contract address (0x...), or "ETH" for native ETH'),
+      toToken: z.string().describe("Destination token contract address (0x...)"),
+      amount: z.string().describe("Amount of source token to swap in human-readable units (e.g. '1.5' for 1.5 tokens). Decimals are resolved automatically."),
       slippageBps: z
         .number()
         .int()

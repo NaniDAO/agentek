@@ -27,7 +27,7 @@ function getAcrossSpokePoolAddress(chainId: number): Address {
 export const intentDepositAcross = createTool({
   name: "intentDepositAcross",
   description:
-    "Deposits tokens into the Across Protocol bridge to initiate a cross-chain transfer.",
+    "Bridge ERC20 tokens cross-chain via Across Protocol. Automatically handles token approval and fetches optimal relay fees. Does not support native ETH.",
   supportedChains,
   parameters: z.object({
     originChainId: z
@@ -36,7 +36,7 @@ export const intentDepositAcross = createTool({
     originToken: z
       .string()
       .describe("Address of the token to bridge on the origin chain."),
-    amount: z.string().describe("Amount of tokens to bridge (in ether)"),
+    amount: z.string().describe("Amount of tokens to bridge in human-readable units (e.g. '1.5' for 1.5 tokens). Decimals are resolved automatically from the token contract."),
     destinationToken: z
       .string()
       .describe("Address of the token to bridge on the destination chain."),

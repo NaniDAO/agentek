@@ -12,11 +12,11 @@ import { addressSchema } from "../utils.js";
 
 const getUniV3Pool = createTool({
   name: "getUniV3Pool",
-  description: "Gets information about a Uniswap V3 pool",
+  description: "Gets the current state of a Uniswap V3 pool including sqrtPriceX96, current tick, and whether the pool is unlocked.",
   supportedChains,
   parameters: z.object({
-    poolAddress: z.string(),
-    chainId: z.number(),
+    poolAddress: z.string().describe("The Uniswap V3 pool contract address (0x...)"),
+    chainId: z.number().describe("Chain ID where the pool is deployed (e.g. 1, 8453, 42161)"),
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
@@ -37,11 +37,11 @@ const getUniV3Pool = createTool({
 
 const getPositionDetails = createTool({
   name: "getPositionDetails",
-  description: "Gets detailed information about a specific LP position",
+  description: "Gets detailed information about a specific Uniswap V3 LP position including token pair, fee tier, tick range, liquidity, and owed fees.",
   supportedChains,
   parameters: z.object({
-    tokenId: z.string(),
-    chainId: z.number(),
+    tokenId: z.string().describe("The NFT token ID of the LP position"),
+    chainId: z.number().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
   }),
   execute: async (client, { tokenId, chainId }) => {
     const publicClient = client.getPublicClient(chainId);
@@ -80,11 +80,11 @@ const getPositionDetails = createTool({
 
 const getUserPositions = createTool({
   name: "getUserPositions",
-  description: "Gets all Uniswap V3 positions for a user",
+  description: "Gets all Uniswap V3 LP positions owned by a user. Defaults to the connected wallet if no user address is provided.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number(),
-    user: z.string().optional(),
+    chainId: z.number().describe("Chain ID to query (e.g. 1, 8453, 42161)"),
+    user: z.string().optional().describe("The wallet address to check. Omit to use the connected wallet."),
   }),
   execute: async (client, { chainId, user }) => {
     const publicClient = client.getPublicClient(chainId);
@@ -137,11 +137,11 @@ const getUserPositions = createTool({
 
 const getPoolFeeData = createTool({
   name: "getPoolFeeData",
-  description: "Gets fee-related data for a pool",
+  description: "Gets fee growth globals and protocol fee data for a Uniswap V3 pool.",
   supportedChains,
   parameters: z.object({
-    poolAddress: addressSchema,
-    chainId: z.number(),
+    poolAddress: addressSchema.describe("The Uniswap V3 pool contract address (0x...)"),
+    chainId: z.number().describe("Chain ID where the pool is deployed (e.g. 1, 8453, 42161)"),
   }),
   execute: async (client, { poolAddress, chainId }) => {
     const publicClient = client.getPublicClient(chainId);

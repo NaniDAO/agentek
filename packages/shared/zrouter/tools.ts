@@ -9,14 +9,14 @@ import { fetchApiRoutes } from "./api.js";
 
 export const getQuote = createTool({
   name: "getQuote",
-  description: "Get a quote for swapping ERC20 and ERC6909 tokens.",
+  description: "Get a price quote for swapping ERC20 or ERC6909 tokens via the zRouter. Returns expected output amount and routing info. Does not execute the swap.",
   supportedChains,
   parameters: z.object({
     chainId: z.number().default(1).describe("Chain ID (1 for Mainnet, 8453 for Base). Default: 1"),
-    tokenIn: SymbolOrTokenSchema,
-    tokenOut: SymbolOrTokenSchema,
-    amount: z.union([z.number(), z.string()]),
-    side: z.enum(["EXACT_IN", "EXACT_OUT"]),
+    tokenIn: SymbolOrTokenSchema.describe('Input token — either a symbol string (e.g. "USDT", "ETH") or an object { address, id? } for ERC6909 tokens'),
+    tokenOut: SymbolOrTokenSchema.describe('Output token — either a symbol string (e.g. "IZO", "WETH") or an object { address, id? } for ERC6909 tokens'),
+    amount: z.union([z.number(), z.string()]).describe("Amount in human-readable units (e.g. 1.5 or '1.5'). Refers to tokenIn for EXACT_IN, tokenOut for EXACT_OUT."),
+    side: z.enum(["EXACT_IN", "EXACT_OUT"]).describe("EXACT_IN: specify the input amount and get the best output. EXACT_OUT: specify the desired output and get the required input."),
   }),
   execute: async (client, args) => {
     const { tokenIn, tokenOut, side } = args;
