@@ -28,7 +28,7 @@ export const getAcrossFeeQuote = createTool({
     destinationChainId: z
       .number()
       .describe("Chain ID of the destination chain."),
-    amount: z.string().describe("Amount of tokens to bridge (in ether)"),
+    amount: z.string().describe("Amount of tokens to bridge in human-readable units (e.g. '1.5' for 1.5 tokens). Decimals are resolved automatically from the token contract."),
     recipient: z
       .string()
       .describe("Recipient address on the destination chain."),

@@ -96,7 +96,7 @@ export async function fetchFromBlockscoutV2(
  */
 export const getNativeCoinHolders = createTool({
   name: "getNativeCoinHolders",
-  description: "Get native coin holders list",
+  description: "Get the top native coin (ETH/MATIC/etc.) holders on the specified chain, ranked by balance.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -114,11 +114,11 @@ export const getNativeCoinHolders = createTool({
  */
 export const getAddressInfo = createTool({
   name: "getAddressInfo",
-  description: "Get information about a specific address",
+  description: "Get detailed information about an address including native coin balance (formatted in ETH with USD value), token count, transaction count, and whether it is a contract.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format"),
+    address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address format").describe("The wallet or contract address to look up (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
@@ -153,7 +153,7 @@ export const getAddressInfo = createTool({
  */
 export const getAddressCounters = createTool({
   name: "getAddressCounters",
-  description: "Get counters for a specific address",
+  description: "Get aggregate counters for an address: total transactions, token transfers, gas usage, and validations count.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -175,7 +175,7 @@ export const getAddressCounters = createTool({
  */
 export const getAddressTransactions = createTool({
   name: "getAddressTransactions",
-  description: "Get transactions for a specific address",
+  description: "Get the list of transactions sent from or received by a specific address.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -197,7 +197,7 @@ export const getAddressTransactions = createTool({
  */
 export const getAddressTokenTransfers = createTool({
   name: "getAddressTokenTransfers",
-  description: "Get token transfers for a specific address",
+  description: "Get ERC20/ERC721/ERC1155 token transfers involving a specific address.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -219,7 +219,7 @@ export const getAddressTokenTransfers = createTool({
  */
 export const getAddressInternalTransactions = createTool({
   name: "getAddressInternalTransactions",
-  description: "Get internal transactions for a specific address",
+  description: "Get internal (trace-level) transactions for an address, including contract-to-contract calls and ETH transfers within transactions.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -241,7 +241,7 @@ export const getAddressInternalTransactions = createTool({
  */
 export const getAddressLogs = createTool({
   name: "getAddressLogs",
-  description: "Get logs for a specific address",
+  description: "Get event logs emitted by a specific address (useful for tracking contract events).",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -263,7 +263,7 @@ export const getAddressLogs = createTool({
  */
 export const getAddressBlocksValidated = createTool({
   name: "getAddressBlocksValidated",
-  description: "Get blocks validated by a specific address",
+  description: "Get blocks validated (proposed) by a specific validator address.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -285,7 +285,7 @@ export const getAddressBlocksValidated = createTool({
  */
 export const getAddressTokenBalances = createTool({
   name: "getAddressTokenBalances",
-  description: "Get all token balances for a specific address",
+  description: "Get all ERC20/ERC721/ERC1155 token balances held by a specific address, with token metadata.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -307,7 +307,7 @@ export const getAddressTokenBalances = createTool({
  */
 export const getAddressTokens = createTool({
   name: "getAddressTokens",
-  description: "Get token balances with filtering and pagination",
+  description: "Get token balances for an address with filtering and pagination support. Returns token metadata alongside balances.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -329,7 +329,7 @@ export const getAddressTokens = createTool({
  */
 export const getAddressCoinBalanceHistory = createTool({
   name: "getAddressCoinBalanceHistory",
-  description: "Get address coin balance history",
+  description: "Get the native coin balance history for an address (every balance change event).",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -351,7 +351,7 @@ export const getAddressCoinBalanceHistory = createTool({
  */
 export const getAddressCoinBalanceHistoryByDay = createTool({
   name: "getAddressCoinBalanceHistoryByDay",
-  description: "Get address coin balance history by day",
+  description: "Get the daily native coin balance snapshots for an address (one data point per day).",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -373,7 +373,7 @@ export const getAddressCoinBalanceHistoryByDay = createTool({
  */
 export const getAddressWithdrawals = createTool({
   name: "getAddressWithdrawals",
-  description: "Get withdrawals for a specific address",
+  description: "Get beacon chain withdrawals received by a specific address.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -395,7 +395,7 @@ export const getAddressWithdrawals = createTool({
  */
 export const getAddressNFTs = createTool({
   name: "getAddressNFTs",
-  description: "Get list of NFTs owned by address",
+  description: "Get all NFTs (ERC721/ERC1155) owned by an address.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -417,7 +417,7 @@ export const getAddressNFTs = createTool({
  */
 export const getAddressNFTCollections = createTool({
   name: "getAddressNFTCollections",
-  description: "Get list of NFTs owned by address, grouped by collection",
+  description: "Get NFTs owned by an address, grouped by collection (ERC721/ERC1155).",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -450,7 +450,7 @@ export const getBlockInfo = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    blockNumberOrHash: z.union([z.string(), z.number()]),
+    blockNumberOrHash: z.union([z.string(), z.number()]).describe("Block number or block hash to query"),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash } = args;
@@ -472,7 +472,7 @@ export const getBlockTransactions = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    blockNumberOrHash: z.union([z.string(), z.number()]),
+    blockNumberOrHash: z.union([z.string(), z.number()]).describe("Block number or block hash to query"),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash } = args;
@@ -494,7 +494,7 @@ export const getBlockWithdrawals = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    blockNumberOrHash: z.union([z.string(), z.number()]),
+    blockNumberOrHash: z.union([z.string(), z.number()]).describe("Block number or block hash to query"),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash } = args;
@@ -519,7 +519,7 @@ export const getBlockWithdrawals = createTool({
  */
 export const getStats = createTool({
   name: "getStats",
-  description: "Get statistics for various blockchain metrics.",
+  description: "Get aggregate blockchain statistics including total blocks, transactions, addresses, and average block time.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -537,7 +537,7 @@ export const getStats = createTool({
  */
 export const getTransactionsChart = createTool({
   name: "getTransactionsChart",
-  description: "Retrieve daily transaction statistics chart data.",
+  description: "Get daily transaction count chart data for the specified chain. Returns time-series data useful for activity trends.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -573,7 +573,7 @@ export const getTransactionInfo = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    txhash: z.string(),
+    txhash: z.string().describe("The transaction hash (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
@@ -598,7 +598,7 @@ export const getTransactionTokenTransfers = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    txhash: z.string(),
+    txhash: z.string().describe("The transaction hash (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
@@ -623,7 +623,7 @@ export const getTransactionInternalTransactions = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    txhash: z.string(),
+    txhash: z.string().describe("The transaction hash (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
@@ -645,7 +645,7 @@ export const getTransactionLogs = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    txhash: z.string(),
+    txhash: z.string().describe("The transaction hash (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
@@ -667,7 +667,7 @@ export const getTransactionRawTrace = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    txhash: z.string(),
+    txhash: z.string().describe("The transaction hash (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
@@ -689,7 +689,7 @@ export const getTransactionStateChanges = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    txhash: z.string(),
+    txhash: z.string().describe("The transaction hash (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
@@ -711,7 +711,7 @@ export const getTransactionSummary = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    txhash: z.string(),
+    txhash: z.string().describe("The transaction hash (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, txhash } = args;
@@ -735,15 +735,15 @@ export const getTransactionSummary = createTool({
  */
 export const getSmartContracts = createTool({
   name: "getSmartContracts",
-  description: "Get smart contract for the query",
+  description: "Search for verified smart contracts by name, address, or symbol. Optionally filter by programming language.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    q: z.string().describe("Query to get smart contracts for"),
+    q: z.string().describe("Search query — contract name, address, or symbol (e.g. 'USDC', 'Uniswap')"),
     language: z
       .enum(["solidity", "yul", "viper"])
       .optional()
-      .describe("Optional language to query explorer for"),
+      .describe("Filter by contract language: 'solidity', 'yul', or 'viper'. Omit to include all languages."),
   }),
   execute: async (_, args) => {
     const { chain, q, language } = args;
@@ -768,13 +768,14 @@ export const getSmartContracts = createTool({
  */
 export const getSmartContract = createTool({
   name: "getSmartContract",
-  description: "Retrieve the source code, ABI and metadata a contract.",
+  description: "Retrieve the source code, ABI, and metadata of a verified smart contract by its address.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
     address: z
       .string()
-      .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid contract address"),
+      .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid contract address")
+      .describe("The smart contract address to look up (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, address } = args;
@@ -805,7 +806,8 @@ export const getTokenInfo = createTool({
     chain: chainSchema,
     tokenContract: z
       .string()
-      .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid token contract address"),
+      .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid token contract address")
+      .describe("The token contract address (0x...)"),
   }),
   execute: async (_, args) => {
     const { chain, tokenContract } = args;
@@ -827,9 +829,9 @@ export const getTokenHolders = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    tokenContract: addressSchema,
-    page: z.number().optional(),
-    offset: z.number().optional(),
+    tokenContract: addressSchema.describe("The token contract address (0x...)"),
+    page: z.number().optional().describe("Page number for pagination (starts at 1)"),
+    offset: z.number().optional().describe("Number of items per page"),
   }),
   execute: async (_, args) => {
     const { chain, tokenContract, page, offset } = args;
@@ -857,9 +859,9 @@ export const getTokenTransfers = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    tokenContract: addressSchema,
-    page: z.number().optional(),
-    offset: z.number().optional(),
+    tokenContract: addressSchema.describe("The token contract address (0x...)"),
+    page: z.number().optional().describe("Page number for pagination (starts at 1)"),
+    offset: z.number().optional().describe("Number of items per page"),
   }),
   execute: async (_, args) => {
     const { chain, tokenContract, page, offset } = args;
@@ -885,7 +887,7 @@ export const getBlockscoutSearch = createTool({
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
-    query: z.string().min(1, "A non-empty search query is required"),
+    query: z.string().min(1, "A non-empty search query is required").describe("Search term — address, transaction hash, block number, token name, or symbol"),
   }),
   execute: async (_, args) => {
     const { chain, query } = args;

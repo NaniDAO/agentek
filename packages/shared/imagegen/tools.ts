@@ -18,8 +18,8 @@ export function createImageGenAndPinTool({
       "it to IPFS via Pinata. Returns the IPFS CID and link.",
     parameters: z.object({
       prompt: z.string().describe("A detailed prompt for image generation"),
-      negativePrompt: z.string().optional(),
-      steps: z.number().int().min(1).max(50).default(30).optional(),
+      negativePrompt: z.string().optional().describe("Things to exclude from the generated image (e.g. 'blurry, low quality, watermark')"),
+      steps: z.number().int().min(1).max(50).default(30).optional().describe("Number of diffusion steps (1-50). Higher = better quality but slower. Default: 30"),
     }),
     execute: async (_client, args) => {
       const { prompt, negativePrompt, steps } = args;

@@ -3,7 +3,7 @@ import { AgentekClient, createTool } from "../client.js";
 import z from "zod";
 
 const getLatestTokensParameters = z.object({
-  chainId: z.number().describe("Chain Id"),
+  chainId: z.number().describe("Chain ID to fetch trending tokens for (1 for Ethereum, 8453 for Base)"),
 });
 
 // This helper maps numeric chain IDs to the corresponding Dexscreener chain identifier.
@@ -22,7 +22,7 @@ const resolveChainId = (chainId: number) => {
 
 export const getLatestTokens = createTool({
   name: "getLatestTokens",
-  description: "Get trending tokens and market data",
+  description: "Get trending tokens from Dexscreener with market data including USD price, 24h volume, and 24h price change. Filters by the specified chain.",
   parameters: getLatestTokensParameters,
   supportedChains: [mainnet, base],
   execute: async (

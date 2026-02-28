@@ -14,10 +14,10 @@ import { resolveENSTool } from "../ens/tools.js";
 
 const intentTransferChains = [mainnet, arbitrum, base, sepolia];
 const intentTransferParameters = z.object({
-  token: addressSchema.describe("The token address"),
-  amount: z.string().describe("The amount to transfer"),
-  to: z.string().describe("The recipient address or ENS name"),
-  chainId: z.number().optional().describe("Optional specify chainId to use"),
+  token: addressSchema.describe("The token contract address (0x...), or 0x0000000000000000000000000000000000000000 for native ETH"),
+  amount: z.string().describe("Amount to transfer in human-readable units (e.g. '1.5' for 1.5 tokens). Decimals are resolved automatically."),
+  to: z.string().describe("Recipient address (0x...) or ENS name (e.g. 'vitalik.eth'). ENS names are resolved automatically."),
+  chainId: z.number().optional().describe("Chain ID to transfer on (e.g. 1, 42161, 8453). If omitted, automatically selects the cheapest chain where you have sufficient balance."),
 });
 
 export const ETH_ADDRESS =
@@ -59,7 +59,7 @@ const getTokenBalance = async (
 
 export const intentTransferTool = createTool({
   name: "intentTransfer",
-  description: "Creates an intent to transfer tokens",
+  description: "Transfer ERC20 tokens or native ETH to an address or ENS name. Supports ENS resolution, automatic decimal handling, and auto-selects the cheapest chain if chainId is omitted.",
   supportedChains: intentTransferChains,
   parameters: intentTransferParameters,
   execute: async (
@@ -180,18 +180,18 @@ export const intentTransferTool = createTool({
 });
 
 const intentTransferFromParameters = z.object({
-  token: z.string().describe("The token address"),
-  amount: z.string().describe("The amount to transfer"),
-  from: z.string().describe("The address to transfer from"),
-  to: z.string().describe("The recipient address or ENS"),
-  chainId: z.number().optional().describe("Optional specific chain to use"),
+  token: z.string().describe("The ERC20 token contract address (0x...). Does not support native ETH."),
+  amount: z.string().describe("Amount to transfer in human-readable units (e.g. '1.5' for 1.5 tokens). Decimals are resolved automatically."),
+  from: z.string().describe("The address to transfer tokens from (0x...). Must have approved your address via ERC20 approve first."),
+  to: z.string().describe("Recipient address (0x...) or ENS name (e.g. 'vitalik.eth'). ENS names are resolved automatically."),
+  chainId: z.number().optional().describe("Chain ID to transfer on (e.g. 1, 42161, 8453). If omitted, automatically selects the cheapest chain where the 'from' address has sufficient balance."),
 });
 
 const intentTransferFromChains = [mainnet, arbitrum, base, sepolia];
 
 export const intentTransferFromTool = createTool({
   name: "intentTransferFrom",
-  description: "Creates an intent to transfer tokens from another address",
+  description: "Transfer ERC20 tokens from another address using transferFrom. Requires prior ERC20 approval from the 'from' address. Does not support native ETH. Supports ENS resolution and auto-selects the cheapest chain if chainId is omitted.",
   supportedChains: intentTransferFromChains,
   parameters: intentTransferFromParameters,
   execute: async (

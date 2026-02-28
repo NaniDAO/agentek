@@ -5,9 +5,9 @@ import * as cheerio from "cheerio";
 export const scrapeWebContent = createTool({
   name: "scrapeWebContent",
   description:
-    "Given a URL, fetch the page's HTML and return the main text content as accurately as possible. Works for most websites.",
+    "Fetch a web page and extract its main text content by stripping HTML tags, scripts, and styles. Works for most public websites.",
   parameters: z.object({
-    website: z.string(),
+    website: z.string().describe("The full URL to scrape (e.g. 'https://example.com/page')"),
   }),
   execute: async (_client, args) => {
     const { website } = args;

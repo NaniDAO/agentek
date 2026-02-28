@@ -4,12 +4,12 @@ import { CoinchanAbi, CoinchanAddress, supportedChains } from "./constants.js";
 
 export const coinchanGetCoins = createTool({
   name: "coinchanGetCoins",
-  description: "Fetch a list of Coinchan token IDs between index ranges",
+  description: "Fetch a list of Coinchan token IDs between index ranges. Use coinchanGetCoinsCount first to know the valid range.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number(),
-    start: z.number(),
-    finish: z.number(),
+    chainId: z.number().describe("Chain ID (e.g. 8453 for Base)"),
+    start: z.number().describe("Start index (0-based) of the token range to fetch"),
+    finish: z.number().describe("End index (exclusive) of the token range to fetch"),
   }),
   execute: async (client, args) => {
     const { chainId, start, finish } = args;
@@ -26,9 +26,9 @@ export const coinchanGetCoins = createTool({
 
 export const coinchanGetCoinsCount = createTool({
   name: "coinchanGetCoinsCount",
-  description: "Get total number of Coinchan tokens created",
+  description: "Get the total number of Coinchan tokens created on the given chain.",
   supportedChains,
-  parameters: z.object({ chainId: z.number() }),
+  parameters: z.object({ chainId: z.number().describe("Chain ID (e.g. 8453 for Base)") }),
   execute: async (client, args) => {
     const { chainId } = args;
     const publicClient = client.getPublicClient(chainId);
@@ -44,11 +44,11 @@ export const coinchanGetCoinsCount = createTool({
 
 export const coinchanGetVestableAmount = createTool({
   name: "coinchanGetVestableAmount",
-  description: "Get the amount of liquidity currently available to vest for a locked Coinchan token",
+  description: "Get the amount of liquidity currently available to vest for a locked Coinchan token.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number(),
-    coinId: z.bigint(),
+    chainId: z.number().describe("Chain ID (e.g. 8453 for Base)"),
+    coinId: z.string().describe("The Coinchan token ID as a decimal string"),
   }),
   execute: async (client, args) => {
     const { chainId, coinId } = args;
@@ -58,7 +58,7 @@ export const coinchanGetVestableAmount = createTool({
       address: CoinchanAddress,
       abi: CoinchanAbi,
       functionName: "getVestableAmount",
-      args: [coinId]
+      args: [BigInt(coinId)]
     });
 
     return { coinId, vestable: vestable.toString() };
