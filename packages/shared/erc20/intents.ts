@@ -4,6 +4,7 @@ import {
   Address,
   encodeFunctionData,
   erc20Abi,
+  maxUint256,
   parseUnits,
   PublicClient,
 } from "viem";
@@ -11,7 +12,7 @@ import { erc20Chains } from "./constants.js";
 
 const intentApproveParameters = z.object({
   token: z.string().describe("The token address"),
-  amount: z.string().describe("The amount to approve"),
+  amount: z.string().describe('The amount to approve. Use "max" for unlimited approval (type(uint256).max)'),
   spender: z.string().describe("The spender address to approve"),
   chainId: z.number().optional().describe("Optional specific chain to use"),
 });
@@ -36,7 +37,7 @@ const getTokenDecimals = async (
 
 export const intentApproveTool = createTool({
   name: "intentApprove",
-  description: "Creates an intent to approve token spending",
+  description: 'Creates an intent to approve token spending. Supports "max" for unlimited approval.',
   supportedChains: erc20Chains,
   parameters: intentApproveParameters,
   execute: async (
@@ -55,13 +56,13 @@ export const intentApproveTool = createTool({
       await Promise.all(
         chains.map(async (chain) => {
           try {
+            const isMax = amount.toLowerCase() === "max";
             const publicClient = client.getPublicClient(chain.id);
-            const decimals = await getTokenDecimals(
-              publicClient,
-              token as Address,
-            );
+            const decimals = isMax
+              ? 0
+              : await getTokenDecimals(publicClient, token as Address);
 
-            const amountBigInt = parseUnits(amount, decimals);
+            const amountBigInt = isMax ? maxUint256 : parseUnits(amount, decimals);
 
             return {
               chain,
@@ -113,9 +114,11 @@ export const intentApproveTool = createTool({
       },
     ];
 
+    const displayAmount = amount.toLowerCase() === "max" ? "max (unlimited)" : amount.toString();
+
     if (!walletClient) {
       return {
-        intent: `approve ${amount.toString()} ${token} for spender ${spender}`,
+        intent: `approve ${displayAmount} ${token} for spender ${spender}`,
         ops,
         chain: executionChain.chain.id,
       };
@@ -123,7 +126,7 @@ export const intentApproveTool = createTool({
       const hash = await client.executeOps(ops, executionChain.chain.id);
 
       return {
-        intent: `Approve ${amount.toString()} ${token} from ${from} for spender ${spender}`,
+        intent: `Approve ${displayAmount} ${token} from ${from} for spender ${spender}`,
         ops,
         chain: executionChain.chain.id,
         hash: hash,
