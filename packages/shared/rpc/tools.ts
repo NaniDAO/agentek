@@ -127,13 +127,13 @@ const getBlock = createTool({
   description: "Get information about a block",
   supportedChains,
   parameters: z.object({
-    blockNumber: z.number(),
+    blockNumber: z.number().optional(),
     chainId: z.number(),
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
 
-    if (args.blockNumber) {
+    if (args.blockNumber !== undefined) {
       const block = await publicClient.getBlock({
         blockNumber: BigInt(args.blockNumber),
       });

@@ -220,6 +220,32 @@ describe("RPC Tools - Real Chain Calls", () => {
       expect(result.number).toBe("19000000");
     });
 
+    it("should get latest block when blockNumber is omitted", async () => {
+      const result = await withRetry(() =>
+        getBlock.execute(testClient, {
+          chainId: 8453,
+        })
+      );
+
+      expect(result).toHaveProperty("hash");
+      expect(result).toHaveProperty("number");
+      expect(result).toHaveProperty("timestamp");
+      expect(BigInt(result.number)).toBeGreaterThan(0n);
+    });
+
+    it("should get block 0 (genesis block) correctly", async () => {
+      const result = await withRetry(() =>
+        getBlock.execute(testClient, {
+          blockNumber: 0,
+          chainId: 1,
+        })
+      );
+
+      expect(result).toHaveProperty("hash");
+      expect(result).toHaveProperty("number");
+      expect(result.number).toBe("0");
+    });
+
     it("should match direct RPC call result", async () => {
       const blockNumber = 1000000;
       const directBlock = await withRetry(() =>
@@ -581,6 +607,13 @@ describe("RPC Tools - Real Chain Calls", () => {
         chainId: 8453,
       });
       expect(getFeeHistoryParsed.success).toBe(true);
+    });
+
+    it("should accept getBlock without blockNumber (optional)", () => {
+      const getBlockParsed = getBlock.parameters.safeParse({
+        chainId: 8453,
+      });
+      expect(getBlockParsed.success).toBe(true);
     });
 
     it("should reject invalid parameters", () => {
