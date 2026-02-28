@@ -1,5 +1,6 @@
+import { createInterface } from "node:readline";
 import { z } from "zod";
-import { type Hex, http, isHex, zeroAddress } from "viem";
+import { type Hex, type Account, http, isHex, zeroAddress } from "viem";
 import { mainnet, optimism, arbitrum, polygon, base } from "viem/chains";
 import { createAgentekClient, type BaseTool } from "@agentek/tools/client";
 import { allTools } from "@agentek/tools";
@@ -14,6 +15,11 @@ import {
   redactValue,
   isKnownKey,
 } from "./config.js";
+import { keyfileExists, readKeyfile, writeKeyfile, encrypt, decrypt } from "./signer/crypto.js";
+import { defaultPolicy } from "./signer/policy.js";
+import { startDaemon, stopDaemon, getDaemonStatus } from "./signer/daemon.js";
+import { isDaemonReachable, getDaemonAddress, createDaemonAccount } from "./signer/client.js";
+import type { DecryptedPayload, PolicyConfig } from "./signer/protocol.js";
 
 const VERSION = "0.0.2";
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -164,6 +170,14 @@ Usage:
   agentek info <tool-name>                  Show tool description and parameter schema
   agentek exec <tool-name> [--key value]    Execute a tool with the given parameters
 
+Signer:
+  agentek signer init                       Encrypt private key + policy into keyfile
+  agentek signer start                      Start signing daemon (prompts for passphrase)
+  agentek signer stop                       Stop signing daemon
+  agentek signer status                     Show daemon status and address
+  agentek signer policy                     Show current policy (prompts for passphrase)
+  agentek signer policy set <field> <val>   Update a policy field
+
 Flags:
   --key value       Set a parameter (type-coerced via tool schema)
   --key val --key v Repeated flags become arrays
@@ -175,6 +189,7 @@ Flags:
 Configuration:
   Keys are stored in ~/.agentek/config.json (override with AGENTEK_CONFIG_DIR).
   Environment variables always take precedence over config file values.
+  When the signer daemon is running, it is preferred over PRIVATE_KEY.
 `);
   process.exit(2);
 }
@@ -325,6 +340,186 @@ function levenshtein(a: string, b: string): number {
   return dp[n];
 }
 
+/** Read a line from stdin, optionally hiding input for passphrases. */
+function readLine(prompt: string, hidden = false): Promise<string> {
+  return new Promise((resolve) => {
+    process.stderr.write(prompt);
+    if (hidden) {
+      // Disable echo for passphrase entry
+      const { stdin } = process;
+      if (stdin.isTTY) stdin.setRawMode(true);
+      let input = "";
+      const onData = (ch: Buffer) => {
+        const c = ch.toString();
+        if (c === "\n" || c === "\r") {
+          if (stdin.isTTY) stdin.setRawMode(false);
+          stdin.removeListener("data", onData);
+          stdin.pause();
+          process.stderr.write("\n");
+          resolve(input);
+        } else if (c === "\u0003") {
+          // Ctrl+C
+          if (stdin.isTTY) stdin.setRawMode(false);
+          process.exit(1);
+        } else if (c === "\u007f" || c === "\b") {
+          // Backspace
+          input = input.slice(0, -1);
+        } else {
+          input += c;
+        }
+      };
+      stdin.resume();
+      stdin.on("data", onData);
+    } else {
+      const rl = createInterface({
+        input: process.stdin,
+        output: process.stderr,
+      });
+      rl.question("", (answer) => {
+        rl.close();
+        resolve(answer);
+      });
+    }
+  });
+}
+
+async function handleSignerCommand(args: string[]): Promise<void> {
+  const sub = args[0];
+
+  if (!sub) {
+    outputError("Usage: agentek signer <init|start|stop|status|policy>");
+  }
+
+  if (sub === "init") {
+    if (keyfileExists()) {
+      outputError("Keyfile already exists. Delete ~/.agentek/keyfile.enc to reinitialize.");
+    }
+
+    const privateKey = await readLine("Private key (hex, 0x...): ", true);
+    if (!privateKey || !isHex(privateKey as Hex)) {
+      outputError("Invalid private key format. Must be hex starting with 0x.");
+    }
+
+    const passphrase = await readLine("Passphrase: ", true);
+    if (!passphrase || passphrase.length < 8) {
+      outputError("Passphrase must be at least 8 characters.");
+    }
+    const confirm = await readLine("Confirm passphrase: ", true);
+    if (passphrase !== confirm) {
+      outputError("Passphrases do not match.");
+    }
+
+    const policy = defaultPolicy();
+    const payload: DecryptedPayload = { privateKey, policy };
+    const keyfile = encrypt(payload, passphrase);
+    writeKeyfile(keyfile);
+
+    process.stderr.write("Keyfile created at ~/.agentek/keyfile.enc\n");
+    process.stderr.write("Default policy applied. Use 'agentek signer policy' to view.\n");
+    outputJson({ ok: true });
+  } else if (sub === "start") {
+    if (!keyfileExists()) {
+      outputError("No keyfile found. Run 'agentek signer init' first.");
+    }
+
+    const status = getDaemonStatus();
+    if (status.running) {
+      outputError(`Daemon already running (PID ${status.pid})`);
+    }
+
+    const passphrase = await readLine("Passphrase: ", true);
+    let payload: DecryptedPayload;
+    try {
+      const keyfile = readKeyfile();
+      payload = decrypt(keyfile, passphrase);
+    } catch {
+      outputError("Failed to decrypt keyfile. Wrong passphrase?");
+    }
+
+    await startDaemon(payload!);
+    // Daemon stays running — don't exit
+    return;
+  } else if (sub === "stop") {
+    const status = getDaemonStatus();
+    if (!status.running) {
+      process.stderr.write("Daemon is not running.\n");
+      outputJson({ ok: true, wasRunning: false });
+    }
+
+    try {
+      process.kill(status.pid!, "SIGTERM");
+    } catch {}
+
+    // Clean up
+    stopDaemon();
+    process.stderr.write("Daemon stopped.\n");
+    outputJson({ ok: true, wasRunning: true });
+  } else if (sub === "status") {
+    const status = getDaemonStatus();
+    if (status.running) {
+      const reachable = await isDaemonReachable();
+      if (reachable) {
+        const addr = await getDaemonAddress();
+        outputJson({ running: true, pid: status.pid, address: addr, reachable: true });
+      } else {
+        outputJson({ running: true, pid: status.pid, reachable: false });
+      }
+    } else {
+      outputJson({ running: false });
+    }
+  } else if (sub === "policy") {
+    if (!keyfileExists()) {
+      outputError("No keyfile found. Run 'agentek signer init' first.");
+    }
+
+    const passphrase = await readLine("Passphrase: ", true);
+    let payload: DecryptedPayload;
+    try {
+      const keyfile = readKeyfile();
+      payload = decrypt(keyfile, passphrase);
+    } catch {
+      outputError("Failed to decrypt keyfile. Wrong passphrase?");
+    }
+
+    const policyAction = args[1];
+    if (policyAction === "set") {
+      const field = args[2];
+      const value = args[3];
+      if (!field || value === undefined) {
+        outputError("Usage: agentek signer policy set <field> <value>");
+      }
+
+      const policy = payload!.policy;
+      if (field === "maxValuePerTx") {
+        policy.maxValuePerTx = value;
+      } else if (field === "requireApproval") {
+        if (!["always", "above_threshold", "never"].includes(value)) {
+          outputError("requireApproval must be: always, above_threshold, or never");
+        }
+        policy.requireApproval = value as PolicyConfig["requireApproval"];
+      } else if (field === "approvalThresholdPct") {
+        const n = Number(value);
+        if (isNaN(n) || n < 0 || n > 100) outputError("approvalThresholdPct must be 0-100");
+        policy.approvalThresholdPct = n;
+      } else if (field === "allowedChains") {
+        policy.allowedChains = value.split(",").map(Number);
+      } else {
+        outputError(`Unknown policy field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains`);
+      }
+
+      const keyfile = encrypt(payload!, passphrase);
+      writeKeyfile(keyfile);
+      process.stderr.write(`Policy updated: ${field} = ${value}\n`);
+      outputJson({ ok: true, policy });
+    } else {
+      // Show current policy
+      outputJson(payload!.policy);
+    }
+  } else {
+    outputError("Usage: agentek signer <init|start|stop|status|policy>");
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
@@ -338,7 +533,7 @@ async function main() {
     printVersion();
   }
 
-  if (!["list", "info", "exec", "search", "setup", "config"].includes(command)) {
+  if (!["list", "info", "exec", "search", "setup", "config", "signer"].includes(command)) {
     printUsage();
   }
 
@@ -407,6 +602,12 @@ async function main() {
     process.exit(0);
   }
 
+  // ── signer (short-circuits before allTools) ──────────────────────────
+  if (command === "signer") {
+    await handleSignerCommand(rest);
+    process.exit(0);
+  }
+
   // ── Environment (env vars override config file) ────────────────────────
   const keys = resolveKeys();
   const PRIVATE_KEY = keys.PRIVATE_KEY;
@@ -431,9 +632,18 @@ async function main() {
   // ── Blockchain setup ─────────────────────────────────────────────────
   const chains = [mainnet, optimism, arbitrum, polygon, base];
   const transports = chains.map(() => http());
-  const account = PRIVATE_KEY
-    ? privateKeyToAccount(PRIVATE_KEY as Hex)
-    : (ACCOUNT && isHex(ACCOUNT) ? ACCOUNT as Hex : zeroAddress);
+
+  // Prefer signing daemon if running, then PRIVATE_KEY, then ACCOUNT, then zeroAddress
+  let account: Account | Hex;
+  const daemonUp = await isDaemonReachable();
+  if (daemonUp) {
+    const addr = await getDaemonAddress();
+    account = createDaemonAccount(addr);
+  } else if (PRIVATE_KEY) {
+    account = privateKeyToAccount(PRIVATE_KEY as Hex);
+  } else {
+    account = ACCOUNT && isHex(ACCOUNT) ? ACCOUNT as Hex : zeroAddress;
+  }
 
   // ── Agentek client ───────────────────────────────────────────────────
   const agentekClient = createAgentekClient({
