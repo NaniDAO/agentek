@@ -1,4 +1,3 @@
-import type { BaseTool } from "@agentek/tools/client";
 import { outputJson, outputError } from "../utils/output.js";
 import { unknownToolError, formatZodError, formatChainError } from "../utils/errors.js";
 import { parseFlags } from "../utils/flags.js";
@@ -43,7 +42,6 @@ export async function handleExec(
   } catch (err: any) {
     const msg: string = err.message || String(err);
 
-    // ── Timeout errors ──────────────────────────────────────────────
     if (msg.includes("timed out after")) {
       const doubled = timeoutMs * 2;
       outputError(msg, {
@@ -53,7 +51,6 @@ export async function handleExec(
       });
     }
 
-    // ── Zod validation errors ───────────────────────────────────────
     const zodFormatted = formatZodError(msg, toolName);
     if (zodFormatted) {
       outputError(zodFormatted.message, {
@@ -63,7 +60,6 @@ export async function handleExec(
       });
     }
 
-    // ── Chain not-supported errors ──────────────────────────────────
     const chainFormatted = formatChainError(msg, tool!);
     if (chainFormatted) {
       outputError(chainFormatted.message, {
@@ -73,7 +69,6 @@ export async function handleExec(
       });
     }
 
-    // ── Generic execution error ─────────────────────────────────────
     outputError(msg, { code: "EXECUTION_ERROR" });
   }
 }

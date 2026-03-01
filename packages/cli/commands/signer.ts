@@ -7,6 +7,18 @@ import { startDaemon, stopDaemon, getDaemonStatus } from "../signer/daemon.js";
 import { isDaemonReachable, getDaemonAddress } from "../signer/client.js";
 import type { DecryptedPayload, PolicyConfig } from "../signer/protocol.js";
 
+/** Prompt for passphrase and decrypt the keyfile. */
+async function unlockKeyfile(): Promise<{ payload: DecryptedPayload; passphrase: string }> {
+  const passphrase = await readLine("Passphrase: ", true);
+  try {
+    const keyfile = readKeyfile();
+    const payload = decrypt(keyfile, passphrase);
+    return { payload, passphrase };
+  } catch {
+    outputError("Failed to decrypt keyfile. Wrong passphrase?");
+  }
+}
+
 export async function handleSigner(args: string[]): Promise<void> {
   const sub = args[0];
 
@@ -51,16 +63,9 @@ export async function handleSigner(args: string[]): Promise<void> {
       outputError(`Daemon already running (PID ${status.pid})`);
     }
 
-    const passphrase = await readLine("Passphrase: ", true);
-    let payload: DecryptedPayload;
-    try {
-      const keyfile = readKeyfile();
-      payload = decrypt(keyfile, passphrase);
-    } catch {
-      outputError("Failed to decrypt keyfile. Wrong passphrase?");
-    }
+    const { payload } = await unlockKeyfile();
 
-    await startDaemon(payload!);
+    await startDaemon(payload);
     // Daemon stays running — don't exit
     return;
   } else if (sub === "stop") {
@@ -96,14 +101,7 @@ export async function handleSigner(args: string[]): Promise<void> {
       outputError("No keyfile found. Run 'agentek signer init' first.");
     }
 
-    const passphrase = await readLine("Passphrase: ", true);
-    let payload: DecryptedPayload;
-    try {
-      const keyfile = readKeyfile();
-      payload = decrypt(keyfile, passphrase);
-    } catch {
-      outputError("Failed to decrypt keyfile. Wrong passphrase?");
-    }
+    const { payload, passphrase } = await unlockKeyfile();
 
     const policyAction = args[1];
     if (policyAction === "set") {
@@ -113,7 +111,7 @@ export async function handleSigner(args: string[]): Promise<void> {
         outputError("Usage: agentek signer policy set <field> <value>");
       }
 
-      const policy = payload!.policy;
+      const policy = payload.policy;
       if (field === "maxValuePerTx") {
         policy.maxValuePerTx = value;
       } else if (field === "requireApproval") {
@@ -131,13 +129,13 @@ export async function handleSigner(args: string[]): Promise<void> {
         outputError(`Unknown policy field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains`);
       }
 
-      const keyfile = encrypt(payload!, passphrase);
+      const keyfile = encrypt(payload, passphrase);
       writeKeyfile(keyfile);
       process.stderr.write(`Policy updated: ${field} = ${value}\n`);
       outputJson({ ok: true, policy });
     } else {
       // Show current policy
-      outputJson(payload!.policy);
+      outputJson(payload.policy);
     }
   } else {
     outputError("Usage: agentek signer <init|start|stop|status|policy>");
