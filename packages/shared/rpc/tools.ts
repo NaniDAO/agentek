@@ -24,20 +24,23 @@ const supportedChains = [
 
 const getBalance = createTool({
   name: "getBalance",
-  description: "Get the ETH balance for an address",
+  description: "Get the ETH balance for an address. Returns human-readable ETH by default.",
   supportedChains,
   parameters: z.object({
     address: z.string(),
     chainId: z.number().optional(),
-    formatEth: z.boolean().optional(),
+    formatEth: z.boolean().optional().describe("Format as ETH instead of wei. Defaults to true."),
   }),
   execute: async (client, args) => {
+    const doFormat = args.formatEth !== false;
+
     if (args.chainId) {
       const publicClient = client.getPublicClient(args.chainId);
       const balance = await publicClient.getBalance({
         address: args.address as Address,
       });
-      return clean(args.formatEth ? formatEther(balance) : balance.toString());
+      const value = doFormat ? formatEther(balance) : balance.toString();
+      return clean(doFormat ? `${value} ETH` : value);
     }
 
     const results = await Promise.all(
@@ -46,9 +49,10 @@ const getBalance = createTool({
         const balance = await publicClient.getBalance({
           address: args.address as Address,
         });
+        const value = doFormat ? formatEther(balance) : balance.toString();
         return clean({
           chainId: chain.id,
-          balance: args.formatEth ? formatEther(balance) : balance.toString(),
+          balance: doFormat ? `${value} ETH` : value,
         });
       }),
     );
