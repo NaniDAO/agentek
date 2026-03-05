@@ -89,7 +89,6 @@ type KeySource = "generate" | "import";
 function Wizard() {
   const { exit } = useApp();
   const [step, setStep] = useState<Step>("welcome");
-  const [keySource, setKeySource] = useState<KeySource>("generate");
   const [privateKey, setPrivateKey] = useState("");
   const [importInput, setImportInput] = useState("");
   const [importError, setImportError] = useState("");
@@ -102,16 +101,6 @@ function Wizard() {
   const [presetName, setPresetName] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
-
-  // ── Step 1: Welcome ──────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (step === "welcome") {
-      if (keyfileExists()) {
-        setError(`Keyfile already exists at ${getKeyfilePath()}\nRun "agentek signer status" to check your signer.`);
-      }
-    }
-  }, [step]);
 
   useInput((_input, key) => {
     if (step === "welcome" && !error && key.return) {
@@ -161,7 +150,6 @@ function Wizard() {
             { label: "Import existing key", description: "Provide a private key hex string", value: "import" as KeySource },
           ]}
           onSelect={(source) => {
-            setKeySource(source);
             if (source === "generate") {
               const pk = generatePrivateKey();
               setPrivateKey(pk);

@@ -77,15 +77,10 @@ async function main() {
   }
 
   // ── Fast-path commands (no client init) ────────────────────────────────
-  if (command === "onboard") handleOnboard();
-  if (command === "setup") handleSetup(VERSION);
-  if (command === "config") handleConfig(rest);
-  if (command === "signer") {
-    await handleSigner(rest);
-    // Note: `signer start` keeps the event loop alive for the daemon.
-    // All other subcommands exit via outputJson/outputError internally.
-    return;
-  }
+  if (command === "onboard") return handleOnboard();
+  if (command === "setup") return handleSetup(VERSION);
+  if (command === "config") return handleConfig(rest);
+  if (command === "signer") return handleSigner(rest);
 
   // ── Client-dependent commands ──────────────────────────────────────────
   const ctx = await createClientFromEnv();

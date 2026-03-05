@@ -9,6 +9,23 @@ import { isDaemonReachable, getDaemonAddress, shutdownDaemon } from "../signer/c
 import { getKeyfilePath } from "../signer/protocol.js";
 import type { DecryptedPayload, PolicyConfig } from "../signer/protocol.js";
 
+/** Parse and validate contract address + optional selectors from CLI args. */
+function parseContractArgs(args: string[], action: string): { addr: string; selectors: string[] } {
+  const address = args[2];
+  if (!address) {
+    outputError(`Usage: agentek signer policy ${action} <address> [selector ...]`);
+  }
+  if (!isAddress(address)) {
+    outputError(`Invalid address: ${address}`);
+  }
+  const addr = address.toLowerCase();
+  const selectors = args.slice(3)
+    .flatMap((v) => v.split(","))
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return { addr, selectors };
+}
+
 /** Prompt for passphrase and decrypt the keyfile. */
 async function unlockKeyfile(): Promise<{ payload: DecryptedPayload; passphrase: string }> {
   const passphrase = await readLine("Passphrase: ", true);
@@ -81,13 +98,12 @@ export async function handleSigner(args: string[]): Promise<void> {
     const child = spawn(process.execPath, [process.argv[1], "signer", "__daemon"], {
       detached: true,
       stdio: ["pipe", "ignore", "ignore"],
-      env: process.env,
     });
 
     child.stdin!.end(JSON.stringify(payload));
     child.unref();
 
-    // Poll until the daemon is reachable (scrypt KDF in the child takes time).
+    // Poll until the daemon is reachable.
     let reachable = false;
     for (let i = 0; i < 30; i++) {
       await new Promise((r) => setTimeout(r, 200));
@@ -145,10 +161,6 @@ export async function handleSigner(args: string[]): Promise<void> {
     }
 
     const { payload, passphrase } = await unlockKeyfile();
-    if (payload.policy.allowContractCreation === undefined) {
-      payload.policy.allowContractCreation = false;
-    }
-
     const policyAction = args[1];
     const policy = payload.policy;
 
@@ -191,25 +203,9 @@ export async function handleSigner(args: string[]): Promise<void> {
         outputError(`Unknown field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains, allowContractCreation\nFor contracts use: policy allow/deny <address> [selectors...]`);
       }
 
-      const keyfile = encrypt(payload, passphrase);
-      writeKeyfile(keyfile);
       process.stderr.write(`Policy updated: ${field} = ${value}\n`);
-      outputJson({ ok: true, policy });
     } else if (policyAction === "allow") {
-      // policy allow <address> [selector ...] — approve a contract (with optional function selectors)
-      const address = args[2];
-      if (!address) {
-        outputError("Usage: agentek signer policy allow <address> [selector ...]");
-      }
-      if (!isAddress(address)) {
-        outputError(`Invalid address: ${address}`);
-      }
-      const addr = address.toLowerCase();
-      const rawSelectors = args.slice(3);
-      const selectors = rawSelectors
-        .flatMap((v) => v.split(","))
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
+      const { addr, selectors } = parseContractArgs(args, "allow");
 
       // Validate selectors
       for (const sel of selectors) {
@@ -218,16 +214,11 @@ export async function handleSigner(args: string[]): Promise<void> {
         }
       }
 
-      if (!policy.contracts) policy.contracts = {};
-
       if (selectors.length === 0 || selectors.includes("*")) {
-        // No selectors or explicit wildcard → approve all functions
         policy.contracts[addr] = ["*"];
         process.stderr.write(`Allowed contract ${addr} (all functions)\n`);
       } else {
-        // Merge selectors with existing
         const existing = new Set(policy.contracts[addr] || []);
-        // If already wildcard, keep it
         if (existing.has("*")) {
           process.stderr.write(`Contract ${addr} already allows all functions\n`);
         } else {
@@ -236,30 +227,10 @@ export async function handleSigner(args: string[]): Promise<void> {
           process.stderr.write(`Allowed contract ${addr} functions: ${selectors.join(", ")}\n`);
         }
       }
-
-      const keyfile = encrypt(payload, passphrase);
-      writeKeyfile(keyfile);
-      outputJson({ ok: true, policy });
     } else if (policyAction === "deny") {
-      // policy deny <address> [selector ...] — remove a contract or specific functions
-      const address = args[2];
-      if (!address) {
-        outputError("Usage: agentek signer policy deny <address> [selector ...]");
-      }
-      if (!isAddress(address)) {
-        outputError(`Invalid address: ${address}`);
-      }
-      const addr = address.toLowerCase();
-      const rawSelectors = args.slice(3);
-      const selectors = rawSelectors
-        .flatMap((v) => v.split(","))
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
-
-      if (!policy.contracts) policy.contracts = {};
+      const { addr, selectors } = parseContractArgs(args, "deny");
 
       if (selectors.length === 0) {
-        // No selectors → remove the entire contract
         delete policy.contracts[addr];
         process.stderr.write(`Removed contract ${addr} from allowlist\n`);
       } else {
@@ -267,8 +238,6 @@ export async function handleSigner(args: string[]): Promise<void> {
         if (!existing) {
           process.stderr.write(`Contract ${addr} is not in the allowlist\n`);
         } else if (existing.includes("*")) {
-          // Can't remove specific selectors from a wildcard — deny removes the whole contract
-          // unless user provides specific selectors, in which case we switch from wildcard to explicit
           process.stderr.write(`Contract ${addr} had wildcard (*). Removing entirely. Re-add with specific selectors if needed.\n`);
           delete policy.contracts[addr];
         } else {
@@ -283,14 +252,15 @@ export async function handleSigner(args: string[]): Promise<void> {
           }
         }
       }
-
-      const keyfile = encrypt(payload, passphrase);
-      writeKeyfile(keyfile);
-      outputJson({ ok: true, policy });
     } else {
-      // Show current policy
-      outputJson(policy);
+      // Show current policy (no mutation needed)
+      return outputJson(policy);
     }
+
+    // Persist mutated policy
+    const keyfile = encrypt(payload, passphrase);
+    writeKeyfile(keyfile);
+    outputJson({ ok: true, policy });
   } else {
     outputError("Usage: agentek signer <init|start|stop|status|policy>");
   }

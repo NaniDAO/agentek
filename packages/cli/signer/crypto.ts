@@ -131,10 +131,7 @@ export function readKeyfile(): AgentekKeyfile {
 }
 
 export function writeKeyfile(keyfile: AgentekKeyfile): void {
-  const dir = getConfigDir();
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true, mode: 0o700 });
-  }
+  mkdirSync(getConfigDir(), { recursive: true, mode: 0o700 });
   const path = getKeyfilePath();
   writeFileSync(path, JSON.stringify(keyfile, null, 2) + "\n", { mode: 0o600 });
   chmodSync(path, 0o600);

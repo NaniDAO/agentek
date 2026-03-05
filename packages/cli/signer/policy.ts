@@ -90,7 +90,7 @@ export function evaluatePolicy(policy: PolicyConfig, tx: TxRequest): PolicyResul
   // 6. Contract+function allowlist check
   //    If the target contract is in the map and the function is approved → no approval
   //    Otherwise → needs approval (passphrase)
-  if (to && policy.contracts) {
+  if (to) {
     const contractEntry = policy.contracts[to];
     if (contractEntry) {
       // Contract is in the allowlist — check function
