@@ -1,4 +1,5 @@
 import { parseEther, isHex } from "viem";
+import { spawn } from "node:child_process";
 import { outputJson, outputError } from "../utils/output.js";
 import { readLine } from "../utils/readline.js";
 import { keyfileExists, readKeyfile, writeKeyfile, encrypt, decrypt } from "../signer/crypto.js";
@@ -54,6 +55,14 @@ export async function handleSigner(args: string[]): Promise<void> {
     process.stderr.write(`Keyfile created at ${getKeyfilePath()}\n`);
     process.stderr.write("Default policy applied. Use 'agentek signer policy' to view.\n");
     outputJson({ ok: true });
+  } else if (sub === "__daemon") {
+    // Hidden subcommand: reads DecryptedPayload from stdin, runs daemon in foreground.
+    // Spawned by `signer start` as a detached background process.
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+    const payload: DecryptedPayload = JSON.parse(Buffer.concat(chunks).toString("utf-8"));
+    await startDaemon(payload);
+    return;
   } else if (sub === "start") {
     if (!keyfileExists()) {
       outputError("No keyfile found. Run 'agentek signer init' first.");
@@ -66,9 +75,29 @@ export async function handleSigner(args: string[]): Promise<void> {
 
     const { payload } = await unlockKeyfile();
 
-    await startDaemon(payload);
-    // Daemon stays running — don't exit
-    return;
+    // Spawn a detached child that runs the daemon in the background.
+    // The decrypted payload is passed via stdin so it never touches
+    // the command line or environment variables.
+    const child = spawn(process.execPath, [process.argv[1], "signer", "__daemon"], {
+      detached: true,
+      stdio: ["pipe", "ignore", "ignore"],
+      env: process.env,
+    });
+
+    child.stdin!.end(JSON.stringify(payload));
+    child.unref();
+
+    // Wait briefly for the daemon to start, then verify it's reachable.
+    await new Promise((r) => setTimeout(r, 500));
+    const reachable = await isDaemonReachable();
+    if (!reachable) {
+      outputError("Daemon process spawned but is not reachable. Check logs.");
+    }
+
+    const addr = await getDaemonAddress();
+    process.stderr.write(`Signer daemon started (PID ${child.pid})\n`);
+    process.stderr.write(`Address: ${addr}\n`);
+    outputJson({ ok: true, pid: child.pid, address: addr });
   } else if (sub === "stop") {
     const status = getDaemonStatus();
     if (!status.running) {
