@@ -2,198 +2,272 @@
 
 ![agentek-logo-1](https://github.com/user-attachments/assets/c73ccd7b-4c4e-4c90-8ccc-1ed101fa1b0b)
 
-An extensible TypeScript toolkit that simplifies complex EVM blockchain interactions into composable, intent-based tools. Provides a unified, type-safe interface for both on-chain actions and off-chain data services, enabling developers to programmatically execute any blockchain operation across multiple EVM networks.
+An extensible TypeScript toolkit for EVM blockchain interactions. 165 composable tools covering on-chain actions, DeFi protocols, market data, and off-chain services — designed for AI agents, MCP clients, and developers.
 
-Interested in contributing? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) guide!
+## Quick Start
+
+**CLI** (fastest way to try it):
+```bash
+npx @agentek/cli list          # browse all 165 tools
+npx @agentek/cli info getBalance  # inspect a specific tool
+npx @agentek/cli exec getBalance '{"chainId":1,"address":"vitalik.eth"}'
+```
+
+**MCP Server** (for Claude Desktop, Cursor, etc.):
+```bash
+pnpx @agentek/mcp-server
+```
+
+**TypeScript SDK**:
+```bash
+pnpm add @agentek/tools
+```
 
 ## Packages
 
-The Agentek toolkit is structured as a monorepo with multiple publishable packages:
+| Package | Description | Version |
+|---------|-------------|---------|
+| [`@agentek/tools`](packages/shared) | Core toolkit — all 165 tools | 0.1.26 |
+| [`@agentek/ai-sdk`](packages/ai-sdk) | Vercel AI SDK integration | 0.1.26 |
+| [`@agentek/mcp-server`](packages/mcp) | Model Context Protocol server | 0.1.26 |
+| [`@agentek/cli`](packages/cli) | Command-line interface | 0.0.2 |
 
-- `@agentek/tools` - The main package containing all tools
-- `@agentek/ai-sdk` - AI SDK integration for Vercel AI SDK
-- `@agentek/mcp-server` - Model Context Protocol server
--
 ## Requirements
 
-- Node.js >= 18.0.0
-- npm, yarn, or pnpm
+- Node.js >= 18.17.0
+- pnpm (for development)
 
 ## Installation
 
-You can install the entire toolkit:
-
 ```bash
-npm install @agentek/tools
-```
+# Core tools
+pnpm add @agentek/tools viem zod
 
-AI SDK:
-
-```bash
-npm install @agentek/ai-sdk
+# Vercel AI SDK integration
+pnpm add @agentek/ai-sdk @agentek/tools viem zod
 ```
 
 ## Usage
 
-### Using the full toolkit
+### Using with Vercel AI SDK
 
 ```typescript
-import { createAgentekClient, allTools } from '@agentek/tools';
-import { http } from 'viem';
-import { mainnet } from 'viem/chains';
-
-const client = createAgentekClient({
-  accountOrAddress: '0x...',
-  chains: [mainnet],
-  transports: [http()],
-  tools: allTools({})
-});
-
-// Execute a tool
-const result = await client.execute('getERC20BalanceTool', {
-  address: '0x...',
-  tokenAddress: '0x...'
-});
-```
-
-### Using with AI SDK
-
-```typescript
-import { createAgentekClient, allTools } from '@agentek/tools';
+import { allTools } from '@agentek/tools';
 import { AgentekToolkit } from '@agentek/ai-sdk';
 import { http } from 'viem';
 import { mainnet } from 'viem/chains';
+
+const tools = await allTools({
+  perplexityApiKey: process.env.PERPLEXITY_API_KEY,
+  zeroxApiKey: process.env.ZEROX_API_KEY,
+});
 
 const toolkit = new AgentekToolkit({
   accountOrAddress: '0x...',
   chains: [mainnet],
   transports: [http()],
-  tools: allTools({})
+  tools,
 });
 
-// Get tools for Vercel AI SDK
+// Pass to Vercel AI SDK
 const aiTools = toolkit.getTools();
+```
+
+### Using the toolkit directly
+
+```typescript
+import { createAgentekClient, allTools } from '@agentek/tools';
+import { http } from 'viem';
+import { mainnet } from 'viem/chains';
+
+const tools = await allTools({});
+
+const client = createAgentekClient({
+  accountOrAddress: '0x...',
+  chains: [mainnet],
+  transports: [http()],
+  tools,
+});
+
+const result = await client.execute('getBalance', {
+  address: '0x...',
+  chainId: 1,
+});
 ```
 
 ### Using the MCP Server
 
-The MCP (Model Context Protocol) server allows you to expose Agentek tools to LLMs via the Model Context Protocol. For more information, see the [MCP Server README](/src/mcp/README.md)
+Add to your `claude_desktop_config.json`:
 
-## Tools (114 total)
+```json
+{
+  "mcpServers": {
+    "agentek": {
+      "command": "pnpx",
+      "args": ["@agentek/mcp-server"],
+      "env": {
+        "ACCOUNT": "YOUR_ETHEREUM_ADDRESS",
+        "PERPLEXITY_API_KEY": "...",
+        "TALLY_API_KEY": "..."
+      }
+    }
+  }
+}
+```
 
-### Available Tools
+Use `ACCOUNT` for read-only access. Add `PRIVATE_KEY` only if you need to execute transactions.
 
-1. resolveENS
-2. lookupENS
-3. getAllowance
-4. getBalanceOf
-5. getTotalSupply
-6. getDecimals
-7. getName
-8. getSymbol
-9. getTokenMetadata
-10. intentApprove
-11. getAcrossFeeQuote
-12. intentDepositAcross
-13. intentTransfer
-14. intentTransferFrom
-15. getLatestTokens
-16. getBalance
-17. getCode
-18. getTransactionCount
-19. getBlock
-20. getBlockNumber
-21. getGasPrice
-22. estimateGas
-23. getFeeHistory
-24. getTransaction
-25. getTransactionReceipt
-26. getUniV3Pool
-27. getUserPositions
-28. getPoolFeeData
-29. getPositionDetails
-30. intentMintPosition
-31. intentIncreaseLiquidity
-32. intentDecreaseLiquidity
-33. intentCollectFees
-34. intentTransferPosition
-35. depositWETH
-36. withdrawWETH
-37. getNaniProposals
-38. intentStakeNani
-39. intentUnstakeNani
-40. intentProposeNani
-41. intentVoteNaniProposal
-42. getNativeCoinHolders
-43. getAddressInfo
-44. getAddressCounters
-45. getAddressTransactions
-46. getAddressTokenTransfers
-47. getAddressInternalTransactions
-48. getAddressLogs
-49. getAddressBlocksValidated
-50. getAddressTokenBalances
-51. getAddressTokens
-52. getAddressCoinBalanceHistory
-53. getAddressCoinBalanceHistoryByDay
-54. getAddressWithdrawals
-55. getAddressNFTs
-56. getAddressNFTCollections
-57. getBlockInfo
-58. getBlockTransactions
-59. getBlockWithdrawals
-60. getStats
-61. getTransactionsChart
-62. getTransactionInfo
-63. getTransactionTokenTransfers
-64. getTransactionInternalTransactions
-65. getTransactionLogs
-66. getTransactionRawTrace
-67. getTransactionStateChanges
-68. getTransactionSummary
-69. getSmartContracts
-70. getSmartContract
-71. getTokenInfo
-72. getTokenHolders
-73. getTokenTransfers
-74. getBlockscoutSearch
-75. getAaveUserData
-76. getAaveReserveData
-77. intentAaveDeposit
-78. intentAaveWithdraw
-79. intentAaveBorrow
-80. intentAaveRepay
-81. checkMaliciousAddress
-82. checkMaliciousWebsite
-83. scrapeWebContent
-84. getFearAndGreedIndex
-85. getSlowStatus
-86. predictTransferId
-87. canUnlockSlow
-88. getCanReverseSlowTransfer
-89. getSlowGuardianInfo
-90. getSlowTransferApprovalRequired
-91. intentDepositToSlow
-92. intentSetSlowGuardian
-93. intentWithdrawFromSlow
-94. intentApproveSlowTransfer
-95. intentUnlockSlow
-96. intentReverseSlowTransfer
-97. getNFTMetadata
-98. getCryptoPrice
-99. estimateGasCost
-100. getTokenChart
-101. getYieldTool
-102. compareYieldTool
-103. getYieldHistoryTool
-104. compareYieldHistoryTool
-105. think
-106. askPerplexitySearch
-107. intent0xSwap
-108. tallyProposals
-109. tallyChains
-110. tallyUserDaos
-111. intentGovernorVote
-112. intentGovernorVoteWithReason
-113. getLatestCoindeskNewsTool
-114. getMarketEvents
+See the [MCP Server README](packages/mcp/README.md) for full configuration details.
+
+### Using the CLI
+
+```bash
+# List all available tools
+npx @agentek/cli list
+
+# Search for tools by keyword
+npx @agentek/cli search "swap"
+
+# Get detailed info about a tool
+npx @agentek/cli info intentApprove
+
+# Execute a tool
+npx @agentek/cli exec getCryptoPrice '{"coinId":"ethereum"}'
+```
+
+See the [CLI Guide](packages/cli/GUIDE.md) for complete documentation.
+
+### Composing a custom tool set
+
+You don't have to use all 165 tools. Import only what you need:
+
+```typescript
+import { rpcTools, erc20Tools, defillamaTools } from '@agentek/tools';
+
+const tools = [
+  ...rpcTools(),
+  ...erc20Tools(),
+  ...defillamaTools(),
+];
+```
+
+## Tools (165 total)
+
+### Blockchain Core
+
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **rpc** | 11 | `getBalance`, `getBlock`, `getBlockNumber`, `getGasPrice`, `getTransaction`, `getTransactionReceipt`, `getCode`, `getTransactionCount`, `estimateGas`, `getFeeHistory`, `intentSendTransaction` |
+| **erc20** | 8 | `getBalanceOf`, `getAllowance`, `getTotalSupply`, `getDecimals`, `getName`, `getSymbol`, `getTokenMetadata`, `intentApprove` |
+| **transfer** | 2 | `intentTransfer`, `intentTransferFrom` |
+| **erc721** | 1 | `getNFTMetadata` |
+| **erc6909** | 3 | Token balance, metadata, and transfer intents |
+| **ens** | 2 | `resolveENS`, `lookupENS` |
+| **wns** | 19 | `resolveWNS`, `isAvailableWNS`, `intentRegisterWNS`, and 16 more naming tools |
+
+### DeFi
+
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **aave** | 6 | Lending/borrowing: `getAaveUserData`, `getAaveReserveData`, deposit, withdraw, borrow, repay intents |
+| **uniV3** | 9 | Liquidity: `getUniV3Pool`, `getUserPositions`, `getPoolFeeData`, mint/increase/decrease/collect/transfer intents |
+| **swap** | 1 | `intent0xSwap` — token swaps via 0x aggregator |
+| **weth** | 2 | `depositWETH`, `withdrawWETH` |
+| **zamm** | 5 | `getPool`, `getSwaps`, `getAccountPortfolio`, and swap/liquidity tools |
+| **zrouter** | 2 | `getQuote`, `swap` — cross-DEX routing |
+| **x402** | 3 | `x402Fetch`, `getX402PaymentInfo`, `x402DiscoverResources` — HTTP 402 payments |
+| **defillama** | 5 | `getYieldTool`, `compareYieldTool`, `getYieldHistoryTool`, `compareYieldHistoryTool`, `getTokenChart` |
+
+### Cross-Chain
+
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **across** | 2 | `getAcrossFeeQuote`, `intentDepositAcross` |
+| **slowTransfer** | 12 | Slow-release transfers with guardian controls |
+
+### Market Data
+
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **dexscreener** | 1 | `getLatestTokens` — trending token discovery |
+| **cryptoprices** | 1 | `getCryptoPrice` — current prices via CoinGecko |
+| **coindesk** | 1 | `getLatestCoindeskNewsTool` — crypto news |
+| **coinmarketcal** | 1 | `getMarketEvents` — upcoming market events |
+| **feargreed** | 1 | `getFearAndGreedIndex` |
+| **gasestimator** | 1 | `estimateGasCost` — gas cost in USD |
+
+### Block Explorer (Blockscout)
+
+33 tools covering addresses, transactions, blocks, tokens, smart contracts, and search across supported networks.
+
+### Governance
+
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **tally** | 5 | `tallyProposals`, `tallyChains`, `tallyUserDaos`, `intentGovernorVote`, `intentGovernorVoteWithReason` |
+| **nani** | 5 | `getNaniProposals`, `intentStakeNani`, `intentUnstakeNani`, `intentProposeNani`, `intentVoteNaniProposal` |
+| **coinchan** | 8 | Coin creation, vesting, airdrops |
+
+### Social & Web
+
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **twitter** | 5 | `searchRecentTweets`, `getTweetById`, `getXUserByUsername`, `getXUserTweets`, `getHomeTimeline` |
+| **web** | 1 | `scrapeWebContent` |
+| **search** | 1 | `askPerplexitySearch` |
+| **imagegen** | 1 | `generateAndPinImage` — AI image generation + IPFS pinning |
+
+### Security & Utility
+
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **security** | 2 | `checkMaliciousAddress`, `checkMaliciousWebsite` |
+| **btc-rpc** | 4 | `getBtcAddressInfo`, `getBtcTxDetails`, `getBtcBlockTxids`, `getLatestBtcBlock` |
+| **think** | 1 | Reasoning step for multi-step agent workflows |
+
+## Supported Networks
+
+- Ethereum Mainnet
+- Optimism
+- Arbitrum
+- Polygon
+- Base
+
+## Environment Variables
+
+Most tools work without any API keys. Optional keys unlock additional features:
+
+| Variable | Required for |
+|----------|-------------|
+| `PRIVATE_KEY` | Executing transactions (intent tools) |
+| `ACCOUNT` | Read-only address context (alternative to PRIVATE_KEY) |
+| `PERPLEXITY_API_KEY` | AI-powered search |
+| `ZEROX_API_KEY` | Token swaps via 0x |
+| `TALLY_API_KEY` | Governance data |
+| `COINDESK_API_KEY` | Crypto news |
+| `COINMARKETCAL_API_KEY` | Market events calendar |
+| `FIREWORKS_API_KEY` | AI image generation |
+| `PINATA_JWT` | IPFS pinning (paired with FIREWORKS_API_KEY) |
+| `X_BEARER_TOKEN` | Twitter/X read-only access |
+| `X_API_KEY` + `X_API_KEY_SECRET` | Twitter/X OAuth (full access) |
+
+Copy the example to get started:
+```bash
+cp .env.example .env
+```
+
+## Development
+
+```bash
+git clone https://github.com/NaniDAO/agentek.git
+cd agentek
+pnpm i
+pnpm run build
+pnpm run test
+```
+
+Interested in contributing? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) guide.
+
+## License
+
+[AGPL-3.0](LICENSE)

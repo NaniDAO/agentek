@@ -3,6 +3,7 @@ import { createTool } from "../client.js";
 import { x402Client, wrapFetchWithPayment } from "@x402/fetch";
 import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
 import { X402_DISCOVERY_URL, USDC_DECIMALS } from "./constants.js";
+import { assertOkResponse } from "../utils/fetch.js";
 
 export const x402FetchTool = createTool({
   name: "x402Fetch",
@@ -154,11 +155,7 @@ export const x402DiscoverResourcesTool = createTool({
 
     const response = await fetch(url.toString());
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch x402 resources: ${response.status} ${response.statusText}`,
-      );
-    }
+    await assertOkResponse(response, "Failed to fetch x402 resources");
 
     return await response.json();
   },

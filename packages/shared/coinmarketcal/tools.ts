@@ -9,7 +9,8 @@ const getMarketEventsParams = z.object({
       "firmed_date",
       "confirmed_by_representatives",
     ])
-    .optional(),
+    .optional()
+    .describe("Filter events by category: 'trending_events', 'popular_events', 'firmed_date', or 'confirmed_by_representatives'. Omit to return all events."),
 });
 
 type Coin = {
@@ -61,7 +62,7 @@ export const createMarketEventsTool = (apiKey: string) => {
   return createTool({
     name: "getMarketEvents",
     description:
-      "Fetches cryptocurrency market events from CoinMarketCal. Supports filtering by coins, categories, date ranges, and various sorting options.",
+      "Fetches upcoming cryptocurrency market events from CoinMarketCal (e.g. token launches, airdrops, listings, forks). Optionally filter by event category. Returns up to 50 events with dates, coins, proof links, and community votes.",
     parameters: getMarketEventsParams,
     execute: async (
       _client: AgentekClient,

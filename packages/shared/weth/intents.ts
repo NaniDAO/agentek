@@ -4,13 +4,13 @@ import { Address, encodeFunctionData, parseEther } from "viem";
 import { supportedChains, WETH_ADDRESS, wethAbi } from "./constants.js";
 
 const depositWETHParameters = z.object({
-  chainId: z.number().describe("Chain ID to deposit on"),
-  amount: z.number().describe("Amount of ETH to deposit (in ether)"),
+  chainId: z.number().describe("Chain ID to deposit on (e.g. 1 for Ethereum, 8453 for Base, 42161 for Arbitrum)"),
+  amount: z.string().describe("Amount of ETH to wrap in human-readable units (e.g. '1.5' for 1.5 ETH)"),
 });
 
 const withdrawWETHParameters = z.object({
-  chainId: z.number().describe("Chain ID to withdraw on"),
-  amount: z.number().describe("Amount of WETH to withdraw (in ether)"),
+  chainId: z.number().describe("Chain ID to withdraw on (e.g. 1 for Ethereum, 8453 for Base, 42161 for Arbitrum)"),
+  amount: z.string().describe("Amount of WETH to unwrap in human-readable units (e.g. '1.5' for 1.5 WETH)"),
 });
 
 const depositWETHChains = supportedChains;
@@ -18,7 +18,7 @@ const withdrawWETHChains = supportedChains;
 
 export const intentDepositWETH = createTool({
   name: "depositWETH",
-  description: "Deposit ETH into the WETH contract, receiving WETH in return",
+  description: "Wrap native ETH into WETH (Wrapped ETH) by depositing into the WETH contract. You receive an equal amount of WETH, an ERC20 token.",
   supportedChains: depositWETHChains,
   parameters: depositWETHParameters,
   execute: async (
@@ -65,7 +65,7 @@ export const intentDepositWETH = createTool({
 
 export const intentWithdrawWETH = createTool({
   name: "withdrawWETH",
-  description: "Withdraw WETH back to native ETH",
+  description: "Unwrap WETH back to native ETH by withdrawing from the WETH contract. Burns your WETH and returns an equal amount of native ETH.",
   supportedChains: withdrawWETHChains,
   parameters: withdrawWETHParameters,
   execute: async (

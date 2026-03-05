@@ -19,7 +19,8 @@
   - Standard tools: `get*Tool`, `search*Tool`
   - Intent tools: `intent*Tool` for blockchain transactions
 - **Types**: Use Zod for parameter validation with descriptive strings. Explicit type annotations.
-- **Error handling**: Descriptive template literals with context. Use try/catch for external calls.
+- **Error handling**: Descriptive template literals with context. Use try/catch for external calls. For fetch responses, use `assertOkResponse(response, "context message")` from `packages/shared/utils/fetch.ts` instead of inline `!response.ok` checks.
+- **Logging**: No `console.log` or `console.error` in production source files. Remove debug logging before committing.
 - **Code organization**: Modular directories with separate files for constants, tools, and intents.
 - **Tool structure**: Follow the `createTool` pattern with name, description, parameters, and execute function.
 - **Security**: Validate all inputs. Never commit API keys. Use environment variables for secrets.

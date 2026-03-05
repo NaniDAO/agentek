@@ -78,7 +78,6 @@ export const estimateGasCostTool = createTool({
         }
       } catch (error) {
         // Silently fail if price lookup doesn't work
-        console.error("Error fetching price:", error);
       }
       
       return {

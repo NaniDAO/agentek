@@ -24,12 +24,12 @@ const supportedChains = [
 
 const getBalance = createTool({
   name: "getBalance",
-  description: "Get the ETH balance for an address. Returns human-readable ETH by default.",
+  description: "Get the native token (ETH) balance for an address. If chainId is omitted, returns balances across all supported chains.",
   supportedChains,
   parameters: z.object({
-    address: z.string(),
-    chainId: z.number().optional(),
-    formatEth: z.boolean().optional().describe("Format as ETH instead of wei. Defaults to true."),
+    address: z.string().describe("The wallet address to check (0x...)"),
+    chainId: z.number().optional().describe("Chain ID to query (e.g. 1 for Ethereum, 8453 for Base). Omit to query all supported chains."),
+    formatEth: z.boolean().optional().describe("If true, returns balance formatted in ETH instead of wei"),
   }),
   execute: async (client, args) => {
     const doFormat = args.formatEth !== false;
@@ -62,11 +62,11 @@ const getBalance = createTool({
 
 const getCode = createTool({
   name: "getCode",
-  description: "Get the bytecode of an address",
+  description: "Get the deployed bytecode at an address. Returns empty if the address is an EOA (not a contract). If chainId is omitted, queries all supported chains.",
   supportedChains,
   parameters: z.object({
-    address: z.string(),
-    chainId: z.number().optional(),
+    address: z.string().describe("The contract address to check (0x...)"),
+    chainId: z.number().optional().describe("Chain ID to query. Omit to query all supported chains."),
   }),
   execute: async (client, args) => {
     if (args.chainId) {
@@ -93,11 +93,11 @@ const getCode = createTool({
 
 const getTransactionCount = createTool({
   name: "getTransactionCount",
-  description: "Get the number of transactions sent from an address",
+  description: "Get the nonce (number of transactions sent) from an address. If chainId is omitted, returns counts across all supported chains.",
   supportedChains,
   parameters: z.object({
-    address: z.string(),
-    chainId: z.number().optional(),
+    address: z.string().describe("The wallet address to check (0x...)"),
+    chainId: z.number().optional().describe("Chain ID to query. Omit to query all supported chains."),
   }),
   execute: async (client, args) => {
     if (args.chainId) {
@@ -128,16 +128,16 @@ const getTransactionCount = createTool({
 // Block Tools
 const getBlock = createTool({
   name: "getBlock",
-  description: "Get information about a block",
+  description: "Get information about a block including timestamp, transactions, gas used, etc. Returns the latest block if no block number is specified.",
   supportedChains,
   parameters: z.object({
-    blockNumber: z.number(),
-    chainId: z.number(),
+    blockNumber: z.number().optional().describe("The block number to fetch. Omit to get the latest block."),
+    chainId: z.number().describe("Chain ID to query (e.g. 1 for Ethereum, 8453 for Base)"),
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
 
-    if (args.blockNumber) {
+    if (args.blockNumber !== undefined) {
       const block = await publicClient.getBlock({
         blockNumber: BigInt(args.blockNumber),
       });
@@ -151,10 +151,10 @@ const getBlock = createTool({
 
 const getBlockNumber = createTool({
   name: "getBlockNumber",
-  description: "Get the current block number",
+  description: "Get the current (latest) block number. If chainId is omitted, returns block numbers for all supported chains.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number().optional(),
+    chainId: z.number().optional().describe("Chain ID to query. Omit to query all supported chains."),
   }),
   execute: async (client, args) => {
     if (args.chainId) {
@@ -186,11 +186,11 @@ const getBlockNumber = createTool({
 const getGasPrice = createTool({
   name: "getGasPrice",
   description:
-    "Get the current gas price. If chainId is not specified, will return gas price for all supported chains.",
+    "Get the current gas price. If chainId is not specified, returns gas prices for all supported chains.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number().optional(),
-    formatGwei: z.boolean().optional(),
+    chainId: z.number().optional().describe("Chain ID to query. Omit to query all supported chains."),
+    formatGwei: z.boolean().optional().describe("If true, returns gas price formatted in gwei instead of wei"),
   }),
   execute: async (client, args) => {
     const chains = client.filterSupportedChains(supportedChains, args.chainId);
@@ -225,13 +225,13 @@ const getGasPrice = createTool({
 
 const estimateGas = createTool({
   name: "estimateGas",
-  description: "Estimate gas for a transaction",
+  description: "Estimate the gas required for a transaction. If chainId is omitted, estimates on all supported chains.",
   supportedChains,
   parameters: z.object({
-    to: addressSchema,
-    value: z.string().optional(),
-    data: z.string().optional(),
-    chainId: z.number().optional(),
+    to: addressSchema.describe("The recipient or contract address (0x...)"),
+    value: z.string().optional().describe("ETH value to send in ether (e.g. '0.1' for 0.1 ETH)"),
+    data: z.string().optional().describe("Hex-encoded calldata (0x...)"),
+    chainId: z.number().optional().describe("Chain ID to estimate on. Omit to estimate on all supported chains."),
   }),
   execute: async (client, args) => {
     if (args.chainId) {
@@ -301,11 +301,11 @@ const getFeeHistory = createTool({
 
 const getTransaction = createTool({
   name: "getTransaction",
-  description: "Get details about a transaction",
+  description: "Get details about a transaction including sender, recipient, value, gas, and input data.",
   supportedChains,
   parameters: z.object({
-    hash: z.string(),
-    chainId: z.number(),
+    hash: z.string().describe("The transaction hash (0x...)"),
+    chainId: z.number().describe("Chain ID where the transaction was sent"),
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);
@@ -319,11 +319,11 @@ const getTransaction = createTool({
 
 const getTransactionReceipt = createTool({
   name: "getTransactionReceipt",
-  description: "Get the receipt of a transaction",
+  description: "Get the receipt of a mined transaction including status, gas used, and logs.",
   supportedChains,
   parameters: z.object({
-    hash: z.string(),
-    chainId: z.number(),
+    hash: z.string().describe("The transaction hash (0x...)"),
+    chainId: z.number().describe("Chain ID where the transaction was mined"),
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(args.chainId);

@@ -4,8 +4,8 @@ import { coinsAbi, COINS_ADDRESS } from "./constants.js";
 import { addressSchema } from "../utils.js";
 
 const getCoinTokenMetadataParameters = z.object({
-  chainId: z.number(),
-  tokenId: z.string().describe("Token ID as a stringified bigint (usually an address)"),
+  chainId: z.number().describe("Chain ID where the Coins contract is deployed (e.g. 1 for Ethereum, 8453 for Base)"),
+  tokenId: z.string().describe("The ERC6909 token ID as a decimal string (often derived from an address)"),
 });
 
 export const getCoinTokenMetadata = createTool({
@@ -43,9 +43,9 @@ export const getCoinTokenMetadata = createTool({
 });
 
 const getCoinBalanceParameters = z.object({
-  chainId: z.number(),
-  account: addressSchema.describe("User's wallet address"),
-  tokenId: z.string().describe("Token ID as a stringified bigint"),
+  chainId: z.number().describe("Chain ID where the Coins contract is deployed (e.g. 1 for Ethereum, 8453 for Base)"),
+  account: addressSchema.describe("The wallet address to check the balance of (0x...)"),
+  tokenId: z.string().describe("The ERC6909 token ID as a decimal string"),
 });
 
 export const getCoinBalance = createTool({

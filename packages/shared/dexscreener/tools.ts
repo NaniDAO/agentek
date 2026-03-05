@@ -1,9 +1,10 @@
 import { base, mainnet } from "viem/chains";
 import { AgentekClient, createTool } from "../client.js";
 import z from "zod";
+import { assertOkResponse } from "../utils/fetch.js";
 
 const getLatestTokensParameters = z.object({
-  chainId: z.number().describe("Chain Id"),
+  chainId: z.number().describe("Chain ID to fetch trending tokens for (1 for Ethereum, 8453 for Base)"),
 });
 
 // This helper maps numeric chain IDs to the corresponding Dexscreener chain identifier.
@@ -22,7 +23,7 @@ const resolveChainId = (chainId: number) => {
 
 export const getLatestTokens = createTool({
   name: "getLatestTokens",
-  description: "Get trending tokens and market data",
+  description: "Get trending tokens from Dexscreener with market data including USD price, 24h volume, and 24h price change. Filters by the specified chain.",
   parameters: getLatestTokensParameters,
   supportedChains: [mainnet, base],
   execute: async (
@@ -36,11 +37,7 @@ export const getLatestTokens = createTool({
     const profileResponse = await fetch(
       "https://api.dexscreener.com/token-profiles/latest/v1",
     );
-    if (!profileResponse.ok) {
-      throw new Error(
-        `Failed to fetch token profiles: ${profileResponse.statusText}`,
-      );
-    }
+    await assertOkResponse(profileResponse, "Failed to fetch token profiles");
     let profileData = await profileResponse.json();
 
     // Filter the token profiles by the resolved chain identifier.
@@ -57,10 +54,7 @@ export const getLatestTokens = createTool({
     // Build the pair data endpoint URL using the resolved chain.
     const pairUrl = `https://api.dexscreener.com/tokens/v1/${dexChain}/${tokenAddresses}`;
     const pairResponse = await fetch(pairUrl);
-    if (!pairResponse.ok) {
-      console.error(pairResponse);
-      throw new Error(`Failed to fetch pair data: ${pairResponse.statusText}`);
-    }
+    await assertOkResponse(pairResponse, "Failed to fetch pair data");
     const pairData = await pairResponse.json();
 
     // Map the token profiles and enrich them with their corresponding pair information.

@@ -9,12 +9,12 @@ const supportedChains = [mainnet, base];
 
 export const getNaniProposals = createTool({
   name: "getNaniProposals",
-  description: "Get proposals for NANIDAO",
+  description: "Get the latest proposals from NANI DAO's Signals contract, including vote counts, proposer, content, and whether each proposal is currently passing. Returns up to 10 most recent proposals.",
   supportedChains,
   parameters: z.object({
-    account: z.string(),
-    chainId: z.number(),
-    dao: z.string(),
+    account: z.string().describe("Wallet address of the caller (0x...). Currently unused but reserved for future per-user vote data."),
+    chainId: z.number().describe("Chain ID to query (1 for Ethereum, 8453 for Base)"),
+    dao: z.string().describe("The DAO name to query. Must contain 'nani' (only NANI DAO is supported currently)."),
   }),
   execute: async (client, args) => {
     if (!args.dao.toLowerCase().includes("nani")) {

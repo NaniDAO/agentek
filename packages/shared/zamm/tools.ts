@@ -8,9 +8,9 @@ import { addressSchema } from "../utils.js";
 export const getCoin = createTool({
   name: "getCoin",
   description:
-    "Given a coin symbol, fetch the metadata about a coin (name, symbol, total supply, image, pools).",
+    "Fetch metadata about a ZAMM coin by its ticker symbol, including name, total supply, image, and pool information.",
   parameters: z.object({
-    symbol: z.string(),
+    symbol: z.string().describe("The coin ticker symbol (e.g. 'PEPE', 'DOGE'). Case-insensitive."),
   }),
   execute: async (_client, args) => {
     // fetch coin by symbol (case-insensitive match)
@@ -42,11 +42,11 @@ export const getCoin = createTool({
 export const getHolders = createTool({
   name: "getHolders",
   description:
-    "Fetch the list of holders for a given coin, ordered by balance descending by default.",
+    "Fetch the list of holders for a given ZAMM coin, ordered by balance descending.",
   parameters: z.object({
-    coinId: z.string(), // Use string to support bigint
-    limit: z.number().int().min(1).max(100).default(50),
-    offset: z.number().int().min(0).default(0),
+    coinId: z.string().describe("The numeric coin ID as a decimal string (get this from getCoin)"),
+    limit: z.number().int().min(1).max(100).default(50).describe("Number of holders to return (1-100, default 50)"),
+    offset: z.number().int().min(0).default(0).describe("Offset for pagination (default 0)"),
   }),
   execute: async (_client, args) => {
     // fetch holders from 'holder' where coinId = args.coinId
@@ -88,9 +88,9 @@ export const getAccountPortfolio = createTool({
 export const getPool = createTool({
   name: "getPool",
   description:
-    "Fetch the latest state of a pool, including reserves and price information.",
+    "Fetch the latest state of a ZAMM liquidity pool, including reserves, prices, swap fee, and token metadata.",
   parameters: z.object({
-    poolId: z.string(), // bigint-safe
+    poolId: z.string().describe("The numeric pool ID as a decimal string"),
   }),
   execute: async (_client, args) => {
     const query = `
@@ -157,12 +157,12 @@ export const getPool = createTool({
 export const getSwaps = createTool({
   name: "getSwaps",
   description:
-    "Fetch recent swap events for a given pool, optionally filtered by block range.",
+    "Fetch recent swap events for a given ZAMM pool, optionally filtered by block range.",
   parameters: z.object({
-    poolId: z.string(),
-    startBlock: z.string().optional(),
-    endBlock: z.string().optional(),
-    limit: z.number().int().min(1).max(1000).default(50),
+    poolId: z.string().describe("The numeric pool ID as a decimal string"),
+    startBlock: z.string().optional().describe("Optional start block number to filter from (inclusive)"),
+    endBlock: z.string().optional().describe("Optional end block number to filter to (inclusive)"),
+    limit: z.number().int().min(1).max(1000).default(50).describe("Number of swap events to return (1-1000, default 50)"),
   }),
   execute: async (_client, args) => {
     // Build the where clause conditionally

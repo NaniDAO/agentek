@@ -206,9 +206,7 @@ export function createTallyUserDaosTool(tallyApiKey: string): BaseTool {
         }),
       });
 
-      console.log("response", response);
       const result = await response.json();
-      console.log("result", result);
 
       if (result.errors) {
         throw new Error(`Tally API Error: ${JSON.stringify(result.errors)}`);

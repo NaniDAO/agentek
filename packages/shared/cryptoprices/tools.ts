@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTool } from "../client.js";
+import { assertOkResponse } from "../utils/fetch.js";
 
 export const getCryptoPriceTool = createTool({
   name: "getCryptoPrice",
@@ -16,9 +17,7 @@ export const getCryptoPriceTool = createTool({
         `https://api.coingecko.com/api/v3/simple/price?ids=${mapSymbolToId(normalizedSymbol)}&vs_currencies=usd`
       );
       
-      if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
-      }
+      await assertOkResponse(response, "CoinGecko API error");
       
       const data = await response.json();
       const id = mapSymbolToId(normalizedSymbol);

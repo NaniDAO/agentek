@@ -1,6 +1,7 @@
 import { Token } from "zrouter-sdk";
 import { ResolvedToken, ZToken } from "./types.js";
 import { Address, parseUnits } from "viem";
+import { assertOkResponse } from "../utils/fetch.js";
 
 type TokenListEntry = {
   chainId: number;
@@ -25,7 +26,7 @@ async function loadTokenList(): Promise<TokenListEntry[]> {
   const res = await fetch("https://assets.zamm.finance/tokenlist.json", {
     signal: AbortSignal.timeout(12_000),
   });
-  if (!res.ok) throw new Error(`Failed to fetch tokenlist: ${res.status} ${res.statusText}`);
+  await assertOkResponse(res, "Failed to fetch tokenlist");
   const json = await res.json();
   const tokens: TokenListEntry[] = Array.isArray(json?.tokens) ? json.tokens : [];
   _tokenListCache = { fetchedAt: now, tokens };

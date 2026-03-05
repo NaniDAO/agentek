@@ -7,7 +7,7 @@ import { createAgentekClient, type BaseTool } from "@agentek/tools/client";
 import { allTools } from "@agentek/tools";
 import { privateKeyToAccount } from "viem/accounts";
 
-const VERSION = "0.1.24";
+const VERSION = "0.1.26";
 
 /** Timeout for individual tool executions (2 minutes). */
 const TOOL_TIMEOUT_MS = 120_000;

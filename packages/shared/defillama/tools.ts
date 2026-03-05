@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createTool } from '../client.js';
+import { assertOkResponse } from '../utils/fetch.js';
 import {
   SUPPORTED_YIELD_PROTOCOLS,
   SUPPORTED_CHAINS,
@@ -107,9 +108,7 @@ export const getTokenChartTool = createTool({
 
       const response = await fetch(url.toString());
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${url.toString()} ${response.status}`);
-      }
+      await assertOkResponse(response, `Failed to fetch chart data from ${url.toString()}`);
 
       const data = await response.json();
 

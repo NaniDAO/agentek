@@ -6,14 +6,13 @@ import {
   YieldData
 } from '../constants.js';
 import { assessRisk, chainIdMap, getProjectFilter } from './helpers.js';
+import { assertOkResponse } from '../../utils/fetch.js';
 
 // Fetch pool data from DefiLlama
 export async function fetchDefiLlamaPools(): Promise<DefiLlamaResponse> {
   const response = await fetch(PROTOCOL_API_ENDPOINTS.DefiLlama);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch from DefiLlama: ${response.statusText}`);
-  }
-  
+  await assertOkResponse(response, "Failed to fetch from DefiLlama");
+
   return await response.json();
 }
 
@@ -22,10 +21,8 @@ export async function fetchPoolHistoricalData(poolId: string): Promise<DefiLlama
   const apiUrl = `${PROTOCOL_API_ENDPOINTS.DefiLlamaChart}/${poolId}`;
   
   const response = await fetch(apiUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch from DefiLlama: ${response.statusText}`);
-  }
-  
+  await assertOkResponse(response, "Failed to fetch from DefiLlama");
+
   const data: DefiLlamaChartResponse = await response.json();
   
   if (!data.data || data.data.length === 0) {
@@ -77,7 +74,6 @@ export async function fetchProtocolData(protocol: YieldProtocol, chainId?: numbe
       };
     });
   } catch (error) {
-    console.error(`Error fetching yield data for ${protocol}:`, error);
     return [];
   }
 }

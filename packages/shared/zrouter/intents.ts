@@ -20,20 +20,20 @@ import { fetchApiRoutes } from "./api.js";
 
 const swapParameters = z.object({
   chainId: z.number().default(1).describe("Chain ID (1 for Mainnet, 8453 for Base). Default: 1"),
-  tokenIn: SymbolOrTokenSchema.describe(`Symbol (e.g. "USDT") or { address, id? }`),
-  tokenOut: SymbolOrTokenSchema.describe(`Symbol (e.g. "IZO") or { address, id? }`),
-  amount: AmountSchema.describe("Human-readable amount, e.g. 1.5"),
-  side: z.enum(["EXACT_IN", "EXACT_OUT"]),
-  slippageBps: z.number().int().min(0).max(10_000).default(50).describe("Basis points, default 50 = 0.50%"),
-  deadlineSeconds: z.number().int().positive().default(300).describe("From now, default 300s"),
-  owner: addressSchema.optional(),
-  finalTo: addressSchema.optional(),
-  router: addressSchema.optional(),
+  tokenIn: SymbolOrTokenSchema.describe('Input token — either a symbol string (e.g. "USDT", "ETH") or an object { address, id? } for ERC6909 tokens'),
+  tokenOut: SymbolOrTokenSchema.describe('Output token — either a symbol string (e.g. "IZO", "WETH") or an object { address, id? } for ERC6909 tokens'),
+  amount: AmountSchema.describe("Amount in human-readable units (e.g. 1.5 or '1.5'). Refers to tokenIn for EXACT_IN, tokenOut for EXACT_OUT."),
+  side: z.enum(["EXACT_IN", "EXACT_OUT"]).describe("EXACT_IN: specify the input amount and get the best output. EXACT_OUT: specify the desired output and get the required input."),
+  slippageBps: z.number().int().min(0).max(10_000).default(50).describe("Max slippage in basis points (e.g. 50 = 0.50%, 100 = 1%). Default: 50"),
+  deadlineSeconds: z.number().int().positive().default(300).describe("Transaction deadline in seconds from now (e.g. 300 = 5 minutes). Default: 300"),
+  owner: addressSchema.optional().describe("The address that owns the input tokens (0x...). Defaults to the connected wallet."),
+  finalTo: addressSchema.optional().describe("Address to receive the output tokens (0x...). Defaults to the owner address."),
+  router: addressSchema.optional().describe("Override the zRouter contract address (0x...). Defaults to the canonical zRouter for the chain."),
 });
 
 export const intentSwap = createTool({
   name: "swap",
-  description: "Swap ERC20 and ERC6909 tokens (proper approvals then router call).",
+  description: "Swap ERC20 or ERC6909 tokens via the zRouter. Automatically handles token approvals, finds the best route (including Matcha/0x aggregation), and executes the swap.",
   supportedChains,
   parameters: swapParameters,
   execute: async (client: AgentekClient, args: z.infer<typeof swapParameters>): Promise<Intent> => {

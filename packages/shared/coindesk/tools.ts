@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { createTool, AgentekClient } from "../client.js";
+import { assertOkResponse } from "../utils/fetch.js";
 
 const getLatestCoindeskNewsToolParams = z.object({
-  limit: z.number().min(1).max(100).default(10),
+  limit: z.number().min(1).max(100).default(10).describe("Number of articles to fetch (1-100). Default: 10"),
 });
 
 export type GetLatestCoindeskNewsToolReturnType = {
@@ -13,7 +14,7 @@ export const createCoindeskNewsTool = (apiKey: string) => {
   return createTool({
     name: "getLatestCoindeskNewsTool",
     description:
-      "Calls the Coindesk API to retrieve the latest news articles. Parameter 'limit' allows specification of how many articles to fetch (defaults to 10).",
+      "Get the latest cryptocurrency and blockchain news articles from CoinDesk.",
     parameters: getLatestCoindeskNewsToolParams,
     execute: async (
       _client: AgentekClient,
@@ -38,11 +39,7 @@ export const createCoindeskNewsTool = (apiKey: string) => {
 
       try {
         const response = await fetch(url.toString(), options);
-        if (!response.ok) {
-          throw new Error(
-            `Coindesk API error: ${response.status} ${response.statusText}`,
-          );
-        }
+        await assertOkResponse(response, "Coindesk API error");
         const json = await response.json();
         return { articles: json.articles || [] };
       } catch (err) {

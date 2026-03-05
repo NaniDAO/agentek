@@ -32,6 +32,7 @@ import { zrouterTools } from "./zrouter/index.js";
 import { wnsTools } from "./wns/index.js";
 import { x402Tools } from "./x402/index.js";
 import { twitterTools } from "./twitter/index.js";
+import { assertOkResponse } from "./utils/fetch.js";
 
 const allTools = async ({
   perplexityApiKey,
@@ -167,5 +168,6 @@ export {
   zrouterTools,
   wnsTools,
   x402Tools,
-  twitterTools
+  twitterTools,
+  assertOkResponse
 };
