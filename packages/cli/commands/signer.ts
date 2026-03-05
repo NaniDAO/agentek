@@ -87,11 +87,15 @@ export async function handleSigner(args: string[]): Promise<void> {
     child.stdin!.end(JSON.stringify(payload));
     child.unref();
 
-    // Wait briefly for the daemon to start, then verify it's reachable.
-    await new Promise((r) => setTimeout(r, 500));
-    const reachable = await isDaemonReachable();
+    // Poll until the daemon is reachable (scrypt KDF in the child takes time).
+    let reachable = false;
+    for (let i = 0; i < 30; i++) {
+      await new Promise((r) => setTimeout(r, 200));
+      reachable = await isDaemonReachable();
+      if (reachable) break;
+    }
     if (!reachable) {
-      outputError("Daemon process spawned but is not reachable. Check logs.");
+      outputError("Daemon process spawned but is not reachable after 6s. Check logs.");
     }
 
     const addr = await getDaemonAddress();
