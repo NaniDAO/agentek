@@ -92,7 +92,13 @@ overridden.
 .B signer start
 Start the signing daemon. Prompts for the keyfile passphrase, then listens on a
 Unix socket for JSON-RPC signing requests. Transactions are evaluated against the
-encrypted policy before signing.
+encrypted policy before signing. The daemon runs in the background and logs to
+.BR ~/.agentek/daemon.log .
+Requires
+.B requireApproval
+to be set to
+.BR never ;
+interactive approval is not supported in background mode.
 .TP
 .B signer stop
 Stop a running signing daemon.

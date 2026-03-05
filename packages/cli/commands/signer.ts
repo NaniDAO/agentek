@@ -1,5 +1,7 @@
 import { parseEther, isHex, isAddress } from "viem";
 import { spawn } from "node:child_process";
+import { openSync, closeSync } from "node:fs";
+import { join } from "node:path";
 import { outputJson, outputError } from "../utils/output.js";
 import { readLine } from "../utils/readline.js";
 import { keyfileExists, readKeyfile, writeKeyfile, encrypt, decrypt } from "../signer/crypto.js";
@@ -7,6 +9,7 @@ import { defaultPolicy } from "../signer/policy.js";
 import { startDaemon, stopDaemon, getDaemonStatus } from "../signer/daemon.js";
 import { isDaemonReachable, getDaemonAddress, shutdownDaemon } from "../signer/client.js";
 import { getKeyfilePath } from "../signer/protocol.js";
+import { getConfigDir } from "../config.js";
 import type { DecryptedPayload, PolicyConfig } from "../signer/protocol.js";
 
 /** Parse and validate contract address + optional selectors from CLI args. */
@@ -92,13 +95,28 @@ export async function handleSigner(args: string[]): Promise<void> {
 
     const { payload } = await unlockKeyfile();
 
+    // Background daemon has no stdin/stderr — interactive approval is impossible.
+    if (payload.policy.requireApproval !== "never") {
+      outputError(
+        `Policy requireApproval is "${payload.policy.requireApproval}", but the background daemon cannot prompt for approval.\n` +
+        `Either set requireApproval to "never" or pre-approve contracts via "agentek signer policy allow".`
+      );
+    }
+
     // Spawn a detached child that runs the daemon in the background.
     // The decrypted payload is passed via stdin so it never touches
     // the command line or environment variables.
+    const logPath = join(getConfigDir(), "daemon.log");
+    const logFd = openSync(logPath, "a", 0o600);
     const child = spawn(process.execPath, [process.argv[1], "signer", "__daemon"], {
       detached: true,
-      stdio: ["pipe", "ignore", "ignore"],
+      stdio: ["pipe", logFd, logFd],
     });
+    closeSync(logFd);
+
+    if (!child.pid) {
+      outputError("Failed to spawn daemon process.");
+    }
 
     child.stdin!.end(JSON.stringify(payload));
     child.unref();
@@ -111,7 +129,7 @@ export async function handleSigner(args: string[]): Promise<void> {
       if (reachable) break;
     }
     if (!reachable) {
-      outputError("Daemon process spawned but is not reachable after 6s. Check logs.");
+      outputError(`Daemon process spawned but is not reachable after 6s. Check ${logPath}`);
     }
 
     const addr = await getDaemonAddress();
@@ -230,25 +248,35 @@ export async function handleSigner(args: string[]): Promise<void> {
     } else if (policyAction === "deny") {
       const { addr, selectors } = parseContractArgs(args, "deny");
 
+      // Validate selectors (same rules as allow)
+      for (const sel of selectors) {
+        if (sel !== "*" && !/^0x[0-9a-f]{8}$/.test(sel)) {
+          outputError(`Invalid function selector: ${sel} (must be 0x + 8 hex chars, e.g. 0x095ea7b3)`);
+        }
+      }
+
       if (selectors.length === 0) {
         delete policy.contracts[addr];
         process.stderr.write(`Removed contract ${addr} from allowlist\n`);
       } else {
         const existing = policy.contracts[addr];
         if (!existing) {
-          process.stderr.write(`Contract ${addr} is not in the allowlist\n`);
+          process.stderr.write(`Contract ${addr} is not in the allowlist (no-op)\n`);
         } else if (existing.includes("*")) {
           process.stderr.write(`Contract ${addr} had wildcard (*). Removing entirely. Re-add with specific selectors if needed.\n`);
           delete policy.contracts[addr];
         } else {
           const toRemove = new Set(selectors);
+          const removed = existing.filter((s) => toRemove.has(s));
           const remaining = existing.filter((s) => !toRemove.has(s));
-          if (remaining.length === 0) {
+          if (removed.length === 0) {
+            process.stderr.write(`No matching selectors found on ${addr} (no-op)\n`);
+          } else if (remaining.length === 0) {
             delete policy.contracts[addr];
             process.stderr.write(`Removed contract ${addr} from allowlist (no selectors remaining)\n`);
           } else {
             policy.contracts[addr] = remaining;
-            process.stderr.write(`Removed selectors from ${addr}: ${selectors.join(", ")}\n`);
+            process.stderr.write(`Removed selectors from ${addr}: ${removed.join(", ")}\n`);
           }
         }
       }

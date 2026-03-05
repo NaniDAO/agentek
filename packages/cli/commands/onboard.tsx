@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { render, Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
+import { isHex } from "viem";
 import { generatePrivateKey, privateKeyToAddress } from "viem/accounts";
 import { encrypt, keyfileExists, writeKeyfile } from "../signer/crypto.js";
 import { getKeyfilePath } from "../signer/protocol.js";
@@ -103,6 +104,9 @@ function Wizard() {
   const [error, setError] = useState("");
 
   useInput((_input, key) => {
+    if (error && key.return) {
+      exit();
+    }
     if (step === "welcome" && !error && key.return) {
       setStep("key-source");
     }
@@ -118,6 +122,8 @@ function Wizard() {
       <Box flexDirection="column" padding={1}>
         <Text color="red" bold>Error</Text>
         <Text color="red">{error}</Text>
+        <Text> </Text>
+        <Text color="gray">Press Enter to exit.</Text>
       </Box>
     );
   }
@@ -181,8 +187,8 @@ function Wizard() {
             mask="*"
             onSubmit={(value) => {
               const trimmed = value.trim();
-              if (!trimmed.startsWith("0x") || trimmed.length !== 66) {
-                setImportError("Invalid key: must start with 0x and be 66 characters");
+              if (!isHex(trimmed) || trimmed.length !== 66) {
+                setImportError("Invalid key: must be a 0x-prefixed hex string (66 characters)");
                 return;
               }
               setPrivateKey(trimmed);
@@ -360,7 +366,11 @@ export function handleOnboard(): void {
   }
 
   const instance = render(<Wizard />);
-  instance.waitUntilExit().then(() => {
-    process.exit(0);
-  });
+  instance.waitUntilExit().then(
+    () => process.exit(0),
+    (err) => {
+      process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(1);
+    },
+  );
 }
