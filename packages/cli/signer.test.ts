@@ -4,11 +4,12 @@ import { join } from "node:path";
 import { mkdtempSync, rmSync, unlinkSync, existsSync, writeFileSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createServer, connect, type Server } from "node:net";
-import { encrypt, decrypt } from "./signer/crypto.js";
+import { verifyMessage } from "viem";
+import { encrypt, decrypt, writeKeyfile } from "./signer/crypto.js";
 import { defaultPolicy, evaluatePolicy } from "./signer/policy.js";
-import { createDaemonAccount } from "./signer/client.js";
-import { startDaemon, stopDaemon } from "./signer/daemon.js";
-import { privateKeyToAccount } from "viem/accounts";
+import { createDaemonAccount, getDaemonAddress, isDaemonReachable } from "./signer/client.js";
+import { startDaemon, stopDaemon, getDaemonStatus } from "./signer/daemon.js";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import type { Hex, SignableMessage, TransactionSerializable, TypedDataDefinition } from "viem";
 import type { DecryptedPayload, JsonRpcRequest, JsonRpcResponse, AgentekKeyfile } from "./signer/protocol.js";
 import { RPC_METHODS, RPC_ERRORS, getSocketPath } from "./signer/protocol.js";
@@ -787,4 +788,67 @@ describe("CLI — signer command", () => {
       sleeper.kill("SIGTERM");
     }
   });
+});
+
+// ── E2E: full wallet lifecycle ──────────────────────────────────────────────
+
+describe("Signer — e2e wallet lifecycle", () => {
+  let tmpDir: string;
+  let prevConfigDir: string | undefined;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "agentek-e2e-wallet-"));
+    prevConfigDir = process.env.AGENTEK_CONFIG_DIR;
+    process.env.AGENTEK_CONFIG_DIR = tmpDir;
+  });
+
+  afterEach(() => {
+    try { stopDaemon(); } catch {}
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+    if (prevConfigDir === undefined) delete process.env.AGENTEK_CONFIG_DIR;
+    else process.env.AGENTEK_CONFIG_DIR = prevConfigDir;
+  });
+
+  it("should generate key, encrypt, start daemon, sign message, and verify signature", async () => {
+    // 1. Generate a fresh key
+    const privateKey = generatePrivateKey();
+    const account = privateKeyToAccount(privateKey);
+    const expectedAddress = account.address;
+
+    // 2. Encrypt and write keyfile
+    const passphrase = "test-e2e-passphrase";
+    const policy = defaultPolicy();
+    policy.requireApproval = "never";
+    const keyfile = encrypt({ privateKey, policy }, passphrase);
+    writeKeyfile(keyfile);
+
+    // 3. Decrypt and start daemon
+    const payload = decrypt(keyfile, passphrase);
+    await startDaemon(payload);
+
+    // 4. Verify daemon is reachable
+    const reachable = await isDaemonReachable();
+    expect(reachable).toBe(true);
+
+    // 5. Get address from daemon — should match generated key
+    const daemonAddr = await getDaemonAddress();
+    expect(daemonAddr.toLowerCase()).toBe(expectedAddress.toLowerCase());
+
+    // 6. Sign a message via daemon account
+    const daemonAccount = createDaemonAccount(daemonAddr);
+    const message = "Hello from Agentek e2e test";
+    const signature = await daemonAccount.signMessage({ message });
+
+    // 7. Verify signature matches the address
+    const valid = await verifyMessage({
+      address: expectedAddress,
+      message,
+      signature,
+    });
+    expect(valid).toBe(true);
+
+    // 8. Sign same message directly — should produce identical signature
+    const directSig = await account.signMessage({ message });
+    expect(signature).toBe(directSig);
+  }, 15_000);
 });
