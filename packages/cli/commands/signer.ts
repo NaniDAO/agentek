@@ -1,4 +1,4 @@
-import { parseEther, isHex } from "viem";
+import { parseEther, isHex, isAddress } from "viem";
 import { spawn } from "node:child_process";
 import { outputJson, outputError } from "../utils/output.js";
 import { readLine } from "../utils/readline.js";
@@ -150,6 +150,8 @@ export async function handleSigner(args: string[]): Promise<void> {
     }
 
     const policyAction = args[1];
+    const policy = payload.policy;
+
     if (policyAction === "set") {
       const field = args[2];
       const value = args[3];
@@ -157,7 +159,6 @@ export async function handleSigner(args: string[]): Promise<void> {
         outputError("Usage: agentek signer policy set <field> <value>");
       }
 
-      const policy = payload.policy;
       if (field === "maxValuePerTx") {
         try {
           parseEther(value);
@@ -187,16 +188,62 @@ export async function handleSigner(args: string[]): Promise<void> {
         }
         policy.allowContractCreation = normalized === "true";
       } else {
-        outputError(`Unknown policy field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains, allowContractCreation`);
+        outputError(`Unknown field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains, allowContractCreation\nFor list fields use: policy add/remove <field> <value>`);
       }
 
       const keyfile = encrypt(payload, passphrase);
       writeKeyfile(keyfile);
       process.stderr.write(`Policy updated: ${field} = ${value}\n`);
       outputJson({ ok: true, policy });
+    } else if (policyAction === "add" || policyAction === "remove") {
+      const field = args[2];
+      const value = args[3];
+      if (!field || value === undefined) {
+        outputError(`Usage: agentek signer policy ${policyAction} <field> <value>`);
+      }
+
+      const listFields = ["blockedContracts", "allowedContracts", "blockedFunctions"] as const;
+      type ListField = typeof listFields[number];
+
+      if (!listFields.includes(field as ListField)) {
+        outputError(`Unknown list field: ${field}. Known: ${listFields.join(", ")}`);
+      }
+
+      const typedField = field as ListField;
+      const entries = value.split(",").map((s) => s.trim().toLowerCase());
+
+      // Validate entries
+      if (typedField === "blockedContracts" || typedField === "allowedContracts") {
+        for (const entry of entries) {
+          if (!isAddress(entry)) {
+            outputError(`Invalid address: ${entry}`);
+          }
+        }
+      } else if (typedField === "blockedFunctions") {
+        for (const entry of entries) {
+          if (!/^0x[0-9a-f]{8}$/.test(entry)) {
+            outputError(`Invalid function selector: ${entry} (must be 0x + 8 hex chars, e.g. 0x095ea7b3)`);
+          }
+        }
+      }
+
+      if (policyAction === "add") {
+        const existing = new Set(policy[typedField]);
+        for (const entry of entries) existing.add(entry);
+        policy[typedField] = [...existing];
+        process.stderr.write(`Added to ${field}: ${entries.join(", ")}\n`);
+      } else {
+        const toRemove = new Set(entries);
+        policy[typedField] = policy[typedField].filter((e) => !toRemove.has(e));
+        process.stderr.write(`Removed from ${field}: ${entries.join(", ")}\n`);
+      }
+
+      const keyfile = encrypt(payload, passphrase);
+      writeKeyfile(keyfile);
+      outputJson({ ok: true, policy });
     } else {
       // Show current policy
-      outputJson(payload.policy);
+      outputJson(policy);
     }
   } else {
     outputError("Usage: agentek signer <init|start|stop|status|policy>");

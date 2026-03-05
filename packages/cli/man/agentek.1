@@ -105,6 +105,19 @@ Display the current spending policy (prompts for passphrase to decrypt).
 .TP
 .BI "signer policy set" " field value"
 Update a policy field in the encrypted keyfile. Prompts for passphrase.
+Scalar fields:
+.BR maxValuePerTx ", " requireApproval ", " approvalThresholdPct ", "
+.BR allowedChains ", " allowContractCreation .
+.TP
+.BI "signer policy add" " field value"
+Append one or more comma-separated entries to a list field. Deduplicates
+automatically. Prompts for passphrase.
+List fields:
+.BR blockedContracts ", " allowedContracts ", " blockedFunctions .
+.TP
+.BI "signer policy remove" " field value"
+Remove one or more comma-separated entries from a list field. Prompts for
+passphrase.
 .SH FLAGS
 .TP
 .BI --key " value"
