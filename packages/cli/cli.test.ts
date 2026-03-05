@@ -53,6 +53,42 @@ function parseJson(stdout: string): any {
   }
 }
 
+// ── onboard ──────────────────────────────────────────────────────────────
+
+describe("CLI — onboard", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "agentek-test-"));
+  });
+
+  it("should error when keyfile already exists", async () => {
+    // Create a fake keyfile so the guard triggers
+    const { writeFileSync: wfs, mkdirSync: mds } = await import("node:fs");
+    mds(tmpDir, { recursive: true });
+    wfs(join(tmpDir, "keyfile.enc"), '{"keystore":{}}', { mode: 0o600 });
+
+    const { stderr, exitCode } = await run(["onboard"], { AGENTEK_CONFIG_DIR: tmpDir });
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("already exists");
+  }, CONFIG_TEST_TIMEOUT);
+
+  it("help text should include onboard command", async () => {
+    const { stderr } = await run(["--help"]);
+    expect(stderr).toContain("agentek onboard");
+    expect(stderr).toContain("wizard");
+  });
+
+  it("onboard should be a recognized command", async () => {
+    // Without a TTY, Ink will fail with raw mode error, but the command
+    // should NOT print usage (which would mean it was unrecognized).
+    const { stderr, exitCode } = await run(["onboard"], { AGENTEK_CONFIG_DIR: tmpDir });
+    // Either exits 1 from Ink raw mode error or renders — but never exit 2 (usage)
+    expect(exitCode).not.toBe(2);
+    expect(stderr).not.toContain("Usage:");
+  }, CONFIG_TEST_TIMEOUT);
+});
+
 // ── Usage / help ─────────────────────────────────────────────────────────
 
 describe("CLI — usage & help", () => {

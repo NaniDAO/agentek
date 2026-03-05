@@ -3,6 +3,9 @@
 agentek \- CLI for blockchain and data tools
 .SH SYNOPSIS
 .B agentek
+.BR onboard
+.br
+.B agentek
 .BR setup
 .br
 .B agentek
@@ -21,6 +24,9 @@ agentek \- CLI for blockchain and data tools
 .BR exec " " \fItool-name\fR " " [\fI--key value ...\fR]
 .br
 .B agentek
+.BR signer " " \fIinit|start|stop|status|policy\fR " " [\fIargs ...\fR]
+.br
+.B agentek
 .BR --version | -v
 .SH DESCRIPTION
 .B agentek
@@ -28,6 +34,13 @@ is a command-line interface that exposes 150+ blockchain and data tools as simpl
 .PP
 Supported chains include Ethereum, Optimism, Arbitrum, Polygon, and Base.
 .SH COMMANDS
+.TP
+.B onboard
+Launch the guided signer setup wizard. Walks through key generation or import,
+passphrase creation, and spending policy selection. Creates an encrypted keyfile
+at
+.BR ~/.agentek/keyfile.enc .
+Exits with an error if a keyfile already exists.
 .TP
 .B setup
 Print a human-readable status table showing all known API keys and whether each is configured (from environment or config file) or missing. Exits 0.
@@ -69,6 +82,29 @@ Print a JSON object with the tool's name, description, parameter schema (JSON Sc
 .TP
 .BI exec " tool-name" " [--key value ...]"
 Execute the named tool with the given parameters and print the JSON result to stdout.
+.TP
+.B signer init
+Encrypt a private key and spending policy into
+.BR ~/.agentek/keyfile.enc .
+Prompts for the private key and a passphrase. Uses the default policy unless
+overridden.
+.TP
+.B signer start
+Start the signing daemon. Prompts for the keyfile passphrase, then listens on a
+Unix socket for JSON-RPC signing requests. Transactions are evaluated against the
+encrypted policy before signing.
+.TP
+.B signer stop
+Stop a running signing daemon.
+.TP
+.B signer status
+Show whether the daemon is running and, if so, the signer address.
+.TP
+.B signer policy
+Display the current spending policy (prompts for passphrase to decrypt).
+.TP
+.BI "signer policy set" " field value"
+Update a policy field in the encrypted keyfile. Prompts for passphrase.
 .SH FLAGS
 .TP
 .BI --key " value"
@@ -140,6 +176,32 @@ X/Twitter OAuth user access token.
 .TP
 .B X_ACCESS_TOKEN_SECRET
 X/Twitter OAuth user access token secret.
+.SH SIGNER
+The signing daemon keeps a private key in memory and exposes it over a local Unix
+socket using JSON-RPC 2.0. Every transaction is checked against an encrypted
+spending policy before signing.
+.PP
+The keyfile at
+.B ~/.agentek/keyfile.enc
+uses EIP-2335 V3 keystore format (AES-128-CTR + scrypt) for the private key and
+AES-256-GCM for the policy. The passphrase is never stored on disk.
+.PP
+Supported RPC methods:
+.BR get_address ,
+.BR sign_transaction ,
+.BR sign_message ,
+.BR sign_typed_data ,
+.BR ping ,
+.BR shutdown .
+.PP
+Policy fields:
+.BR maxValuePerTx " (ETH string),"
+.BR allowedChains " (array of chain IDs),"
+.BR allowContractCreation " (boolean),"
+.BR blockedContracts ", " allowedContracts " (address arrays),"
+.BR blockedFunctions " (4-byte selector array),"
+.BR requireApproval " (always | above_threshold | never),"
+.BR approvalThresholdPct " (0\(en100)."
 .SH CONFIGURATION
 API keys can be persisted in
 .B ~/.agentek/config.json
@@ -162,6 +224,30 @@ Runtime error (tool execution failed, invalid input, or timeout).
 .B 2
 Usage error (unknown command, missing arguments).
 .SH EXAMPLES
+Set up the signer with the guided wizard:
+.PP
+.RS
+.nf
+agentek onboard
+.fi
+.RE
+.PP
+Start the signing daemon after setup:
+.PP
+.RS
+.nf
+agentek signer start
+.fi
+.RE
+.PP
+Check daemon status:
+.PP
+.RS
+.nf
+agentek signer status
+.fi
+.RE
+.PP
 List all available tools:
 .PP
 .RS
