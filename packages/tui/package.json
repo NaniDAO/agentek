@@ -1,0 +1,45 @@
+{
+  "name": "@agentek/tui",
+  "version": "0.0.1",
+  "description": "Nani Agent — lightweight blockchain AI chat TUI",
+  "license": "AGPL-3.0",
+  "author": "NaniDAO",
+  "homepage": "https://nani.ooo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaniDAO/agentek.git"
+  },
+  "type": "module",
+  "bin": {
+    "nani": "dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/index.mjs"
+  },
+  "dependencies": {
+    "ink": "^5.1.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0",
+    "@types/react": "^18.3.18",
+    "typescript": "^5.9.2"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "blockchain",
+    "tui",
+    "chat"
+  ],
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
