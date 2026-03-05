@@ -80,7 +80,9 @@ async function main() {
   if (command === "config") handleConfig(rest);
   if (command === "signer") {
     await handleSigner(rest);
-    process.exit(0);
+    // Note: `signer start` keeps the event loop alive for the daemon.
+    // All other subcommands exit via outputJson/outputError internally.
+    return;
   }
 
   // ── Client-dependent commands ──────────────────────────────────────────
