@@ -197,9 +197,9 @@ export async function handleSigner(args: string[]): Promise<void> {
       outputJson({ ok: true, policy });
     } else if (policyAction === "add" || policyAction === "remove") {
       const field = args[2];
-      const value = args[3];
-      if (!field || value === undefined) {
-        outputError(`Usage: agentek signer policy ${policyAction} <field> <value>`);
+      const values = args.slice(3);
+      if (!field || values.length === 0) {
+        outputError(`Usage: agentek signer policy ${policyAction} <field> <value> [value ...]`);
       }
 
       const listFields = ["blockedContracts", "allowedContracts", "blockedFunctions"] as const;
@@ -210,7 +210,8 @@ export async function handleSigner(args: string[]): Promise<void> {
       }
 
       const typedField = field as ListField;
-      const entries = value.split(",").map((s) => s.trim().toLowerCase());
+      // Support both space-separated args and comma-separated values
+      const entries = values.flatMap((v) => v.split(",")).map((s) => s.trim().toLowerCase()).filter(Boolean);
 
       // Validate entries
       if (typedField === "blockedContracts" || typedField === "allowedContracts") {

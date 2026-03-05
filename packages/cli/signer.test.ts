@@ -299,6 +299,140 @@ describe("Signer — policy", () => {
   });
 });
 
+// ── Unit: policy add/remove via encrypt/decrypt round-trip ──────────────────
+
+describe("Signer — policy list field mutations", () => {
+  const TEST_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+  const PASSPHRASE = "test-passphrase-123";
+  const ADDR_A = "0x1111111111111111111111111111111111111111";
+  const ADDR_B = "0x2222222222222222222222222222222222222222";
+  const ADDR_C = "0x3333333333333333333333333333333333333333";
+  const SEL_APPROVE = "0x095ea7b3";
+  const SEL_TRANSFER = "0xa9059cbb";
+
+  function roundTrip(policy: ReturnType<typeof defaultPolicy>) {
+    const keyfile = encrypt({ privateKey: TEST_KEY, policy }, PASSPHRASE);
+    return decrypt(keyfile, PASSPHRASE).policy;
+  }
+
+  it("should add multiple addresses to blockedContracts (space-separated style)", () => {
+    const policy = defaultPolicy();
+    expect(policy.blockedContracts).toEqual([]);
+
+    // Simulate: policy add blockedContracts 0x111... 0x222...
+    const entries = [ADDR_A, ADDR_B].map((s) => s.toLowerCase());
+    const existing = new Set(policy.blockedContracts);
+    for (const e of entries) existing.add(e);
+    policy.blockedContracts = [...existing];
+
+    const restored = roundTrip(policy);
+    expect(restored.blockedContracts).toContain(ADDR_A.toLowerCase());
+    expect(restored.blockedContracts).toContain(ADDR_B.toLowerCase());
+    expect(restored.blockedContracts).toHaveLength(2);
+  });
+
+  it("should add comma-separated addresses to allowedContracts", () => {
+    const policy = defaultPolicy();
+
+    // Simulate: policy add allowedContracts 0x111...,0x222...,0x333...
+    const raw = `${ADDR_A},${ADDR_B},${ADDR_C}`;
+    const entries = raw.split(",").map((s) => s.trim().toLowerCase());
+    const existing = new Set(policy.allowedContracts);
+    for (const e of entries) existing.add(e);
+    policy.allowedContracts = [...existing];
+
+    const restored = roundTrip(policy);
+    expect(restored.allowedContracts).toHaveLength(3);
+    expect(restored.allowedContracts).toContain(ADDR_C.toLowerCase());
+  });
+
+  it("should deduplicate on add", () => {
+    const policy = defaultPolicy();
+    policy.blockedContracts = [ADDR_A.toLowerCase()];
+
+    // Add A again + B
+    const entries = [ADDR_A, ADDR_B].map((s) => s.toLowerCase());
+    const existing = new Set(policy.blockedContracts);
+    for (const e of entries) existing.add(e);
+    policy.blockedContracts = [...existing];
+
+    expect(policy.blockedContracts).toHaveLength(2);
+  });
+
+  it("should remove entries from blockedFunctions", () => {
+    const policy = defaultPolicy();
+    policy.blockedFunctions = [SEL_APPROVE, SEL_TRANSFER];
+
+    // Simulate: policy remove blockedFunctions 0x095ea7b3
+    const toRemove = new Set([SEL_APPROVE]);
+    policy.blockedFunctions = policy.blockedFunctions.filter((e) => !toRemove.has(e));
+
+    const restored = roundTrip(policy);
+    expect(restored.blockedFunctions).toEqual([SEL_TRANSFER]);
+  });
+
+  it("should remove multiple entries at once", () => {
+    const policy = defaultPolicy();
+    policy.blockedContracts = [ADDR_A.toLowerCase(), ADDR_B.toLowerCase(), ADDR_C.toLowerCase()];
+
+    // Simulate: policy remove blockedContracts 0x111...,0x333...
+    const toRemove = new Set([ADDR_A.toLowerCase(), ADDR_C.toLowerCase()]);
+    policy.blockedContracts = policy.blockedContracts.filter((e) => !toRemove.has(e));
+
+    const restored = roundTrip(policy);
+    expect(restored.blockedContracts).toEqual([ADDR_B.toLowerCase()]);
+  });
+
+  it("should handle remove of non-existent entry gracefully", () => {
+    const policy = defaultPolicy();
+    policy.blockedContracts = [ADDR_A.toLowerCase()];
+
+    const toRemove = new Set([ADDR_B.toLowerCase()]);
+    policy.blockedContracts = policy.blockedContracts.filter((e) => !toRemove.has(e));
+
+    expect(policy.blockedContracts).toEqual([ADDR_A.toLowerCase()]);
+  });
+
+  it("policy with blockedContracts should reject matching transactions", () => {
+    const policy = defaultPolicy();
+    policy.blockedContracts = [ADDR_A.toLowerCase()];
+
+    const result = evaluatePolicy(policy, {
+      chainId: 1,
+      to: ADDR_A,
+      value: 0n,
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("blocked");
+  });
+
+  it("policy with allowedContracts should reject non-listed contracts", () => {
+    const policy = defaultPolicy();
+    policy.allowedContracts = [ADDR_A.toLowerCase()];
+
+    const allowed = evaluatePolicy(policy, { chainId: 1, to: ADDR_A, value: 0n });
+    expect(allowed.allowed).toBe(true);
+
+    const denied = evaluatePolicy(policy, { chainId: 1, to: ADDR_B, value: 0n });
+    expect(denied.allowed).toBe(false);
+    expect(denied.reason).toContain("not in the allowed list");
+  });
+
+  it("policy with blockedFunctions should reject matching selectors", () => {
+    const policy = defaultPolicy();
+    policy.blockedFunctions = [SEL_APPROVE];
+
+    const result = evaluatePolicy(policy, {
+      chainId: 1,
+      to: ADDR_A,
+      value: 0n,
+      data: `${SEL_APPROVE}000000000000000000000000${ADDR_B.slice(2)}0000000000000000000000000000000000000000000000000de0b6b3a7640000`,
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain("selector");
+  });
+});
+
 // ── Integration: in-process daemon over socket ──────────────────────────────
 
 describe("Signer — daemon integration", () => {
