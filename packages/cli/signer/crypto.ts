@@ -5,7 +5,6 @@ import { privateKeyToAddress } from "viem/accounts";
 import { getConfigDir } from "../config.js";
 import type { AgentekKeyfile, DecryptedPayload, V3Keystore, EncryptedPolicy } from "./protocol.js";
 import { getKeyfilePath } from "./protocol.js";
-import { migratePolicy } from "./policy.js";
 
 const SCRYPT_N = 16384; // 2 ** 14
 const SCRYPT_R = 8;
@@ -117,8 +116,7 @@ export function decrypt(keyfile: AgentekKeyfile, passphrase: string): DecryptedP
     policyDecipher.update(policyCiphertext),
     policyDecipher.final(),
   ]);
-  const rawPolicy = JSON.parse(policyDecrypted.toString("utf-8"));
-  const policy = migratePolicy(rawPolicy);
+  const policy = JSON.parse(policyDecrypted.toString("utf-8"));
 
   return { privateKey, policy };
 }

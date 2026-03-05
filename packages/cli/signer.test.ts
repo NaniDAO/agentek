@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { createServer, connect, type Server } from "node:net";
 import { verifyMessage } from "viem";
 import { encrypt, decrypt, writeKeyfile } from "./signer/crypto.js";
-import { defaultPolicy, evaluatePolicy, migratePolicy } from "./signer/policy.js";
+import { defaultPolicy, evaluatePolicy } from "./signer/policy.js";
 import { createDaemonAccount, getDaemonAddress, isDaemonReachable } from "./signer/client.js";
 import { startDaemon, stopDaemon, getDaemonStatus } from "./signer/daemon.js";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -337,7 +337,7 @@ describe("Signer — policy", () => {
   });
 });
 
-// ── Unit: contract allowlist + migration ─────────────────────────────────────
+// ── Unit: contract allowlist encrypt/decrypt ─────────────────────────────────
 
 describe("Signer — contract allowlist", () => {
   const TEST_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
@@ -360,53 +360,6 @@ describe("Signer — contract allowlist", () => {
     const restored = roundTrip(policy);
     expect(restored.contracts[ADDR_A.toLowerCase()]).toEqual(["*"]);
     expect(restored.contracts[ADDR_B.toLowerCase()]).toEqual([SEL_APPROVE, SEL_TRANSFER]);
-  });
-
-  it("should migrate old allowedContracts format to contracts map", () => {
-    const oldPolicy = {
-      maxValuePerTx: "0.1",
-      allowedChains: [1],
-      allowContractCreation: false,
-      allowedContracts: [ADDR_A.toLowerCase(), ADDR_B.toLowerCase()],
-      blockedContracts: [],
-      blockedFunctions: [],
-      requireApproval: "above_threshold",
-      approvalThresholdPct: 50,
-    };
-
-    const migrated = migratePolicy(oldPolicy);
-    expect(migrated.contracts[ADDR_A.toLowerCase()]).toEqual(["*"]);
-    expect(migrated.contracts[ADDR_B.toLowerCase()]).toEqual(["*"]);
-    expect((migrated as any).allowedContracts).toBeUndefined();
-    expect((migrated as any).blockedContracts).toBeUndefined();
-  });
-
-  it("should not migrate already-new format", () => {
-    const newPolicy = defaultPolicy();
-    newPolicy.contracts[ADDR_A.toLowerCase()] = [SEL_APPROVE];
-    const migrated = migratePolicy(newPolicy as unknown as Record<string, unknown>);
-    expect(migrated.contracts[ADDR_A.toLowerCase()]).toEqual([SEL_APPROVE]);
-  });
-
-  it("old keyfile with allowedContracts should decrypt to new format", () => {
-    // Encrypt with old-style policy
-    const oldPolicy: any = {
-      maxValuePerTx: "0.5",
-      allowedChains: [1, 8453],
-      allowContractCreation: false,
-      allowedContracts: [ADDR_A.toLowerCase()],
-      blockedContracts: [],
-      blockedFunctions: [],
-      requireApproval: "never",
-      approvalThresholdPct: 0,
-    };
-    const keyfile = encrypt({ privateKey: TEST_KEY, policy: oldPolicy }, PASSPHRASE);
-
-    // Decrypt should auto-migrate
-    const decrypted = decrypt(keyfile, PASSPHRASE);
-    expect(decrypted.policy.contracts[ADDR_A.toLowerCase()]).toEqual(["*"]);
-    expect(decrypted.policy.maxValuePerTx).toBe("0.5");
-    expect(decrypted.policy.requireApproval).toBe("never");
   });
 });
 

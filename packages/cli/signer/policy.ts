@@ -25,33 +25,6 @@ export function defaultPolicy(): PolicyConfig {
   };
 }
 
-/** Migrate old policy format (blockedContracts/allowedContracts/blockedFunctions)
- *  to the new contract-centric format. */
-export function migratePolicy(raw: Record<string, unknown>): PolicyConfig {
-  // Already new format
-  if ("contracts" in raw && typeof raw.contracts === "object" && raw.contracts !== null && !Array.isArray(raw.contracts)) {
-    return raw as unknown as PolicyConfig;
-  }
-
-  const contracts: Record<string, string[]> = {};
-
-  // Convert old allowedContracts → contracts with ["*"]
-  const oldAllowed = raw.allowedContracts as string[] | undefined;
-  if (Array.isArray(oldAllowed)) {
-    for (const addr of oldAllowed) {
-      contracts[addr.toLowerCase()] = ["*"];
-    }
-  }
-
-  return {
-    maxValuePerTx: (raw.maxValuePerTx as string) ?? "0.1",
-    allowedChains: (raw.allowedChains as number[]) ?? [1],
-    allowContractCreation: (raw.allowContractCreation as boolean) ?? false,
-    contracts,
-    requireApproval: (raw.requireApproval as PolicyConfig["requireApproval"]) ?? "above_threshold",
-    approvalThresholdPct: (raw.approvalThresholdPct as number) ?? 50,
-  };
-}
 
 export function evaluatePolicy(policy: PolicyConfig, tx: TxRequest): PolicyResult {
   // 1. Chain check
