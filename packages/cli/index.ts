@@ -7,6 +7,7 @@ import { handleExec } from "./commands/exec.js";
 import { handleConfig } from "./commands/config.js";
 import { handleSetup } from "./commands/setup.js";
 import { handleSigner } from "./commands/signer.js";
+import { handleOnboard } from "./commands/onboard.js";
 
 const VERSION = "0.0.2";
 
@@ -21,6 +22,7 @@ function printUsage(): never {
   process.stderr.write(`agentek v${VERSION} — CLI for Agentek tools
 
 Usage:
+  agentek onboard                            Guided signer setup wizard
   agentek setup                             Show configuration status for all keys
   agentek config set <KEY> <VALUE>          Save a key to ~/.agentek/config.json
   agentek config get <KEY> [--reveal]       Show a key's value (redacted by default)
@@ -68,11 +70,12 @@ async function main() {
     printVersion();
   }
 
-  if (!["list", "info", "exec", "search", "setup", "config", "signer"].includes(command)) {
+  if (!["list", "info", "exec", "search", "setup", "config", "signer", "onboard"].includes(command)) {
     printUsage();
   }
 
   // ── Fast-path commands (no client init) ────────────────────────────────
+  if (command === "onboard") handleOnboard();
   if (command === "setup") handleSetup(VERSION);
   if (command === "config") handleConfig(rest);
   if (command === "signer") {

@@ -3,9 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist/esm",
     "rootDir": ".",
-    "composite": true
+    "composite": true,
+    "jsx": "react-jsx"
   },
-  "include": ["./**/*.ts"],
+  "include": ["./**/*.ts", "./**/*.tsx"],
   "exclude": ["node_modules", "dist"],
   "references": [
     { "path": "../shared" }

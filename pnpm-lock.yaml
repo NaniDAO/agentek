@@ -81,6 +81,18 @@ importers:
       '@agentek/tools':
         specifier: workspace:*
         version: link:../shared
+      ink:
+        specifier: ^5.1.0
+        version: 5.2.1(@types/react@18.3.28)(react@18.3.1)
+      ink-spinner:
+        specifier: ^5.0.0
+        version: 5.0.0(ink@5.2.1(@types/react@18.3.28)(react@18.3.1))(react@18.3.1)
+      ink-text-input:
+        specifier: ^6.0.0
+        version: 6.0.0(ink@5.2.1(@types/react@18.3.28)(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
       viem:
         specifier: 2.33.2
         version: 2.33.2(typescript@5.9.2)(zod@3.25.76)
@@ -97,6 +109,9 @@ importers:
       '@types/node':
         specifier: 22.14.1
         version: 22.14.1
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.28
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -174,31 +189,6 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@22.14.1)
-
-  packages/tui:
-    dependencies:
-      ink:
-        specifier: ^5.1.0
-        version: 5.2.1(@types/react@18.3.28)(react@18.3.1)
-      ink-spinner:
-        specifier: ^5.0.0
-        version: 5.0.0(ink@5.2.1(@types/react@18.3.28)(react@18.3.1))(react@18.3.1)
-      ink-text-input:
-        specifier: ^6.0.0
-        version: 6.0.0(ink@5.2.1(@types/react@18.3.28)(react@18.3.1))(react@18.3.1)
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-    devDependencies:
-      '@types/node':
-        specifier: ^24.1.0
-        version: 24.1.0
-      '@types/react':
-        specifier: ^18.3.18
-        version: 18.3.28
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.2
 
 packages:
 

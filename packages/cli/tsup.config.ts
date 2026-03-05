@@ -14,5 +14,8 @@ export default defineConfig({
   },
   outExtension() {
     return { js: '.mjs' };
-  }
+  },
+  esbuildOptions(options) {
+    options.jsx = 'automatic';
+  },
 });
