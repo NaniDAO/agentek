@@ -109,15 +109,16 @@ Scalar fields:
 .BR maxValuePerTx ", " requireApproval ", " approvalThresholdPct ", "
 .BR allowedChains ", " allowContractCreation .
 .TP
-.BI "signer policy add" " field value"
-Append one or more comma-separated entries to a list field. Deduplicates
-automatically. Prompts for passphrase.
-List fields:
-.BR blockedContracts ", " allowedContracts ", " blockedFunctions .
+.BI "signer policy allow" " address" " [selector ...]"
+Approve a contract address. With no selectors, all functions on that contract
+are pre-approved (wildcard). With selectors, only those specific function
+selectors are pre-approved. Transactions to unapproved contracts or functions
+require interactive approval.
 .TP
-.BI "signer policy remove" " field value"
-Remove one or more comma-separated entries from a list field. Prompts for
-passphrase.
+.BI "signer policy deny" " address" " [selector ...]"
+Remove a contract from the allowlist. With no selectors, removes the entire
+contract. With selectors, removes only those selectors (if no selectors
+remain, the contract is removed entirely).
 .SH FLAGS
 .TP
 .BI --key " value"
@@ -211,8 +212,7 @@ Policy fields:
 .BR maxValuePerTx " (ETH string),"
 .BR allowedChains " (array of chain IDs),"
 .BR allowContractCreation " (boolean),"
-.BR blockedContracts ", " allowedContracts " (address arrays),"
-.BR blockedFunctions " (4-byte selector array),"
+.BR contracts " (address-to-selectors map; [\"*\"] = all functions),"
 .BR requireApproval " (always | above_threshold | never),"
 .BR approvalThresholdPct " (0\(en100)."
 .SH CONFIGURATION

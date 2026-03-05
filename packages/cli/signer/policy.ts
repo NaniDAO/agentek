@@ -19,11 +19,37 @@ export function defaultPolicy(): PolicyConfig {
     maxValuePerTx: "0.1",
     allowedChains: [1, 8453, 42161, 137, 10],
     allowContractCreation: false,
-    blockedContracts: [],
-    allowedContracts: [],
-    blockedFunctions: [],
+    contracts: {},
     requireApproval: "above_threshold",
     approvalThresholdPct: 50,
+  };
+}
+
+/** Migrate old policy format (blockedContracts/allowedContracts/blockedFunctions)
+ *  to the new contract-centric format. */
+export function migratePolicy(raw: Record<string, unknown>): PolicyConfig {
+  // Already new format
+  if ("contracts" in raw && typeof raw.contracts === "object" && raw.contracts !== null && !Array.isArray(raw.contracts)) {
+    return raw as unknown as PolicyConfig;
+  }
+
+  const contracts: Record<string, string[]> = {};
+
+  // Convert old allowedContracts → contracts with ["*"]
+  const oldAllowed = raw.allowedContracts as string[] | undefined;
+  if (Array.isArray(oldAllowed)) {
+    for (const addr of oldAllowed) {
+      contracts[addr.toLowerCase()] = ["*"];
+    }
+  }
+
+  return {
+    maxValuePerTx: (raw.maxValuePerTx as string) ?? "0.1",
+    allowedChains: (raw.allowedChains as number[]) ?? [1],
+    allowContractCreation: (raw.allowContractCreation as boolean) ?? false,
+    contracts,
+    requireApproval: (raw.requireApproval as PolicyConfig["requireApproval"]) ?? "above_threshold",
+    approvalThresholdPct: (raw.approvalThresholdPct as number) ?? 50,
   };
 }
 
@@ -60,41 +86,7 @@ export function evaluatePolicy(policy: PolicyConfig, tx: TxRequest): PolicyResul
     };
   }
 
-  // 3. Blocked contracts
-  if (to && policy.blockedContracts.length > 0) {
-    if (policy.blockedContracts.includes(to)) {
-      return {
-        allowed: false,
-        needsApproval: false,
-        reason: `Contract ${to} is blocked by policy`,
-      };
-    }
-  }
-
-  // 4. Allowed contracts (if non-empty, only allow those)
-  if (to && policy.allowedContracts.length > 0) {
-    if (!policy.allowedContracts.includes(to)) {
-      return {
-        allowed: false,
-        needsApproval: false,
-        reason: `Contract ${to} is not in the allowed list`,
-      };
-    }
-  }
-
-  // 5. Blocked function selectors
-  if (tx.data && tx.data.length >= 10 && policy.blockedFunctions.length > 0) {
-    const selector = tx.data.slice(0, 10).toLowerCase();
-    if (policy.blockedFunctions.includes(selector)) {
-      return {
-        allowed: false,
-        needsApproval: false,
-        reason: `Function selector ${selector} is blocked by policy`,
-      };
-    }
-  }
-
-  // 6. Value cap
+  // 3. Value cap — hard reject, no approval can override
   const txValue = typeof tx.value === "string" ? BigInt(tx.value) : (tx.value ?? 0n);
   const maxValue = parseEther(policy.maxValuePerTx);
 
@@ -106,17 +98,44 @@ export function evaluatePolicy(policy: PolicyConfig, tx: TxRequest): PolicyResul
     };
   }
 
-  // 7. Approval logic
+  // 4. Approval logic
   if (policy.requireApproval === "always") {
     return { allowed: true, needsApproval: true };
   }
 
-  if (policy.requireApproval === "above_threshold") {
-    const threshold = (maxValue * BigInt(policy.approvalThresholdPct)) / 100n;
-    if (txValue > threshold) {
-      return { allowed: true, needsApproval: true };
+  if (policy.requireApproval === "never") {
+    return { allowed: true, needsApproval: false };
+  }
+
+  // 5. "above_threshold" mode: check contract allowlist + value threshold
+  // Value above threshold always needs approval
+  const threshold = (maxValue * BigInt(policy.approvalThresholdPct)) / 100n;
+  if (txValue > threshold) {
+    return { allowed: true, needsApproval: true };
+  }
+
+  // 6. Contract+function allowlist check
+  //    If the target contract is in the map and the function is approved → no approval
+  //    Otherwise → needs approval (passphrase)
+  if (to && policy.contracts) {
+    const contractEntry = policy.contracts[to];
+    if (contractEntry) {
+      // Contract is in the allowlist — check function
+      if (contractEntry.includes("*")) {
+        return { allowed: true, needsApproval: false };
+      }
+      // Check function selector
+      if (tx.data && tx.data.length >= 10) {
+        const selector = tx.data.slice(0, 10).toLowerCase();
+        if (contractEntry.includes(selector)) {
+          return { allowed: true, needsApproval: false };
+        }
+      }
+      // Plain ETH transfer to approved contract (no data) — needs approval
+      // unless contract has ["*"]
     }
   }
 
-  return { allowed: true, needsApproval: false };
+  // Not in allowlist → needs approval
+  return { allowed: true, needsApproval: true };
 }

@@ -40,8 +40,8 @@ Signer:
   agentek signer status                     Show daemon status and address
   agentek signer policy                     Show current policy (prompts for passphrase)
   agentek signer policy set <field> <val>   Update a policy field
-  agentek signer policy add <field> <val>   Add entry to a list field
-  agentek signer policy remove <field> <val> Remove entry from a list field
+  agentek signer policy allow <addr> [sel]  Approve a contract (with optional function selectors)
+  agentek signer policy deny <addr> [sel]   Remove a contract or specific selectors
 
 Flags:
   --key value       Set a parameter (type-coerced via tool schema)

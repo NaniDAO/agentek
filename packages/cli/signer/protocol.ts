@@ -100,9 +100,11 @@ export interface PolicyConfig {
   maxValuePerTx: string; // ETH, e.g. "0.1"
   allowedChains: number[];
   allowContractCreation: boolean;
-  blockedContracts: string[]; // lowercase addresses
-  allowedContracts: string[]; // lowercase addresses, empty = allow all
-  blockedFunctions: string[]; // 4-byte selectors, e.g. "0x095ea7b3"
+  /** Contract allowlist: lowercase address → allowed function selectors.
+   *  ["*"] means all functions on that contract are pre-approved.
+   *  Specific selectors like ["0x095ea7b3"] approve only those functions.
+   *  Contracts/functions NOT in this map require interactive approval. */
+  contracts: Record<string, string[]>;
   requireApproval: "always" | "above_threshold" | "never";
   approvalThresholdPct: number; // 0-100, percentage of maxValuePerTx
 }

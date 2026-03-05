@@ -188,55 +188,100 @@ export async function handleSigner(args: string[]): Promise<void> {
         }
         policy.allowContractCreation = normalized === "true";
       } else {
-        outputError(`Unknown field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains, allowContractCreation\nFor list fields use: policy add/remove <field> <value>`);
+        outputError(`Unknown field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains, allowContractCreation\nFor contracts use: policy allow/deny <address> [selectors...]`);
       }
 
       const keyfile = encrypt(payload, passphrase);
       writeKeyfile(keyfile);
       process.stderr.write(`Policy updated: ${field} = ${value}\n`);
       outputJson({ ok: true, policy });
-    } else if (policyAction === "add" || policyAction === "remove") {
-      const field = args[2];
-      const values = args.slice(3);
-      if (!field || values.length === 0) {
-        outputError(`Usage: agentek signer policy ${policyAction} <field> <value> [value ...]`);
+    } else if (policyAction === "allow") {
+      // policy allow <address> [selector ...] — approve a contract (with optional function selectors)
+      const address = args[2];
+      if (!address) {
+        outputError("Usage: agentek signer policy allow <address> [selector ...]");
       }
-
-      const listFields = ["blockedContracts", "allowedContracts", "blockedFunctions"] as const;
-      type ListField = typeof listFields[number];
-
-      if (!listFields.includes(field as ListField)) {
-        outputError(`Unknown list field: ${field}. Known: ${listFields.join(", ")}`);
+      if (!isAddress(address)) {
+        outputError(`Invalid address: ${address}`);
       }
+      const addr = address.toLowerCase();
+      const rawSelectors = args.slice(3);
+      const selectors = rawSelectors
+        .flatMap((v) => v.split(","))
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
 
-      const typedField = field as ListField;
-      // Support both space-separated args and comma-separated values
-      const entries = values.flatMap((v) => v.split(",")).map((s) => s.trim().toLowerCase()).filter(Boolean);
-
-      // Validate entries
-      if (typedField === "blockedContracts" || typedField === "allowedContracts") {
-        for (const entry of entries) {
-          if (!isAddress(entry)) {
-            outputError(`Invalid address: ${entry}`);
-          }
-        }
-      } else if (typedField === "blockedFunctions") {
-        for (const entry of entries) {
-          if (!/^0x[0-9a-f]{8}$/.test(entry)) {
-            outputError(`Invalid function selector: ${entry} (must be 0x + 8 hex chars, e.g. 0x095ea7b3)`);
-          }
+      // Validate selectors
+      for (const sel of selectors) {
+        if (sel !== "*" && !/^0x[0-9a-f]{8}$/.test(sel)) {
+          outputError(`Invalid function selector: ${sel} (must be 0x + 8 hex chars, e.g. 0x095ea7b3)`);
         }
       }
 
-      if (policyAction === "add") {
-        const existing = new Set(policy[typedField]);
-        for (const entry of entries) existing.add(entry);
-        policy[typedField] = [...existing];
-        process.stderr.write(`Added to ${field}: ${entries.join(", ")}\n`);
+      if (!policy.contracts) policy.contracts = {};
+
+      if (selectors.length === 0 || selectors.includes("*")) {
+        // No selectors or explicit wildcard → approve all functions
+        policy.contracts[addr] = ["*"];
+        process.stderr.write(`Allowed contract ${addr} (all functions)\n`);
       } else {
-        const toRemove = new Set(entries);
-        policy[typedField] = policy[typedField].filter((e) => !toRemove.has(e));
-        process.stderr.write(`Removed from ${field}: ${entries.join(", ")}\n`);
+        // Merge selectors with existing
+        const existing = new Set(policy.contracts[addr] || []);
+        // If already wildcard, keep it
+        if (existing.has("*")) {
+          process.stderr.write(`Contract ${addr} already allows all functions\n`);
+        } else {
+          for (const sel of selectors) existing.add(sel);
+          policy.contracts[addr] = [...existing];
+          process.stderr.write(`Allowed contract ${addr} functions: ${selectors.join(", ")}\n`);
+        }
+      }
+
+      const keyfile = encrypt(payload, passphrase);
+      writeKeyfile(keyfile);
+      outputJson({ ok: true, policy });
+    } else if (policyAction === "deny") {
+      // policy deny <address> [selector ...] — remove a contract or specific functions
+      const address = args[2];
+      if (!address) {
+        outputError("Usage: agentek signer policy deny <address> [selector ...]");
+      }
+      if (!isAddress(address)) {
+        outputError(`Invalid address: ${address}`);
+      }
+      const addr = address.toLowerCase();
+      const rawSelectors = args.slice(3);
+      const selectors = rawSelectors
+        .flatMap((v) => v.split(","))
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+
+      if (!policy.contracts) policy.contracts = {};
+
+      if (selectors.length === 0) {
+        // No selectors → remove the entire contract
+        delete policy.contracts[addr];
+        process.stderr.write(`Removed contract ${addr} from allowlist\n`);
+      } else {
+        const existing = policy.contracts[addr];
+        if (!existing) {
+          process.stderr.write(`Contract ${addr} is not in the allowlist\n`);
+        } else if (existing.includes("*")) {
+          // Can't remove specific selectors from a wildcard — deny removes the whole contract
+          // unless user provides specific selectors, in which case we switch from wildcard to explicit
+          process.stderr.write(`Contract ${addr} had wildcard (*). Removing entirely. Re-add with specific selectors if needed.\n`);
+          delete policy.contracts[addr];
+        } else {
+          const toRemove = new Set(selectors);
+          const remaining = existing.filter((s) => !toRemove.has(s));
+          if (remaining.length === 0) {
+            delete policy.contracts[addr];
+            process.stderr.write(`Removed contract ${addr} from allowlist (no selectors remaining)\n`);
+          } else {
+            policy.contracts[addr] = remaining;
+            process.stderr.write(`Removed selectors from ${addr}: ${selectors.join(", ")}\n`);
+          }
+        }
       }
 
       const keyfile = encrypt(payload, passphrase);

@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { createServer, connect, type Server } from "node:net";
 import { verifyMessage } from "viem";
 import { encrypt, decrypt, writeKeyfile } from "./signer/crypto.js";
-import { defaultPolicy, evaluatePolicy } from "./signer/policy.js";
+import { defaultPolicy, evaluatePolicy, migratePolicy } from "./signer/policy.js";
 import { createDaemonAccount, getDaemonAddress, isDaemonReachable } from "./signer/client.js";
 import { startDaemon, stopDaemon, getDaemonStatus } from "./signer/daemon.js";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -150,22 +150,16 @@ describe("Signer — crypto", () => {
 // ── Unit: policy ────────────────────────────────────────────────────────────
 
 describe("Signer — policy", () => {
-  it("should allow a valid transaction within limits", () => {
-    const policy = defaultPolicy();
-    const result = evaluatePolicy(policy, {
-      chainId: 1,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
-      value: 0n,
-    });
-    expect(result.allowed).toBe(true);
-    expect(result.needsApproval).toBe(false);
-  });
+  const ADDR_A = "0x1111111111111111111111111111111111111111";
+  const ADDR_B = "0x2222222222222222222222222222222222222222";
+  const SEL_APPROVE = "0x095ea7b3";
+  const SEL_TRANSFER = "0xa9059cbb";
 
   it("should reject transaction on disallowed chain", () => {
     const policy = defaultPolicy();
     const result = evaluatePolicy(policy, {
       chainId: 999999,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
+      to: ADDR_A,
       value: 0n,
     });
     expect(result.allowed).toBe(false);
@@ -175,7 +169,7 @@ describe("Signer — policy", () => {
   it("should reject transactions when chainId is missing", () => {
     const policy = defaultPolicy();
     const result = evaluatePolicy(policy, {
-      to: "0x1234567890abcdef1234567890abcdef12345678",
+      to: ADDR_A,
       value: 0n,
     });
     expect(result.allowed).toBe(false);
@@ -208,70 +202,22 @@ describe("Signer — policy", () => {
     const policy = defaultPolicy();
     const result = evaluatePolicy(policy, {
       chainId: 1,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
+      to: ADDR_A,
       value: 200000000000000000n, // 0.2 ETH
     });
     expect(result.allowed).toBe(false);
     expect(result.reason).toContain("exceeds maximum");
   });
 
-  it("should reject blocked contract", () => {
-    const policy = defaultPolicy();
-    policy.blockedContracts = ["0xdeadbeef00000000000000000000000000000000"];
-    const result = evaluatePolicy(policy, {
-      chainId: 1,
-      to: "0xdeadbeef00000000000000000000000000000000",
-      value: 0n,
-    });
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("blocked");
-  });
-
-  it("should reject contract not in allowedContracts when list is non-empty", () => {
-    const policy = defaultPolicy();
-    policy.allowedContracts = ["0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"];
-    const result = evaluatePolicy(policy, {
-      chainId: 1,
-      to: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      value: 0n,
-    });
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("not in the allowed list");
-  });
-
-  it("should reject blocked function selector", () => {
-    const policy = defaultPolicy();
-    policy.blockedFunctions = ["0x095ea7b3"]; // approve(address,uint256)
-    const result = evaluatePolicy(policy, {
-      chainId: 1,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
-      value: 0n,
-      data: "0x095ea7b3000000000000000000000000abcdefabcdefabcdefabcdefabcdefabcdefabcd0000000000000000000000000000000000000000000000000de0b6b3a7640000",
-    });
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("selector");
-  });
-
   it("should require approval above threshold (50% of 0.1 ETH = 0.05 ETH)", () => {
     const policy = defaultPolicy();
     const result = evaluatePolicy(policy, {
       chainId: 1,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
+      to: ADDR_A,
       value: 60000000000000000n, // 0.06 ETH > 50% of 0.1 ETH
     });
     expect(result.allowed).toBe(true);
     expect(result.needsApproval).toBe(true);
-  });
-
-  it("should not require approval below threshold", () => {
-    const policy = defaultPolicy();
-    const result = evaluatePolicy(policy, {
-      chainId: 1,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
-      value: 40000000000000000n, // 0.04 ETH < 50% of 0.1 ETH
-    });
-    expect(result.allowed).toBe(true);
-    expect(result.needsApproval).toBe(false);
   });
 
   it("should always require approval when requireApproval is 'always'", () => {
@@ -279,7 +225,7 @@ describe("Signer — policy", () => {
     policy.requireApproval = "always";
     const result = evaluatePolicy(policy, {
       chainId: 1,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
+      to: ADDR_A,
       value: 0n,
     });
     expect(result.allowed).toBe(true);
@@ -291,22 +237,113 @@ describe("Signer — policy", () => {
     policy.requireApproval = "never";
     const result = evaluatePolicy(policy, {
       chainId: 1,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
-      value: 90000000000000000n, // 0.09 ETH, under cap but above threshold
+      to: ADDR_A,
+      value: 90000000000000000n,
     });
     expect(result.allowed).toBe(true);
     expect(result.needsApproval).toBe(false);
   });
+
+  // ── Contract allowlist tests ────────────────────────────────────────────
+
+  it("unapproved contract should require approval", () => {
+    const policy = defaultPolicy();
+    const result = evaluatePolicy(policy, {
+      chainId: 1,
+      to: ADDR_A,
+      value: 0n,
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.needsApproval).toBe(true);
+  });
+
+  it("approved contract with wildcard should not require approval", () => {
+    const policy = defaultPolicy();
+    policy.contracts[ADDR_A.toLowerCase()] = ["*"];
+    const result = evaluatePolicy(policy, {
+      chainId: 1,
+      to: ADDR_A,
+      value: 0n,
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.needsApproval).toBe(false);
+  });
+
+  it("approved contract with matching function selector should not require approval", () => {
+    const policy = defaultPolicy();
+    policy.contracts[ADDR_A.toLowerCase()] = [SEL_APPROVE];
+    const result = evaluatePolicy(policy, {
+      chainId: 1,
+      to: ADDR_A,
+      value: 0n,
+      data: `${SEL_APPROVE}0000000000000000000000000000000000000000000000000000000000000001`,
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.needsApproval).toBe(false);
+  });
+
+  it("approved contract with non-matching function selector should require approval", () => {
+    const policy = defaultPolicy();
+    policy.contracts[ADDR_A.toLowerCase()] = [SEL_APPROVE];
+    const result = evaluatePolicy(policy, {
+      chainId: 1,
+      to: ADDR_A,
+      value: 0n,
+      data: `${SEL_TRANSFER}0000000000000000000000000000000000000000000000000000000000000001`,
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.needsApproval).toBe(true);
+  });
+
+  it("approved contract with multiple selectors should match any", () => {
+    const policy = defaultPolicy();
+    policy.contracts[ADDR_A.toLowerCase()] = [SEL_APPROVE, SEL_TRANSFER];
+
+    const r1 = evaluatePolicy(policy, {
+      chainId: 1, to: ADDR_A, value: 0n,
+      data: `${SEL_APPROVE}0000000000000000000000000000000000000000000000000000000000000001`,
+    });
+    expect(r1.needsApproval).toBe(false);
+
+    const r2 = evaluatePolicy(policy, {
+      chainId: 1, to: ADDR_A, value: 0n,
+      data: `${SEL_TRANSFER}0000000000000000000000000000000000000000000000000000000000000001`,
+    });
+    expect(r2.needsApproval).toBe(false);
+  });
+
+  it("plain ETH transfer to approved contract (no wildcard) should require approval", () => {
+    const policy = defaultPolicy();
+    policy.contracts[ADDR_A.toLowerCase()] = [SEL_APPROVE];
+    const result = evaluatePolicy(policy, {
+      chainId: 1,
+      to: ADDR_A,
+      value: 10000000000000000n, // 0.01 ETH
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.needsApproval).toBe(true);
+  });
+
+  it("value above threshold should require approval even for approved contract", () => {
+    const policy = defaultPolicy();
+    policy.contracts[ADDR_A.toLowerCase()] = ["*"];
+    const result = evaluatePolicy(policy, {
+      chainId: 1,
+      to: ADDR_A,
+      value: 60000000000000000n, // 0.06 ETH > 50% of 0.1 ETH
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.needsApproval).toBe(true);
+  });
 });
 
-// ── Unit: policy add/remove via encrypt/decrypt round-trip ──────────────────
+// ── Unit: contract allowlist + migration ─────────────────────────────────────
 
-describe("Signer — policy list field mutations", () => {
+describe("Signer — contract allowlist", () => {
   const TEST_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
   const PASSPHRASE = "test-passphrase-123";
   const ADDR_A = "0x1111111111111111111111111111111111111111";
   const ADDR_B = "0x2222222222222222222222222222222222222222";
-  const ADDR_C = "0x3333333333333333333333333333333333333333";
   const SEL_APPROVE = "0x095ea7b3";
   const SEL_TRANSFER = "0xa9059cbb";
 
@@ -315,121 +352,61 @@ describe("Signer — policy list field mutations", () => {
     return decrypt(keyfile, PASSPHRASE).policy;
   }
 
-  it("should add multiple addresses to blockedContracts (space-separated style)", () => {
+  it("contracts map should survive encrypt/decrypt round-trip", () => {
     const policy = defaultPolicy();
-    expect(policy.blockedContracts).toEqual([]);
-
-    // Simulate: policy add blockedContracts 0x111... 0x222...
-    const entries = [ADDR_A, ADDR_B].map((s) => s.toLowerCase());
-    const existing = new Set(policy.blockedContracts);
-    for (const e of entries) existing.add(e);
-    policy.blockedContracts = [...existing];
+    policy.contracts[ADDR_A.toLowerCase()] = ["*"];
+    policy.contracts[ADDR_B.toLowerCase()] = [SEL_APPROVE, SEL_TRANSFER];
 
     const restored = roundTrip(policy);
-    expect(restored.blockedContracts).toContain(ADDR_A.toLowerCase());
-    expect(restored.blockedContracts).toContain(ADDR_B.toLowerCase());
-    expect(restored.blockedContracts).toHaveLength(2);
+    expect(restored.contracts[ADDR_A.toLowerCase()]).toEqual(["*"]);
+    expect(restored.contracts[ADDR_B.toLowerCase()]).toEqual([SEL_APPROVE, SEL_TRANSFER]);
   });
 
-  it("should add comma-separated addresses to allowedContracts", () => {
-    const policy = defaultPolicy();
+  it("should migrate old allowedContracts format to contracts map", () => {
+    const oldPolicy = {
+      maxValuePerTx: "0.1",
+      allowedChains: [1],
+      allowContractCreation: false,
+      allowedContracts: [ADDR_A.toLowerCase(), ADDR_B.toLowerCase()],
+      blockedContracts: [],
+      blockedFunctions: [],
+      requireApproval: "above_threshold",
+      approvalThresholdPct: 50,
+    };
 
-    // Simulate: policy add allowedContracts 0x111...,0x222...,0x333...
-    const raw = `${ADDR_A},${ADDR_B},${ADDR_C}`;
-    const entries = raw.split(",").map((s) => s.trim().toLowerCase());
-    const existing = new Set(policy.allowedContracts);
-    for (const e of entries) existing.add(e);
-    policy.allowedContracts = [...existing];
-
-    const restored = roundTrip(policy);
-    expect(restored.allowedContracts).toHaveLength(3);
-    expect(restored.allowedContracts).toContain(ADDR_C.toLowerCase());
+    const migrated = migratePolicy(oldPolicy);
+    expect(migrated.contracts[ADDR_A.toLowerCase()]).toEqual(["*"]);
+    expect(migrated.contracts[ADDR_B.toLowerCase()]).toEqual(["*"]);
+    expect((migrated as any).allowedContracts).toBeUndefined();
+    expect((migrated as any).blockedContracts).toBeUndefined();
   });
 
-  it("should deduplicate on add", () => {
-    const policy = defaultPolicy();
-    policy.blockedContracts = [ADDR_A.toLowerCase()];
-
-    // Add A again + B
-    const entries = [ADDR_A, ADDR_B].map((s) => s.toLowerCase());
-    const existing = new Set(policy.blockedContracts);
-    for (const e of entries) existing.add(e);
-    policy.blockedContracts = [...existing];
-
-    expect(policy.blockedContracts).toHaveLength(2);
+  it("should not migrate already-new format", () => {
+    const newPolicy = defaultPolicy();
+    newPolicy.contracts[ADDR_A.toLowerCase()] = [SEL_APPROVE];
+    const migrated = migratePolicy(newPolicy as unknown as Record<string, unknown>);
+    expect(migrated.contracts[ADDR_A.toLowerCase()]).toEqual([SEL_APPROVE]);
   });
 
-  it("should remove entries from blockedFunctions", () => {
-    const policy = defaultPolicy();
-    policy.blockedFunctions = [SEL_APPROVE, SEL_TRANSFER];
+  it("old keyfile with allowedContracts should decrypt to new format", () => {
+    // Encrypt with old-style policy
+    const oldPolicy: any = {
+      maxValuePerTx: "0.5",
+      allowedChains: [1, 8453],
+      allowContractCreation: false,
+      allowedContracts: [ADDR_A.toLowerCase()],
+      blockedContracts: [],
+      blockedFunctions: [],
+      requireApproval: "never",
+      approvalThresholdPct: 0,
+    };
+    const keyfile = encrypt({ privateKey: TEST_KEY, policy: oldPolicy }, PASSPHRASE);
 
-    // Simulate: policy remove blockedFunctions 0x095ea7b3
-    const toRemove = new Set([SEL_APPROVE]);
-    policy.blockedFunctions = policy.blockedFunctions.filter((e) => !toRemove.has(e));
-
-    const restored = roundTrip(policy);
-    expect(restored.blockedFunctions).toEqual([SEL_TRANSFER]);
-  });
-
-  it("should remove multiple entries at once", () => {
-    const policy = defaultPolicy();
-    policy.blockedContracts = [ADDR_A.toLowerCase(), ADDR_B.toLowerCase(), ADDR_C.toLowerCase()];
-
-    // Simulate: policy remove blockedContracts 0x111...,0x333...
-    const toRemove = new Set([ADDR_A.toLowerCase(), ADDR_C.toLowerCase()]);
-    policy.blockedContracts = policy.blockedContracts.filter((e) => !toRemove.has(e));
-
-    const restored = roundTrip(policy);
-    expect(restored.blockedContracts).toEqual([ADDR_B.toLowerCase()]);
-  });
-
-  it("should handle remove of non-existent entry gracefully", () => {
-    const policy = defaultPolicy();
-    policy.blockedContracts = [ADDR_A.toLowerCase()];
-
-    const toRemove = new Set([ADDR_B.toLowerCase()]);
-    policy.blockedContracts = policy.blockedContracts.filter((e) => !toRemove.has(e));
-
-    expect(policy.blockedContracts).toEqual([ADDR_A.toLowerCase()]);
-  });
-
-  it("policy with blockedContracts should reject matching transactions", () => {
-    const policy = defaultPolicy();
-    policy.blockedContracts = [ADDR_A.toLowerCase()];
-
-    const result = evaluatePolicy(policy, {
-      chainId: 1,
-      to: ADDR_A,
-      value: 0n,
-    });
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("blocked");
-  });
-
-  it("policy with allowedContracts should reject non-listed contracts", () => {
-    const policy = defaultPolicy();
-    policy.allowedContracts = [ADDR_A.toLowerCase()];
-
-    const allowed = evaluatePolicy(policy, { chainId: 1, to: ADDR_A, value: 0n });
-    expect(allowed.allowed).toBe(true);
-
-    const denied = evaluatePolicy(policy, { chainId: 1, to: ADDR_B, value: 0n });
-    expect(denied.allowed).toBe(false);
-    expect(denied.reason).toContain("not in the allowed list");
-  });
-
-  it("policy with blockedFunctions should reject matching selectors", () => {
-    const policy = defaultPolicy();
-    policy.blockedFunctions = [SEL_APPROVE];
-
-    const result = evaluatePolicy(policy, {
-      chainId: 1,
-      to: ADDR_A,
-      value: 0n,
-      data: `${SEL_APPROVE}000000000000000000000000${ADDR_B.slice(2)}0000000000000000000000000000000000000000000000000de0b6b3a7640000`,
-    });
-    expect(result.allowed).toBe(false);
-    expect(result.reason).toContain("selector");
+    // Decrypt should auto-migrate
+    const decrypted = decrypt(keyfile, PASSPHRASE);
+    expect(decrypted.policy.contracts[ADDR_A.toLowerCase()]).toEqual(["*"]);
+    expect(decrypted.policy.maxValuePerTx).toBe("0.5");
+    expect(decrypted.policy.requireApproval).toBe("never");
   });
 });
 
