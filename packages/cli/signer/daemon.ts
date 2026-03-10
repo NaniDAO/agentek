@@ -67,21 +67,16 @@ export function startDaemon(payload: DecryptedPayload): Promise<void> {
 
     server = createServer((conn) => {
       let buffer = "";
+      let closing = false;
 
       conn.on("data", (chunk) => {
+        if (closing) return;
         buffer += chunk.toString();
 
         if (Buffer.byteLength(buffer, "utf8") > MAX_RPC_MESSAGE_BYTES) {
-          const err = makeError(
-            0,
-            RPC_ERRORS.INVALID_REQUEST,
-            `RPC message too large (max ${MAX_RPC_MESSAGE_BYTES} bytes)`,
-          );
-          if (!conn.destroyed) {
-            try { conn.write(JSON.stringify(err) + "\n"); } catch {}
-          }
-          conn.destroy();
+          closing = true;
           buffer = "";
+          conn.destroy();
           return;
         }
 
@@ -93,14 +88,8 @@ export function startDaemon(payload: DecryptedPayload): Promise<void> {
           if (!line.trim()) continue;
 
           if (Buffer.byteLength(line, "utf8") > MAX_RPC_MESSAGE_BYTES) {
-            const err = makeError(
-              0,
-              RPC_ERRORS.INVALID_REQUEST,
-              `RPC message too large (max ${MAX_RPC_MESSAGE_BYTES} bytes)`,
-            );
-            if (!conn.destroyed) {
-              try { conn.write(JSON.stringify(err) + "\n"); } catch {}
-            }
+            closing = true;
+            buffer = "";
             conn.destroy();
             return;
           }

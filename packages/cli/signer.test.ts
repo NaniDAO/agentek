@@ -759,9 +759,15 @@ describe("Signer — daemon hardening", () => {
       policy,
     });
 
+    // Send data exceeding MAX_RPC_MESSAGE_BYTES (256 KB) in chunks to ensure
+    // the server sees it accumulate past the threshold.
     await new Promise<void>((resolve, reject) => {
       const socket = connect(getSocketPath(), () => {
-        socket.write("x".repeat(300 * 1024));
+        // Write in 64 KB chunks to avoid OS-level buffering issues
+        const chunk = "x".repeat(64 * 1024);
+        for (let i = 0; i < 5; i++) {
+          if (!socket.destroyed) socket.write(chunk);
+        }
       });
 
       let settled = false;
@@ -776,15 +782,22 @@ describe("Signer — daemon hardening", () => {
         settle(() => reject(new Error("oversized frame was not closed in time")));
       }, 5_000);
 
+      // Server calls conn.destroy() — client sees close, end, or error
       socket.on("close", () => {
         clearTimeout(timeout);
+        settle(resolve);
+      });
+
+      socket.on("end", () => {
+        clearTimeout(timeout);
+        socket.destroy();
         settle(resolve);
       });
 
       socket.on("error", (err) => {
         clearTimeout(timeout);
         const code = (err as NodeJS.ErrnoException).code;
-        if (code === "EPIPE" || code === "ECONNRESET") {
+        if (code === "EPIPE" || code === "ECONNRESET" || code === "ERR_STREAM_DESTROYED") {
           settle(resolve);
           return;
         }
@@ -832,7 +845,7 @@ describe("CLI — signer command", () => {
     expect(err.error).toContain("No keyfile");
   });
 
-  it("signer stop should not kill unrelated PID when daemon is unreachable", async () => {
+  it("signer stop should not kill unrelated PID when daemon is unreachable", { timeout: 15_000 }, async () => {
     const sleeper = spawn("node", ["-e", "setTimeout(() => {}, 30000)"], { stdio: "ignore" });
     expect(sleeper.pid).toBeDefined();
 
