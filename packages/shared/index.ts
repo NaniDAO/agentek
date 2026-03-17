@@ -32,6 +32,7 @@ import { zrouterTools } from "./zrouter/index.js";
 import { wnsTools } from "./wns/index.js";
 import { x402Tools } from "./x402/index.js";
 import { twitterTools } from "./twitter/index.js";
+import { resolveTokenTools } from "./resolveToken/index.js";
 import { assertOkResponse } from "./utils/fetch.js";
 
 const allTools = async ({
@@ -88,7 +89,8 @@ const allTools = async ({
     ...zammTools(),
     ...zrouterTools(),
     ...wnsTools(),
-    ...x402Tools()
+    ...x402Tools(),
+    ...resolveTokenTools(),
   ];
 
   if (perplexityApiKey) {
@@ -169,5 +171,6 @@ export {
   wnsTools,
   x402Tools,
   twitterTools,
+  resolveTokenTools,
   assertOkResponse
 };

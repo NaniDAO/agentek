@@ -1,17 +1,16 @@
-import { Address } from "viem";
+import { Address, getAddress } from "viem";
 import { z } from "zod";
 import { isAddress } from "viem/utils";
 
 export const addressSchema = z.string().transform((val, ctx) => {
-  if (!isAddress(val)) {
+  if (!isAddress(val, { strict: false })) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Invalid Ethereum address",
     });
-    // stop here
     return z.NEVER;
   }
-  return val as Address; // output is Address
+  return getAddress(val) as Address;
 });
 
 export const clean = (obj: any): any => {
