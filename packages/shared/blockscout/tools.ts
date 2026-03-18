@@ -70,6 +70,31 @@ export async function fetchFromBlockscoutV2(
     throw error;
   }
 }
+const DEFAULT_PAGE_SIZE = 20;
+
+/**
+ * Compact a Blockscout paginated response so it fits in model context.
+ * Keeps at most `DEFAULT_PAGE_SIZE` items and surfaces a `hasMore` flag plus
+ * `next_page_params` the caller can pass verbatim to fetch the next page.
+ */
+function compactItems(response: any): any {
+  if (!response || typeof response !== "object") return response;
+
+  const items: any[] | undefined = response.items;
+  if (!Array.isArray(items)) return response;
+
+  const hasMore = items.length > DEFAULT_PAGE_SIZE || !!response.next_page_params;
+  const truncated = items.slice(0, DEFAULT_PAGE_SIZE);
+
+  return {
+    items: truncated,
+    hasMore,
+    next_page_params: response.next_page_params
+      ? JSON.stringify(response.next_page_params)
+      : null,
+  };
+}
+
 /**
  * /addresses ENDPOINTS
  * - GET /addresses => Get native coin holders list
@@ -219,18 +244,28 @@ export const getAddressTokenTransfers = createTool({
  */
 export const getAddressInternalTransactions = createTool({
   name: "getAddressInternalTransactions",
-  description: "Get internal (trace-level) transactions for an address, including contract-to-contract calls and ETH transfers within transactions.",
+  description: "Get internal (trace-level) transactions for an address, including contract-to-contract calls and ETH transfers within transactions. Returns at most 20 items; use the `next_page_params` value to paginate.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
     address: addressSchema,
+    next_page_params: z.string().optional().describe("Opaque pagination cursor from a previous response. Pass exactly as received to fetch the next page."),
   }),
   execute: async (_, args) => {
-    const { chain, address } = args;
-    return await fetchFromBlockscoutV2(
+    const { chain, address, next_page_params } = args;
+    const query: Record<string, string> = {};
+    if (next_page_params) {
+      const parsed = JSON.parse(next_page_params);
+      for (const [k, v] of Object.entries(parsed)) {
+        query[k] = String(v);
+      }
+    }
+    const response = await fetchFromBlockscoutV2(
       chain as SupportedChain,
       `/addresses/${address}/internal-transactions`,
+      query,
     );
+    return compactItems(response);
   },
 });
 
@@ -263,18 +298,28 @@ export const getAddressLogs = createTool({
  */
 export const getAddressBlocksValidated = createTool({
   name: "getAddressBlocksValidated",
-  description: "Get blocks validated (proposed) by a specific validator address.",
+  description: "Get blocks validated (proposed) by a specific validator address. Returns at most 20 items; use the `next_page_params` value to paginate.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
     address: addressSchema,
+    next_page_params: z.string().optional().describe("Opaque pagination cursor from a previous response. Pass exactly as received to fetch the next page."),
   }),
   execute: async (_, args) => {
-    const { chain, address } = args;
-    return await fetchFromBlockscoutV2(
+    const { chain, address, next_page_params } = args;
+    const query: Record<string, string> = {};
+    if (next_page_params) {
+      const parsed = JSON.parse(next_page_params);
+      for (const [k, v] of Object.entries(parsed)) {
+        query[k] = String(v);
+      }
+    }
+    const response = await fetchFromBlockscoutV2(
       chain as SupportedChain,
       `/addresses/${address}/blocks-validated`,
+      query,
     );
+    return compactItems(response);
   },
 });
 
@@ -417,18 +462,28 @@ export const getAddressNFTs = createTool({
  */
 export const getAddressNFTCollections = createTool({
   name: "getAddressNFTCollections",
-  description: "Get NFTs owned by an address, grouped by collection (ERC721/ERC1155).",
+  description: "Get NFTs owned by an address, grouped by collection (ERC721/ERC1155). Returns at most 20 items; use the `next_page_params` value to paginate.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
     address: addressSchema,
+    next_page_params: z.string().optional().describe("Opaque pagination cursor from a previous response. Pass exactly as received to fetch the next page."),
   }),
   execute: async (_, args) => {
-    const { chain, address } = args;
-    return await fetchFromBlockscoutV2(
+    const { chain, address, next_page_params } = args;
+    const query: Record<string, string> = {};
+    if (next_page_params) {
+      const parsed = JSON.parse(next_page_params);
+      for (const [k, v] of Object.entries(parsed)) {
+        query[k] = String(v);
+      }
+    }
+    const response = await fetchFromBlockscoutV2(
       chain as SupportedChain,
       `/addresses/${address}/nft/collections`,
+      query,
     );
+    return compactItems(response);
   },
 });
 

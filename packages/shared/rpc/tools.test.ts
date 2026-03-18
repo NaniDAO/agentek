@@ -203,7 +203,8 @@ describe("RPC Tools - Real Chain Calls", () => {
       expect(result).toHaveProperty("hash");
       expect(result).toHaveProperty("number");
       expect(result).toHaveProperty("timestamp");
-      expect(result).toHaveProperty("transactions");
+      expect(result).toHaveProperty("transactionCount");
+      expect(result).not.toHaveProperty("transactions");
       expect(result.number).toBe("1000000");
     });
 

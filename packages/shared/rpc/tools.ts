@@ -122,9 +122,16 @@ const getTransactionCount = createTool({
 });
 
 // Block Tools
+const compactBlock = (block: any) => {
+  const cleaned = clean(block);
+  const txCount = Array.isArray(cleaned.transactions) ? cleaned.transactions.length : 0;
+  const { transactions, ...rest } = cleaned;
+  return { ...rest, transactionCount: txCount };
+};
+
 const getBlock = createTool({
   name: "getBlock",
-  description: "Get information about a block including timestamp, transactions, gas used, etc. Returns the latest block if no block number is specified.",
+  description: "Get a compact summary of a block (number, timestamp, gas used, transaction count). Full transactions are omitted to keep the response small. Returns the latest block if no block number is specified.",
   supportedChains,
   parameters: z.object({
     blockNumber: z.number().optional().describe("The block number to fetch. Omit to get the latest block."),
@@ -137,11 +144,11 @@ const getBlock = createTool({
       const block = await publicClient.getBlock({
         blockNumber: BigInt(args.blockNumber),
       });
-      return clean(block);
+      return compactBlock(block);
     }
 
     const block = await publicClient.getBlock();
-    return clean(block);
+    return compactBlock(block);
   },
 });
 
