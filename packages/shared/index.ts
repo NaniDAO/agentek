@@ -31,6 +31,7 @@ import { zammTools } from "./zamm/index.js";
 import { zrouterTools } from "./zrouter/index.js";
 import { wnsTools } from "./wns/index.js";
 import { x402Tools } from "./x402/index.js";
+import { mppTools } from "./mpp/index.js";
 import { twitterTools } from "./twitter/index.js";
 import { resolveTokenTools } from "./resolveToken/index.js";
 import { assertOkResponse } from "./utils/fetch.js";
@@ -48,6 +49,8 @@ const allTools = async ({
   xApiKeySecret,
   xAccessToken,
   xAccessTokenSecret,
+  stripeSecretKey,
+  stripePaymentMethod,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
@@ -61,6 +64,8 @@ const allTools = async ({
   xApiKeySecret?: string;
   xAccessToken?: string;
   xAccessTokenSecret?: string;
+  stripeSecretKey?: string;
+  stripePaymentMethod?: string;
 }) => {
   let tools = [
     ...ensTools(),
@@ -90,6 +95,7 @@ const allTools = async ({
     ...zrouterTools(),
     ...wnsTools(),
     ...x402Tools(),
+    ...mppTools({ stripeSecretKey, stripePaymentMethod }),
     ...resolveTokenTools(),
   ];
 
@@ -170,6 +176,7 @@ export {
   zrouterTools,
   wnsTools,
   x402Tools,
+  mppTools,
   twitterTools,
   resolveTokenTools,
   assertOkResponse
