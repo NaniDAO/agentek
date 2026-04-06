@@ -34,6 +34,7 @@ import { x402Tools } from "./x402/index.js";
 import { twitterTools } from "./twitter/index.js";
 import { resolveTokenTools } from "./resolveToken/index.js";
 import { approvalTools } from "./approvals/index.js";
+import { contractTools } from "./contract/index.js";
 import { assertOkResponse } from "./utils/fetch.js";
 
 const allTools = async ({
@@ -93,6 +94,7 @@ const allTools = async ({
     ...x402Tools(),
     ...resolveTokenTools(),
     ...approvalTools(),
+    ...contractTools(),
   ];
 
   if (perplexityApiKey) {
@@ -175,5 +177,6 @@ export {
   twitterTools,
   resolveTokenTools,
   approvalTools,
+  contractTools,
   assertOkResponse
 };
