@@ -33,6 +33,7 @@ import { wnsTools } from "./wns/index.js";
 import { x402Tools } from "./x402/index.js";
 import { twitterTools } from "./twitter/index.js";
 import { resolveTokenTools } from "./resolveToken/index.js";
+import { approvalTools } from "./approvals/index.js";
 import { assertOkResponse } from "./utils/fetch.js";
 
 const allTools = async ({
@@ -91,6 +92,7 @@ const allTools = async ({
     ...wnsTools(),
     ...x402Tools(),
     ...resolveTokenTools(),
+    ...approvalTools(),
   ];
 
   if (perplexityApiKey) {
@@ -172,5 +174,6 @@ export {
   x402Tools,
   twitterTools,
   resolveTokenTools,
+  approvalTools,
   assertOkResponse
 };
