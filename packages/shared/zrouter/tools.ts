@@ -28,8 +28,8 @@ export const getQuote = createTool({
 
     // --- resolve tokens (symbol -> address[/id]) and decimals/standard ---
     const [tIn, tOut] = await Promise.all([
-      resolveInputToToken(tokenIn, chainId),
-      resolveInputToToken(tokenOut, chainId),
+      resolveInputToToken(tokenIn, chainId, publicClient),
+      resolveInputToToken(tokenOut, chainId, publicClient),
     ]);
 
     // --- parse amount into base units depending on standard ---

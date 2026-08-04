@@ -74,13 +74,24 @@ export async function fetchApiRoutes(params: {
       signal: AbortSignal.timeout(15_000),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      // Loud on the way past. Returning null here is correct — the SDK can
+      // still route many pairs — but silently doing so is how a dead endpoint
+      // masqueraded as "no route found" for months.
+      console.warn(
+        `[zrouter] route API ${response.status} from ${ZROUTER_API_URL}/quote; falling back to on-chain routing`
+      );
+      return null;
+    }
 
     const data = await response.json();
     if (!data.routes || data.routes.length === 0) return null;
 
     return data.routes.map(deserializeRoute);
-  } catch {
+  } catch (err) {
+    console.warn(
+      `[zrouter] route API unreachable at ${ZROUTER_API_URL}: ${err instanceof Error ? err.message : String(err)}`
+    );
     return null;
   }
 }

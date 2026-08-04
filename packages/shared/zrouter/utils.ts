@@ -1,6 +1,6 @@
 import { Token } from "zrouter-sdk";
 import { ResolvedToken, ZToken } from "./types.js";
-import { Address, parseUnits } from "viem";
+import { Address, erc20Abi, parseUnits } from "viem";
 import { assertOkResponse } from "../utils/fetch.js";
 
 type TokenListEntry = {
@@ -33,19 +33,55 @@ async function loadTokenList(): Promise<TokenListEntry[]> {
   return tokens;
 }
 
-export async function resolveInputToToken(input: string | ZToken, chainId: number): Promise<ResolvedToken & { symbol?: string }> {
+/**
+ * `publicClient` is optional only so existing callers keep compiling; pass it
+ * wherever one is available. Without it an unlisted token can't have its
+ * decimals read, and the resolver has to fall back to assuming 18.
+ */
+export async function resolveInputToToken(
+  input: string | ZToken,
+  chainId: number,
+  publicClient?: { readContract: (args: any) => Promise<any> }
+): Promise<ResolvedToken & { symbol?: string }> {
   if (typeof input !== "string") {
     const enriched = await enrichFromListByAddress(input.address, chainId, input.id);
     if (enriched) return enriched;
+    // ERC6909 ids carry their own decimals convention (0); only plain ERC20s
+    // need the on-chain read.
+    const decimals =
+      input.id !== undefined ? 0 : await readDecimals(input.address, publicClient);
     return {
       address: input.address,
       id: input.id,
       standard: input.id !== undefined ? "ERC6909" : "ERC20",
-      decimals: input.id !== undefined ? 0 : 18,
+      decimals,
     };
   }
 
-  const sym = input.trim().toUpperCase();
+  const trimmed = input.trim();
+
+  // A bare contract address is accepted here as well as a symbol.
+  //
+  // The schema offered a string (documented as a symbol) or an object
+  // (documented as ERC6909-only), which left no slot for "this ERC20, by
+  // address". A caller holding an address — the more precise identifier, and
+  // the one that can't collide the way symbols do — had nowhere to put it, so
+  // it went in the string and got uppercased into a symbol lookup:
+  //   Symbol "0XAAEE1A97…" not found on chainId 1
+  // Treating it as what it plainly is costs one regex and removes a failure
+  // that only ever punished the safer input.
+  if (/^0x[0-9a-fA-F]{40}$/.test(trimmed)) {
+    const address = trimmed as Address;
+    const enriched = await enrichFromListByAddress(address, chainId);
+    if (enriched) return enriched;
+    return {
+      address,
+      standard: "ERC20",
+      decimals: await readDecimals(address, publicClient),
+    };
+  }
+
+  const sym = trimmed.toUpperCase();
   const entry = await findTokenListEntryBySymbol(sym, chainId);
   if (!entry) throw new Error(`Symbol "${sym}" not found on chainId ${chainId}.`);
 
@@ -62,6 +98,33 @@ export async function resolveInputToToken(input: string | ZToken, chainId: numbe
     decimals,
     symbol: entry.symbol,
   };
+}
+
+/**
+ * Decimals for a token that isn't in the token list.
+ *
+ * `amount` is human-readable, so decimals set the scale of the trade — assuming
+ * 18 for a 6-decimal token sizes it 10^12 too large. The address is right
+ * there, so ask the contract rather than guess. 18 remains the last resort for
+ * a token that answers nothing, which is the same assumption the list-miss path
+ * made before, just no longer the first choice.
+ */
+async function readDecimals(
+  address: Address,
+  publicClient?: { readContract: (args: any) => Promise<any> }
+): Promise<number> {
+  if (!publicClient) return 18;
+  try {
+    const value = await publicClient.readContract({
+      address,
+      abi: erc20Abi,
+      functionName: "decimals",
+    });
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 0 && n <= 36 ? n : 18;
+  } catch {
+    return 18;
+  }
 }
 
 async function findTokenListEntryBySymbol(symbol: string, chainId: number): Promise<TokenListEntry | undefined> {
