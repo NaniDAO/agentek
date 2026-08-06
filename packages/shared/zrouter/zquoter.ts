@@ -23,7 +23,16 @@ export const ZQUOTER_ADDRESS: Record<number, Address> = {
   // (0x907DAE8d75369A21fFf57402Fe29Ef4e95523465) reverts for pairs this one
   // routes fine, so it is deliberately not used.
   1: "0x0000002d9a651b729e3aFBE57Fc84FFDa4a98a13",
-  8453: "0x658bF1A6608210FDE7310760f391AD4eC8006A5F",
+  // No Base entry on purpose. 0x658bF1A6608210FDE7310760f391AD4eC8006A5F was
+  // listed here, but eth_getCode shows it has no code on Base — it is
+  // zQuoterBase, a helper the mainnet quoter delegates to, deployed only on
+  // Ethereum. Calling a codeless address returns empty rather than reverting,
+  // so this failed by decoding nothing and falling through to the API. Absent
+  // means we take that fallback immediately instead of spending a round trip
+  // pretending otherwise.
+  //
+  // zRouter's README lists 0x772E2810A471dB2CC7ADA0d37D6395476535889a for Base,
+  // but it reverts on every pair tried, so it is not wired up on a doc alone.
 };
 
 /** Taken from the contract's own ABI. */
