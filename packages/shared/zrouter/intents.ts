@@ -17,7 +17,7 @@ import { AmountSchema, SymbolOrTokenSchema } from "./types.js";
 import { addressSchema } from "../utils.js";
 import { asToken, resolveInputToToken, toBaseUnits } from "./utils.js";
 import { fetchApiRoutes } from "./api.js";
-import { buildBestSwap, isNativeETH } from "./zquoter.js";
+import { buildBestSwap, isNativeETH, zRouterAddress } from "./zquoter.js";
 
 const swapParameters = z.object({
   chainId: z.number().default(1).describe("Chain ID (1 for Mainnet, 8453 for Base). Default: 1"),
@@ -102,7 +102,9 @@ export const intentSwap = createTool({
       });
 
       if (built) {
-        const routerAddr: Address = args.router ?? getConfig(chainId).router;
+        // Must be the router this quoter built for, not the SDK's pinned one.
+        const routerAddr: Address =
+          args.router ?? zRouterAddress(chainId) ?? getConfig(chainId).router;
         const ops: { target: Address; value: string; data: Hex }[] = [];
 
         // ETH inputs ride in msgValue, so only a token input needs an

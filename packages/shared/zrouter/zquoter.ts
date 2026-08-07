@@ -35,6 +35,29 @@ export const ZQUOTER_ADDRESS: Record<number, Address> = {
   // but it reverts on every pair tried, so it is not wired up on a doc alone.
 };
 
+/**
+ * The router each chain's zQuoter builds calldata FOR — a matched pair, not two
+ * independent settings.
+ *
+ * The quoter bakes its router in as a constant and uses it as the destination
+ * for intermediate hops, so funds land back in the router between legs before a
+ * final sweep. Send to a different router and a single hop still works (same
+ * ABI) while a multi-hop delivers leg one's output to a contract that isn't
+ * executing the swap.
+ *
+ * zrouter-sdk's getConfig() still pins 0x00000000008892d0... on mainnet, which
+ * is NOT what the quoter we call targets — verified from deployed bytecode,
+ * where 0x0000002d9a... embeds 0x...FB1147 and never 0x...8892d0.
+ */
+export const ZROUTER_ADDRESS: Record<number, Address> = {
+  1: "0x000000000000FB114709235f1ccBFfb925F600e4",
+  8453: "0x0000000000404FECAf36E6184245475eE1254835",
+};
+
+export function zRouterAddress(chainId: number): Address | null {
+  return ZROUTER_ADDRESS[chainId] ?? null;
+}
+
 /** Taken from the contract's own ABI. */
 export const zQuoterAbi = [
   {
