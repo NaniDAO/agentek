@@ -1,6 +1,7 @@
 import { BaseTool, createToolCollection } from "../client.js";
+import { quoteNaniBatchTool } from "./batch.js";
 import { estimateGasCostTool } from "./tools.js";
 
 export function gasEstimatorTools(): BaseTool[] {
-  return createToolCollection([estimateGasCostTool]);
+  return createToolCollection([estimateGasCostTool, quoteNaniBatchTool]);
 }
