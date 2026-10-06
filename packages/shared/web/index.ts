@@ -1,9 +1,10 @@
 import { BaseTool, createToolCollection } from "../client.js";
+import { webPageExtractor, webPageResult } from "./page.js";
 import { scrapeWebContent } from "./tools.js";
 
 /**
  * Export an array of tools for researching web content.
  */
 export function webTools(): BaseTool[] {
-  return createToolCollection([scrapeWebContent]);
+  return createToolCollection([scrapeWebContent, webPageExtractor, webPageResult]);
 }
