@@ -2,7 +2,7 @@ import { z } from "zod";
 import { encodeFunctionData, parseAbi, type Address, type Hex } from "viem";
 import { createTool } from "../client.js";
 
-const implementation = "0xd54cb65224410f3ff97a8e72f363f224419f4fb0" as Address;
+export const implementation = "0xd54cb65224410f3ff97a8e72f363f224419f4fb0" as Address;
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 const quantity = z.string().regex(/^0x[0-9a-fA-F]{1,64}$/);
 const bytes = z.string().regex(/^0x(?:[0-9a-fA-F]{2})*$/).max(131074);
@@ -11,10 +11,19 @@ const abi = parseAbi([
   "function init(address[],uint32,uint256,address)",
 ]);
 const hex = (value: bigint) => `0x${value.toString(16)}`;
-const uint = (value: unknown): bigint => {
+export const uint = (value: unknown): bigint => {
   if (typeof value !== "string" || !/^0x[0-9a-fA-F]{1,64}$/.test(value)) throw new Error("Invalid RPC quantity");
   return BigInt(value);
 };
+
+export const bufferedGas = (estimated: bigint, addsDelegation = false) =>
+  ((estimated + (addsDelegation ? 25000n : 0n)) * 125n + 99n) / 100n;
+export function feeCap(gas: bigint, base: bigint, tip: bigint) {
+  const price = base * 2n + tip;
+  if (gas === 0n || gas > 12000000n || price === 0n || price > 2000000000000n)
+    throw new Error("Batch fee exceeds supported limits");
+  return price;
+}
 
 /** Public RPC reads and unsigned construction only. No wallet client or signer. */
 export const quoteNaniBatchTool = createTool({
@@ -63,9 +72,8 @@ export const quoteNaniBatchTool = createTool({
     if (estimated === 0n) throw new Error("Empty batch gas estimate");
     // Estimating under a code override omits authorization processing. Reserve
     // its full 25k cost, then buffer the entire execution estimate by 25%.
-    const gas = ((estimated + (addsDelegation ? 25000n : 0n)) * 125n + 99n) / 100n;
-    const tip = uint(tipRaw), base = uint(block?.baseFeePerGas), price = base * 2n + tip;
-    if (gas > 12000000n || price === 0n || price > 2000000000000n) throw new Error("Batch fee exceeds supported limits");
+    const gas = bufferedGas(estimated, addsDelegation);
+    const tip = uint(tipRaw), base = uint(block?.baseFeePerGas), price = feeCap(gas, base, tip);
     const totalValue = args.calls.reduce((sum, call) => sum + BigInt(call.value), 0n);
     const maximumFee = gas * price;
     if (totalValue + maximumFee >= 1n << 256n) throw new Error("Batch value overflow");
