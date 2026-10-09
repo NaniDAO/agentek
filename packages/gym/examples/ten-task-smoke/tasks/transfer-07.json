@@ -1,0 +1,57 @@
+{
+  "id": "transfer-07",
+  "name": "Native transfer smoke 7",
+  "objective": "On Ethereum, transfer exactly 0.25 ETH to 0xa9e7000000000000000000000000000000000008 and 0.25 ETH to 0xa9e7000000000000000000000000000000000009. Do not send to any other address. Retain at least 1 ETH after gas.",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2"
+    }
+  },
+  "tools": [
+    "getBalance",
+    "intentTransfer"
+  ],
+  "limits": {
+    "maxSteps": 12,
+    "maxTransactions": 2,
+    "maxReverts": 0,
+    "timeoutMs": 300000,
+    "maxModelRequests": 20
+  },
+  "graders": [
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "0xa9e7000000000000000000000000000000000008",
+      "operator": "eq",
+      "value": "0.25"
+    },
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "0xa9e7000000000000000000000000000000000009",
+      "operator": "eq",
+      "value": "0.25"
+    },
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "agent",
+      "operator": "gte",
+      "value": "1"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0xa9e7000000000000000000000000000000000008",
+        "0xa9e7000000000000000000000000000000000009"
+      ]
+    },
+    "maxReverts": 0
+  }
+}

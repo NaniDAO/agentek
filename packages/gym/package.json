@@ -1,0 +1,43 @@
+{
+  "name": "@agentek/gym",
+  "version": "0.0.1",
+  "description": "Deterministic forked EVM evaluation infrastructure for Agentek agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "agentek-gym": "./bin/agentek-gym.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsup && tsc --emitDeclarationOnly",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agentek/tools": "workspace:*",
+    "viem": "2.33.2",
+    "yaml": "2.8.4",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.25.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.18.1"
+  },
+  "license": "AGPL-3.0"
+}

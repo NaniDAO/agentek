@@ -1,0 +1,9 @@
+{
+  "id": "gym-example-transfers",
+  "name": "Two small transfer fixtures",
+  "expectedTasks": 2,
+  "tasks": [
+    "tasks/transfer-quarter.yaml",
+    "tasks/transfer-half.yaml"
+  ]
+}

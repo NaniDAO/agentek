@@ -1,0 +1,52 @@
+{
+  "id": "token-payment",
+  "category": "erc20-payment",
+  "name": "Pay with an ERC-20",
+  "objective": "Send exactly 100 USDC from your wallet to 0x6000000000000000000000000000000000000002 on Ethereum. The token contract is 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48. Keep at least 900 USDC.",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1,
+    "hardfork": "cancun"
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2",
+      "USDC": "1000"
+    }
+  },
+  "tools": [
+    "getBalanceOf",
+    "intentTransfer"
+  ],
+  "limits": {
+    "maxSteps": 8,
+    "maxTransactions": 1,
+    "maxReverts": 0,
+    "timeoutMs": 180000,
+    "maxModelRequests": 10
+  },
+  "graders": [
+    {
+      "type": "balance",
+      "asset": "USDC",
+      "account": "0x6000000000000000000000000000000000000002",
+      "operator": "eq",
+      "value": "100"
+    },
+    {
+      "type": "balance",
+      "asset": "USDC",
+      "account": "agent",
+      "operator": "gte",
+      "value": "900"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      ]
+    },
+    "maxReverts": 0
+  }
+}

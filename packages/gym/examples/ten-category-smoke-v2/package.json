@@ -1,0 +1,17 @@
+{
+  "name": "agentek-ten-category-smoke",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.18.1"
+  },
+  "dependencies": {
+    "viem": "2.33.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "ws": "8.21.0"
+    }
+  }
+}

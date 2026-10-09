@@ -1,0 +1,56 @@
+{
+  "id": "write-contract",
+  "category": "contract-write",
+  "name": "Change contract state",
+  "objective": "Call increment() exactly once on Ethereum contract 0x1000000000000000000000000000000000000001; its answer() value should become 424243. Use ABI [{\"type\":\"function\",\"name\":\"answer\",\"stateMutability\":\"view\",\"inputs\":[],\"outputs\":[{\"type\":\"uint256\"}]},{\"type\":\"function\",\"name\":\"increment\",\"stateMutability\":\"nonpayable\",\"inputs\":[],\"outputs\":[]}].",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2"
+    }
+  },
+  "tools": [
+    "readContract",
+    "intentWriteContract"
+  ],
+  "limits": {
+    "maxSteps": 8,
+    "maxTransactions": 1,
+    "maxReverts": 0,
+    "timeoutMs": 180000,
+    "maxModelRequests": 10
+  },
+  "graders": [
+    {
+      "type": "contractView",
+      "address": "0x1000000000000000000000000000000000000001",
+      "abi": [
+        {
+          "type": "function",
+          "name": "answer",
+          "stateMutability": "view",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "uint256"
+            }
+          ]
+        }
+      ],
+      "functionName": "answer",
+      "operator": "eq",
+      "value": "424243"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0x1000000000000000000000000000000000000001"
+      ]
+    },
+    "maxReverts": 0
+  }
+}

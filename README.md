@@ -2,7 +2,7 @@
 
 ![agentek-logo-1](https://github.com/user-attachments/assets/c73ccd7b-4c4e-4c90-8ccc-1ed101fa1b0b)
 
-An extensible TypeScript toolkit for EVM and Solana blockchain interactions. 177 composable tools covering on-chain actions, DeFi protocols, market data, and off-chain services — designed for AI agents, MCP clients, and developers.
+An extensible TypeScript toolkit for EVM and Solana blockchain interactions. Up to 205 composable tools (191 without optional API credentials) covering on-chain actions, DeFi protocols, market data, and off-chain services — designed for AI agents, MCP clients, and developers.
 
 ## Quick Start
 
@@ -10,9 +10,9 @@ Requires Node.js 20.18.1 or newer.
 
 **CLI** (fastest way to try it):
 ```bash
-npx @agentek/cli list          # browse up to 177 tools
+npx @agentek/cli list          # browse up to 205 tools
 npx @agentek/cli info getBalance  # inspect a specific tool
-npx @agentek/cli exec getBalance '{"chainId":1,"address":"vitalik.eth"}'
+npx @agentek/cli exec getBalance --json '{"chainId":1,"address":"0x0000000000000000000000000000000000000000"}'
 ```
 
 **MCP Server** (for Claude Desktop, Cursor, etc.):
@@ -29,15 +29,21 @@ pnpm add @agentek/tools
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| [`@agentek/tools`](packages/shared) | Core toolkit — up to 177 tools | 0.1.26 |
+| [`@agentek/tools`](packages/shared) | Core toolkit — up to 205 tools | 0.1.26 |
 | [`@agentek/ai-sdk`](packages/ai-sdk) | Vercel AI SDK integration | 0.1.26 |
 | [`@agentek/mcp-server`](packages/mcp) | Model Context Protocol server | 0.1.26 |
 | [`@agentek/cli`](packages/cli) | Command-line interface | 0.0.2 |
+| [`@agentek/gym`](packages/gym) | Agent evaluation on disposable Anvil forks | 0.0.1 |
+| [`@agentek/nani`](packages/nani) | Private host-integrated Nani bundle | 0.1.0 |
+
+Versions above are workspace manifest versions; they do not establish npm publication status.
 
 ## Requirements
 
-- Node.js >= 18.17.0
+- Node.js >= 20.18.1
 - pnpm (for development)
+- Bun for the private Nani bundle build
+- Foundry/Anvil for Gym fork environments and integration tests
 
 ## Installation
 
@@ -78,7 +84,8 @@ const aiTools = toolkit.getTools();
 ### Using the toolkit directly
 
 ```typescript
-import { createAgentekClient, allTools } from '@agentek/tools';
+import { createAgentekClient } from '@agentek/tools/client';
+import { allTools } from '@agentek/tools';
 import { http } from 'viem';
 import { mainnet } from 'viem/chains';
 
@@ -117,7 +124,8 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-Use `ACCOUNT` for read-only access. Add `PRIVATE_KEY` only if you need to execute transactions.
+Use `ACCOUNT` for address context and unsigned EVM intents. Configure a signer
+or `PRIVATE_KEY` to submit EVM transactions; Solana signing is configured separately.
 
 See the [MCP Server README](packages/mcp/README.md) for full configuration details.
 
@@ -134,14 +142,14 @@ npx @agentek/cli search "swap"
 npx @agentek/cli info intentApprove
 
 # Execute a tool
-npx @agentek/cli exec getCryptoPrice '{"coinId":"ethereum"}'
+npx @agentek/cli exec getCryptoPrice --symbol ethereum
 ```
 
 See the [CLI Guide](packages/cli/GUIDE.md) for complete documentation.
 
 ### Composing a custom tool set
 
-You don't have to use all 177 tools. Import only what you need:
+You don't have to use all 205 tools. Import only what you need:
 
 ```typescript
 import { rpcTools, erc20Tools, defillamaTools } from '@agentek/tools';
@@ -153,7 +161,11 @@ const tools = [
 ];
 ```
 
-## Tools (177 total)
+## Tools (up to 205)
+
+`allTools({})` returns 191 tools. Optional service credentials add up to 14
+more; availability depends on configuration. Host-integrated Nani tool sets
+may expose a different selection. Tool support also varies by chain.
 
 ### Blockchain Core
 
@@ -165,26 +177,29 @@ const tools = [
 | **erc721** | 1 | `getNFTMetadata` |
 | **erc6909** | 3 | Token balance, metadata, and transfer intents |
 | **ens** | 2 | `resolveENS`, `lookupENS` |
+| **resolveToken** | 1 | `resolveToken` — token address and metadata resolution |
+| **contract** | 2 | `readContract`, `intentWriteContract` — generic contract interaction |
+| **approvals** | 7 | Permission discovery/observations, selected revocation plans, and approval revocation intents |
 | **wns** | 19 | `resolveWNS`, `isAvailableWNS`, `intentRegisterWNS`, and 16 more naming tools |
 
 ### DeFi
 
 | Module | Tools | Description |
 |--------|-------|-------------|
-| **aave** | 6 | Lending/borrowing: `getAaveUserData`, `getAaveReserveData`, deposit, withdraw, borrow, repay intents |
-| **uniV3** | 9 | Liquidity: `getUniV3Pool`, `getUserPositions`, `getPoolFeeData`, mint/increase/decrease/collect/transfer intents |
+| **aave** | 7 | Account observations and lending/borrowing: `getAaveUserData`, `getAaveReserveData`, deposit, withdraw, borrow, repay intents |
+| **uniV3** | 11 | Position discovery/observations and liquidity: `getUniV3Pool`, `getUserPositions`, `getPoolFeeData`, mint/increase/decrease/collect/transfer intents |
 | **swap** | 1 | `intent0xSwap` — token swaps via 0x aggregator |
 | **weth** | 2 | `depositWETH`, `withdrawWETH` |
-| **zamm** | 5 | `getPool`, `getSwaps`, `getAccountPortfolio`, and swap/liquidity tools |
-| **zrouter** | 2 | `getQuote`, `swap` — cross-DEX routing |
+| **zamm** | 5 | `getCoin`, `getHolders`, `getAccountPortfolio`, `getPool`, `getSwaps` |
+| **zrouter** | 2 | `getQuote`, `intentSwap` — cross-DEX routing |
 | **x402** | 3 | `x402Fetch`, `getX402PaymentInfo`, `x402DiscoverResources` — HTTP 402 payments |
-| **defillama** | 5 | `getYieldTool`, `compareYieldTool`, `getYieldHistoryTool`, `compareYieldHistoryTool`, `getTokenChart` |
+| **defillama** | 6 | `getYieldTool`, `getYieldPoolEvidence`, `compareYieldTool`, `getYieldHistoryTool`, `compareYieldHistoryTool`, `getTokenChart` |
 
 ### Cross-Chain
 
 | Module | Tools | Description |
 |--------|-------|-------------|
-| **across** | 2 | `getAcrossFeeQuote`, `intentDepositAcross` |
+| **across** | 3 | `getAcrossRoutes`, `getAcrossFeeQuote`, `intentDepositAcross` |
 | **slowTransfer** | 12 | Slow-release transfers with guardian controls |
 
 ### Market Data
@@ -197,7 +212,7 @@ const tools = [
 | **coindesk** | 1 | `getLatestCoindeskNewsTool` — crypto news |
 | **coinmarketcal** | 1 | `getMarketEvents` — upcoming market events |
 | **feargreed** | 1 | `getFearAndGreedIndex` |
-| **gasestimator** | 1 | `estimateGasCost` — gas cost in USD |
+| **gasestimator** | 3 | `estimateGasCost`, `quoteNaniBatch`, `quoteNaniNativeMax` — gas estimates and unsigned execution quotes |
 
 ### Block Explorer (Blockscout)
 
@@ -216,7 +231,7 @@ const tools = [
 | Module | Tools | Description |
 |--------|-------|-------------|
 | **twitter** | 5 | `searchRecentTweets`, `getTweetById`, `getXUserByUsername`, `getXUserTweets`, `getHomeTimeline` |
-| **web** | 1 | `scrapeWebContent` |
+| **web** | 3 | `scrapeWebContent`, `webPageExtractor`, `webPageResult` — scraping and host-integrated page observations |
 | **search** | 1 | `askPerplexitySearch` |
 | **imagegen** | 1 | `generateAndPinImage` — AI image generation + IPFS pinning |
 
@@ -243,6 +258,11 @@ const tools = [
 - Arbitrum
 - Polygon
 - Base
+- Mode
+- Sepolia
+
+These are the default CLI/MCP EVM client networks; individual tools declare
+their own supported chains.
 
 **Solana**
 
@@ -257,7 +277,10 @@ with no configuration at all. Writes need a key, which lives in its own
 `solana` config block because Solana uses ed25519 keys rather than secp256k1:
 
 ```typescript
-import { createAgentekClient, allTools } from '@agentek/tools';
+import { createAgentekClient } from '@agentek/tools/client';
+import { allTools } from '@agentek/tools';
+import { http } from 'viem';
+import { mainnet } from 'viem/chains';
 
 const client = createAgentekClient({
   accountOrAddress: '0x...',
@@ -279,7 +302,9 @@ await client.execute('getSolBalance', {
 ```
 
 SOL and SPL transfer intent tools mirror the EVM ones: with a key configured
-they sign, submit and confirm, returning the signature. Without one, pass
+they sign and submit, returning the signature and `confirmationStatus`.
+A submitted or unknown outcome is not confirmation; reconcile the signature
+before retrying. Without a key, pass
 `solana.address` instead and they return the unsigned transaction as base64
 for you to sign elsewhere. `intentSwapSolana` always returns Jupiter's
 untrusted transaction and request ID for an external wallet to decode,
@@ -291,7 +316,8 @@ a Jupiter swap intent:
   "intent": "send 0.25 SOL to 5tzFki...",
   "chain": "solana",
   "transaction": "AQAAAAAA...",
-  "signature": "4pF2s..."
+  "signature": "4pF2s...",
+  "confirmationStatus": "confirmed"
 }
 ```
 
@@ -308,8 +334,8 @@ beyond casual use.
 
 | Variable | Required for |
 |----------|-------------|
-| `PRIVATE_KEY` | Executing transactions (intent tools) |
-| `ACCOUNT` | Read-only address context (alternative to PRIVATE_KEY) |
+| `PRIVATE_KEY` | Local EVM transaction signing (unsigned intents work with an address; the CLI can also use its signer daemon) |
+| `ACCOUNT` | EVM address context and unsigned intents (alternative to PRIVATE_KEY) |
 | `SOLANA_PRIVATE_KEY` | Signing Solana transactions (base58 or JSON byte array) |
 | `SOLANA_ACCOUNT` | Read-only Solana address (alternative to SOLANA_PRIVATE_KEY) |
 | `SOLANA_RPC_URL` | Solana JSON-RPC endpoint (defaults to public mainnet-beta) |
@@ -317,6 +343,8 @@ beyond casual use.
 | `RPC_URL_<chainId>` | EVM endpoint for one chain, e.g. `RPC_URL_1` |
 | `ETHEREUM_RPC_URL` and friends | Per-chain aliases: `OPTIMISM_`, `ARBITRUM_`, `POLYGON_`, `BASE_`, `MODE_`, `SEPOLIA_` |
 | `JUPITER_API_KEY` | Higher Jupiter Tokens V2 and Swap V2 rate limits and analytics (keyless access is supported) |
+| `OPENROUTER_API_KEY` | Model-powered examples and Gym OpenRouter evaluations |
+| `ANVIL_BINARY` | Optional Anvil executable path for Gym (defaults to `anvil` on PATH) |
 | `PERPLEXITY_API_KEY` | AI-powered search |
 | `ZEROX_API_KEY` | Token swaps via 0x |
 | `TALLY_API_KEY` | Governance data |
@@ -329,8 +357,19 @@ beyond casual use.
 
 Copy the example to get started:
 ```bash
-cp .env.example .env
+cp -n .env.example .env
 ```
+
+## Agent evaluations (Gym)
+
+`@agentek/gym` runs agents against disposable, pinned Anvil forks using a
+public development account, restricted Agentek tools, and separate correctness,
+safety, and cost reports. It supports resumable suites and saved-report
+comparisons. Across destination settlement is simulated with an Anvil state
+override, rather than a destination bridge fill transaction. The included
+smoke fixtures are development tests, not a canonical benchmark.
+
+See the [Gym guide](packages/gym/README.md) for setup and examples.
 
 ## Development
 
@@ -339,8 +378,13 @@ git clone https://github.com/NaniDAO/agentek.git
 cd agentek
 pnpm i
 pnpm run build
-pnpm run test
+pnpm exec vitest run -c ./test/vitest.config.ts
+# The default test script watches; the command above runs once.
 ```
+
+Some existing tests call public RPCs or external APIs; a full run is not an
+offline test suite. A `.env` file is not automatically loaded by every command;
+pass it explicitly where needed, for example `node --env-file=.env ...`.
 
 Interested in contributing? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) guide.
 

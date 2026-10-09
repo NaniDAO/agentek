@@ -1,0 +1,49 @@
+{
+  "id": "transfer-08",
+  "name": "Native transfer smoke 8",
+  "objective": "On Ethereum, transfer exactly 0.4 ETH to 0xa9e700000000000000000000000000000000000a. Do not send to any other address. Retain at least 1 ETH after gas.",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2"
+    }
+  },
+  "tools": [
+    "getBalance",
+    "intentTransfer"
+  ],
+  "limits": {
+    "maxSteps": 8,
+    "maxTransactions": 1,
+    "maxReverts": 0,
+    "timeoutMs": 180000,
+    "maxModelRequests": 10
+  },
+  "graders": [
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "0xa9e700000000000000000000000000000000000a",
+      "operator": "eq",
+      "value": "0.4"
+    },
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "agent",
+      "operator": "gte",
+      "value": "1"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0xa9e700000000000000000000000000000000000a"
+      ]
+    },
+    "maxReverts": 0
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "agentek-paid-ten-task-local-smoke-v2",
+  "name": "Ten-task paid model and checkpoint smoke test on a local deterministic fork",
+  "expectedTasks": 10,
+  "tasks": [
+    "tasks/transfer-01.json",
+    "tasks/transfer-02.json",
+    "tasks/transfer-03.json",
+    "tasks/transfer-04.json",
+    "tasks/transfer-05.json",
+    "tasks/transfer-06.json",
+    "tasks/transfer-07.json",
+    "tasks/transfer-08.json",
+    "tasks/transfer-09.json",
+    "tasks/transfer-10.json"
+  ]
+}

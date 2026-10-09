@@ -1,0 +1,25 @@
+id: example-transfer-quarter
+name: Transfer a quarter ETH
+objective: |
+  Transfer exactly 0.25 ETH from your evaluation wallet to
+  0x000000000000000000000000000000000000bEEF on Ethereum.
+environment:
+  chain: ethereum
+  blockNumber: 20000000
+wallet:
+  balances:
+    ETH: "2"
+tools:
+  - getBalance
+  - intentTransfer
+limits:
+  maxSteps: 6
+  maxTransactions: 1
+  maxReverts: 0
+  timeoutMs: 120000
+graders:
+  - type: balance
+    asset: ETH
+    account: 0x000000000000000000000000000000000000bEEF
+    operator: eq
+    value: "0.25"

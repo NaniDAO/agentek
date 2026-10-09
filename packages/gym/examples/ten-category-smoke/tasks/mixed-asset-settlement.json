@@ -1,0 +1,67 @@
+{
+  "id": "mixed-asset-settlement",
+  "category": "multi-asset-settlement",
+  "name": "Pay in two assets",
+  "objective": "On Ethereum send exactly 0.1 ETH to 0x6000000000000000000000000000000000000001 and exactly 50 USDC to 0x6000000000000000000000000000000000000002. USDC contract: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48. Keep at least 1.8 ETH and 950 USDC.",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2",
+      "USDC": "1000"
+    }
+  },
+  "tools": [
+    "getBalance",
+    "getBalanceOf",
+    "intentTransfer"
+  ],
+  "limits": {
+    "maxSteps": 12,
+    "maxTransactions": 2,
+    "maxReverts": 0,
+    "timeoutMs": 300000,
+    "maxModelRequests": 20
+  },
+  "graders": [
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "0x6000000000000000000000000000000000000001",
+      "operator": "eq",
+      "value": "0.1"
+    },
+    {
+      "type": "balance",
+      "asset": "USDC",
+      "account": "0x6000000000000000000000000000000000000002",
+      "operator": "eq",
+      "value": "50"
+    },
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "agent",
+      "operator": "gte",
+      "value": "1.8"
+    },
+    {
+      "type": "balance",
+      "asset": "USDC",
+      "account": "agent",
+      "operator": "gte",
+      "value": "950"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0x6000000000000000000000000000000000000001",
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      ]
+    },
+    "maxReverts": 0
+  }
+}

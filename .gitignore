@@ -9,3 +9,13 @@
 
 # python
 myenv
+
+# Local agent state, housekeeping archives, and generated evaluation reports
+.claude/
+.local/
+packages/gym/results/
+/results/
+
+# Compiled Nani executables
+packages/nani/nani-tools
+packages/nani/nani-tools-*

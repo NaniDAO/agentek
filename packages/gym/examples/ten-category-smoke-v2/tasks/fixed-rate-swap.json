@@ -1,0 +1,52 @@
+{
+  "id": "fixed-rate-swap",
+  "category": "swap",
+  "name": "Execute a fixed-rate swap",
+  "objective": "On Ethereum call payable swap() on local exchange 0x1000000000000000000000000000000000000002 with exactly 0.1 ETH (100000000000000000 wei). It sends 200 USDC to your wallet. The USDC token is 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48. Use ABI [{\"type\":\"function\",\"name\":\"swap\",\"stateMutability\":\"payable\",\"inputs\":[],\"outputs\":[{\"type\":\"bool\"}]}]. Keep at least 1.8 ETH.",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1,
+    "hardfork": "cancun"
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2"
+    }
+  },
+  "tools": [
+    "getBalance",
+    "getBalanceOf",
+    "intentWriteContract"
+  ],
+  "limits": {
+    "maxSteps": 8,
+    "maxTransactions": 1,
+    "maxReverts": 0,
+    "timeoutMs": 180000,
+    "maxModelRequests": 10
+  },
+  "graders": [
+    {
+      "type": "balance",
+      "asset": "USDC",
+      "account": "agent",
+      "operator": "gte",
+      "value": "200"
+    },
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "agent",
+      "operator": "gte",
+      "value": "1.8"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0x1000000000000000000000000000000000000002"
+      ]
+    },
+    "maxReverts": 0
+  }
+}

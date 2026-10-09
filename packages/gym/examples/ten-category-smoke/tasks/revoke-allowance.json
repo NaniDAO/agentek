@@ -1,0 +1,44 @@
+{
+  "id": "revoke-allowance",
+  "category": "allowance-revocation",
+  "name": "Revoke an approval",
+  "objective": "Revoke the existing USDC allowance for spender 0x5000000000000000000000000000000000000001 on Ethereum by setting it to zero. Token contract: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2",
+      "USDC": "1000"
+    }
+  },
+  "tools": [
+    "getAllowance",
+    "intentApprove"
+  ],
+  "limits": {
+    "maxSteps": 8,
+    "maxTransactions": 1,
+    "maxReverts": 0,
+    "timeoutMs": 180000,
+    "maxModelRequests": 10
+  },
+  "graders": [
+    {
+      "type": "allowance",
+      "token": "USDC",
+      "spender": "0x5000000000000000000000000000000000000001",
+      "operator": "eq",
+      "value": "0"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      ]
+    },
+    "maxReverts": 0
+  }
+}

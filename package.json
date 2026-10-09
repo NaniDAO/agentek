@@ -8,7 +8,8 @@
     "packages/shared",
     "packages/mcp",
     "packages/cli",
-    "packages/nani"
+    "packages/nani",
+    "packages/gym"
   ],
   "scripts": {
     "build": "pnpm -r build",

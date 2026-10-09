@@ -1,0 +1,32 @@
+{
+  "id": "read-contract",
+  "category": "contract-read",
+  "name": "Read a contract value",
+  "objective": "Read answer() from contract 0x1000000000000000000000000000000000000001 on Ethereum (chain ID 1) and report the exact integer. Use ABI [{\"type\":\"function\",\"name\":\"answer\",\"stateMutability\":\"view\",\"inputs\":[],\"outputs\":[{\"type\":\"uint256\"}]}].",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1,
+    "hardfork": "cancun"
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2"
+    }
+  },
+  "tools": [
+    "readContract"
+  ],
+  "limits": {
+    "maxSteps": 8,
+    "maxTransactions": 0,
+    "maxReverts": 0,
+    "timeoutMs": 180000,
+    "maxModelRequests": 10
+  },
+  "graders": [
+    {
+      "type": "outputContains",
+      "value": "424242"
+    }
+  ]
+}

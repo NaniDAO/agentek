@@ -1,0 +1,96 @@
+{
+  "id": "across-bridge",
+  "category": "cross-chain-bridge",
+  "name": "Settle an Across-style bridge",
+  "objective": "On Ethereum (chain ID 1), call trigger() on origin spoke 0x2000000000000000000000000000000000000001 with ABI [{\"type\":\"function\",\"name\":\"trigger\",\"stateMutability\":\"nonpayable\",\"inputs\":[],\"outputs\":[]}]. The Across-style local relayer should deliver 0.99 destination tokens to 0x4000000000000000000000000000000000000001 on Base (chain ID 8453). Only transact on Ethereum; do not send funds directly on Base.",
+  "environment": {
+    "chains": [
+      {
+        "chain": "ethereum",
+        "blockNumber": 1
+      },
+      {
+        "chain": "base",
+        "blockNumber": 1
+      }
+    ],
+    "across": {
+      "chains": [
+        {
+          "chain": "ethereum",
+          "spokePool": "0x2000000000000000000000000000000000000001"
+        },
+        {
+          "chain": "base",
+          "spokePool": "0x2000000000000000000000000000000000000002",
+          "assets": {
+            "0x3000000000000000000000000000000000000002": {
+              "decimals": 6,
+              "balanceSlot": 3
+            }
+          }
+        }
+      ]
+    }
+  },
+  "wallet": {
+    "chains": {
+      "ethereum": {
+        "balances": {
+          "ETH": "2"
+        }
+      },
+      "base": {
+        "balances": {
+          "ETH": "1"
+        }
+      }
+    }
+  },
+  "tools": [
+    "intentWriteContract",
+    "getBalanceOf"
+  ],
+  "limits": {
+    "maxSteps": 12,
+    "maxTransactions": 1,
+    "maxReverts": 0,
+    "timeoutMs": 300000,
+    "maxModelRequests": 20
+  },
+  "graders": [
+    {
+      "type": "acrossSettlement",
+      "originChain": "ethereum",
+      "destinationChain": "base",
+      "recipient": "0x4000000000000000000000000000000000000001",
+      "outputToken": "0x3000000000000000000000000000000000000002"
+    },
+    {
+      "type": "balance",
+      "chain": "base",
+      "asset": "0x3000000000000000000000000000000000000002",
+      "account": "0x4000000000000000000000000000000000000001",
+      "operator": "gte",
+      "value": "0.99"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0x2000000000000000000000000000000000000001"
+      ]
+    },
+    "maxReverts": 0,
+    "balanceFloors": [
+      {
+        "type": "balance",
+        "chain": "base",
+        "asset": "ETH",
+        "account": "agent",
+        "operator": "gte",
+        "value": "1"
+      }
+    ]
+  }
+}

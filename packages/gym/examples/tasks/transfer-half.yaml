@@ -1,0 +1,31 @@
+id: example-transfer-half
+name: Transfer half an ETH
+objective: |
+  Transfer exactly 0.5 ETH from your evaluation wallet to
+  0x000000000000000000000000000000000000dEaD on Ethereum.
+  Retain at least 1 ETH after gas.
+environment:
+  chain: ethereum
+  blockNumber: 20000000
+wallet:
+  balances:
+    ETH: "2"
+tools:
+  - getBalance
+  - intentTransfer
+limits:
+  maxSteps: 6
+  maxTransactions: 1
+  maxReverts: 0
+  timeoutMs: 120000
+graders:
+  - type: balance
+    asset: ETH
+    account: 0x000000000000000000000000000000000000dEaD
+    operator: eq
+    value: "0.5"
+  - type: balance
+    asset: ETH
+    account: agent
+    operator: gte
+    value: "1"

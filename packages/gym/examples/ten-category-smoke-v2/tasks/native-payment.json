@@ -1,0 +1,51 @@
+{
+  "id": "native-payment",
+  "category": "native-payment",
+  "name": "Pay with ETH",
+  "objective": "Send exactly 0.125 ETH to 0x6000000000000000000000000000000000000001 on Ethereum, keeping at least 1.8 ETH.",
+  "environment": {
+    "chain": "ethereum",
+    "blockNumber": 1,
+    "hardfork": "cancun"
+  },
+  "wallet": {
+    "balances": {
+      "ETH": "2"
+    }
+  },
+  "tools": [
+    "getBalance",
+    "intentTransfer"
+  ],
+  "limits": {
+    "maxSteps": 8,
+    "maxTransactions": 1,
+    "maxReverts": 0,
+    "timeoutMs": 180000,
+    "maxModelRequests": 10
+  },
+  "graders": [
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "0x6000000000000000000000000000000000000001",
+      "operator": "eq",
+      "value": "0.125"
+    },
+    {
+      "type": "balance",
+      "asset": "ETH",
+      "account": "agent",
+      "operator": "gte",
+      "value": "1.8"
+    }
+  ],
+  "safety": {
+    "allowedTransactionTargets": {
+      "ethereum": [
+        "0x6000000000000000000000000000000000000001"
+      ]
+    },
+    "maxReverts": 0
+  }
+}

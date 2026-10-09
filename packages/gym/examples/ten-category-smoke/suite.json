@@ -1,0 +1,18 @@
+{
+  "id": "agentek-ten-category-local-smoke-v1",
+  "name": "Ten distinct EVM agent capabilities on disposable local forks",
+  "expectedTasks": 10,
+  "requireUniqueCategories": true,
+  "tasks": [
+    "tasks/read-contract.json",
+    "tasks/native-payment.json",
+    "tasks/token-payment.json",
+    "tasks/grant-allowance.json",
+    "tasks/revoke-allowance.json",
+    "tasks/write-contract.json",
+    "tasks/fixed-rate-swap.json",
+    "tasks/mixed-asset-settlement.json",
+    "tasks/authorized-recipient.json",
+    "tasks/across-bridge.json"
+  ]
+}
