@@ -40,7 +40,12 @@ export const discoverTokenPermissionsTool = createTool({
     for (const [index, pair] of pairs.entries()) {
       if (index >= 24) { entries.push({ pair, allowance: null, error: "Not checked: per-scan allowance limit reached." }); continue; }
       try {
-        entries.push({ pair, allowance: await observeAllowance(client, { ...args, ...pair }), error: null });
+        entries.push({ pair, allowance: await observeAllowance(client, {
+          owner: args.owner,
+          token: pair.token,
+          spender: pair.spender,
+          chainId: args.chainId,
+        }), error: null });
       } catch { entries.push({ pair, allowance: null, error: "Allowance unavailable; not zero. Check this pair again." }); }
     }
     return { schemaVersion: 1, owner: args.owner.toLowerCase(), chainId: args.chainId, fromBlock: Number(start), toBlock: Number(end), observedAt: new Date().toISOString(), entries, ignoredLogs, candidateLimitReached,

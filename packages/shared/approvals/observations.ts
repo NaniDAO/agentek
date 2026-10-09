@@ -30,7 +30,12 @@ export async function observeAllowance(client: AgentekClient, args: { owner: str
 export const observeTokenPermissionTool = createTool({
   name: "observeTokenPermission", description: "Read one exact ERC20 allowance at an observed block. Unknown is never zero. Read-only; no discovery.",
   parameters: pair.extend({ owner: address, chainId }).strict(),
-  execute: observeAllowance,
+  execute: (client, args) => observeAllowance(client, {
+    owner: args.owner,
+    token: args.token,
+    spender: args.spender,
+    chainId: args.chainId,
+  }),
 });
 export const observeNFTOperatorTool = createTool({
   name: "observeNFTOperator", description: "Read one collection/operator isApprovedForAll value. No operator discovery, collection verification or individual NFT approval coverage.",
@@ -51,7 +56,12 @@ export const planSelectedRevocationsTool = createTool({
     if (new Set(keys).size !== keys.length) throw new Error("Duplicate permission pairs");
     const observations = [];
     for (const selected of args.pairs) {
-      const observation = await observeAllowance(client, { ...selected, owner: args.owner, chainId: args.chainId });
+      const observation = await observeAllowance(client, {
+        owner: args.owner,
+        token: selected.token,
+        spender: selected.spender,
+        chainId: args.chainId,
+      });
       if (!observation.active) throw new Error("Selected allowance is zero; review selection again");
       observations.push(observation);
     }
