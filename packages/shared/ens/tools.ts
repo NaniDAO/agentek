@@ -5,7 +5,7 @@ import { normalize } from 'viem/ens'
 
 export const resolveENSTool = createTool({
   name: "resolveENS",
-  description: "Resolves an ENS name to an Ethereum address",
+  description: "Resolve an ENS wallet name to an Ethereum address for sender, recipient, collection or transfer history research",
   parameters: z.object({
     name: z.string().describe("The ENS name to resolve"),
   }),

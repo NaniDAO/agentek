@@ -3,6 +3,7 @@ import { createTool } from "../client.js";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
 import { formatEther } from "viem";
 import { addressSchema } from "../utils.js";
+import { researchPage, continuationSchema, ReadFailure, safeResearchError } from "./research.js";
 
 const supportedChains = [mainnet, polygon, arbitrum, optimism, base];
 const chainSchema = z
@@ -111,7 +112,7 @@ export async function fetchFromBlockscoutV2(
       signal: AbortSignal.timeout(BLOCKSCOUT_TIMEOUT_MS),
     });
     if (!res.ok) {
-      throw new Error(`HTTP error ${res.status}: ${await res.text()}`);
+      throw new ReadFailure("upstream_http", res.status === 429 || res.status >= 500);
     }
     const json = await res.json();
 
@@ -139,13 +140,12 @@ export async function fetchFromBlockscoutV2(
 
     return json;
   } catch (error: unknown) {
+    if (error instanceof ReadFailure) throw error;
     if (error instanceof Error) {
       if (error.name === "TimeoutError" || error.name === "AbortError") {
-        throw new Error(
-          `Blockscout request timed out after ${BLOCKSCOUT_TIMEOUT_MS}ms: ${url}`,
-        );
+        throw new ReadFailure("timeout", true);
       }
-      throw new Error(`Failed to fetch from Blockscout: ${error.message}`);
+      throw new ReadFailure(error instanceof SyntaxError ? "malformed_response" : "transport", !(error instanceof SyntaxError));
     }
     throw error;
   }
@@ -289,22 +289,17 @@ export const getAddressTransactions = createTool({
  */
 export const getAddressTokenTransfers = createTool({
   name: "getAddressTokenTransfers",
-  description: "Get ERC20/ERC721/ERC1155 token transfers involving a specific address.",
-  supportedChains: supportedChains,
+  description: "Read historical ERC20/ERC721/ERC1155 transfers and observed recipients sent or received by an address. Filter outgoing sender and exact NFT collection contract. Continue with continuation until supported explorer history is exhausted; incomplete pages cannot establish all recipients.",
+  supportedChains,
   parameters: z.object({
-    chain: chainSchema,
-    address: addressSchema,
-    limit: limitSchema,
+    chain: chainSchema, address: addressSchema,
+    limit: z.number().int().min(1).max(20).optional().describe("Maximum complete records per response, default 10. Continue using the returned continuation; no records are silently discarded."),
+    continuation: continuationSchema,
+    direction: z.enum(["outgoing", "incoming", "both"]).optional(),
+    collection: addressSchema.optional().describe("Exact token/collection contract, not a collection name."),
   }),
-  execute: async (_, args) => {
-    const { chain, address, limit } = args;
-    return await fetchFromBlockscoutV2(
-      chain as SupportedChain,
-      `/addresses/${address}/token-transfers`,
-      undefined,
-      { limit },
-    );
-  },
+  execute: async (_, args) => researchPage("getAddressTokenTransfers", "transfers", args,
+    BLOCKSCOUT_API_ENDPOINTS.get(Number(args.chain) as SupportedChain)!, `/addresses/${args.address}/token-transfers`),
 });
 
 /**
@@ -539,22 +534,16 @@ export const getAddressNFTs = createTool({
  */
 export const getAddressNFTCollections = createTool({
   name: "getAddressNFTCollections",
-  description: "Get NFTs owned by an address, grouped by collection (ERC721/ERC1155).",
-  supportedChains: supportedChains,
+  description: "Read current NFT ownership grouped by collection, not historical transfers or past recipients. Compact records with explicit continuation and incomplete evidence.",
+  supportedChains,
   parameters: z.object({
-    chain: chainSchema,
-    address: addressSchema,
-    limit: limitSchema,
+    chain: chainSchema, address: addressSchema,
+    limit: z.number().int().min(1).max(20).optional().describe("Maximum complete records per response, default 10. Continue using the returned continuation; no records are silently discarded."),
+    continuation: continuationSchema,
+    collection: addressSchema.optional().describe("Exact token/collection contract, not a collection name."),
   }),
-  execute: async (_, args) => {
-    const { chain, address, limit } = args;
-    return await fetchFromBlockscoutV2(
-      chain as SupportedChain,
-      `/addresses/${address}/nft/collections`,
-      undefined,
-      { limit },
-    );
-  },
+  execute: async (_, args) => researchPage("getAddressNFTCollections", "ownership", args,
+    BLOCKSCOUT_API_ENDPOINTS.get(Number(args.chain) as SupportedChain)!, `/addresses/${args.address}/nft/collections`),
 });
 
 /**
@@ -884,7 +873,7 @@ export const getTransactionSummary = createTool({
  */
 export const getSmartContracts = createTool({
   name: "getSmartContracts",
-  description: "Search for verified smart contracts by name, address, or symbol. Optionally filter by programming language.",
+  description: "Search verified smart contracts by name, address, or symbol. For NFT collection name discovery also use getBlockscoutSearch. A search failure is not evidence that a collection does not exist.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -1009,26 +998,12 @@ export const getTokenHolders = createTool({
  */
 export const getTokenTransfers = createTool({
   name: "getTokenTransfers",
-  description:
-    "List transfers for a specific token contract with pagination support.",
-  supportedChains: supportedChains,
-  parameters: z.object({
-    chain: chainSchema,
-    tokenContract: addressSchema.describe("The token contract address (0x...)"),
-    page: z.number().optional().describe("Page number for pagination (starts at 1)"),
-    offset: z.number().optional().describe("Number of items per page"),
-  }),
-  execute: async (_, args) => {
-    const { chain, tokenContract, page, offset } = args;
-    const query: Record<string, string> = {};
-    if (page !== undefined) query["page"] = String(page);
-    if (offset !== undefined) query["offset"] = String(offset);
-    return await fetchFromBlockscoutV2(
-      chain as SupportedChain,
-      `/tokens/${tokenContract}/transfers`,
-      query,
-    );
-  },
+  description: "Read compact historical transfers for an exact collection/token contract. Continue with the returned continuation. Numeric page/offset pagination is unsupported; completeness covers only the explorer index.",
+  supportedChains,
+  parameters: z.object({ chain: chainSchema, tokenContract: addressSchema,
+    limit: z.number().int().min(1).max(20).optional(), continuation: continuationSchema }).strict(),
+  execute: async (_, args) => researchPage("getTokenTransfers", "transfers", { ...args, address: args.tokenContract },
+    BLOCKSCOUT_API_ENDPOINTS.get(Number(args.chain) as SupportedChain)!, `/tokens/${args.tokenContract}/transfers`),
 });
 
 /**
@@ -1038,7 +1013,7 @@ export const getTokenTransfers = createTool({
 export const getBlockscoutSearch = createTool({
   name: "getBlockscoutSearch",
   description:
-    "Perform a search query to find blocks, transactions, addresses, or tokens on the blockchain.",
+    "Search NFT collection names, token symbols, contract addresses, blocks or transactions. Resolve a collection name to candidate exact contracts before historical transfer and recipient research; names alone do not establish authenticity.",
   supportedChains: supportedChains,
   parameters: z.object({
     chain: chainSchema,
@@ -1051,5 +1026,46 @@ export const getBlockscoutSearch = createTool({
     return await fetchFromBlockscoutV2(chain as SupportedChain, `/search`, {
       q: query,
     });
+  },
+});
+
+/** Bounded recipient research; never treats current ownership as history. */
+export const getNFTTransferRecipients = createTool({
+  name: "getNFTTransferRecipients",
+  description: "Find observed recipients of NFT transfers sent by an exact sender and collection. Resolve ENS names and search collection names first. Scans up to five compact pages, deduplicates identified events and reports whether supported explorer history is exhausted. No transaction construction, signing or submission.",
+  supportedChains,
+  parameters: z.object({ chain: chainSchema, address: addressSchema, collection: addressSchema,
+    continuation: continuationSchema }).strict(),
+  execute: async (_, args) => {
+    let continuation = args.continuation;
+    const events: any[] = [], seen = new Set<string>();
+    let unknown = 0, scanned = 0, exhausted = false, failure: any = null;
+    for (let page = 0; page < 5; page++) {
+      let result;
+      try { result = await researchPage("getAddressTokenTransfers", "transfers", { ...args, direction: "outgoing", limit: 10, continuation },
+        BLOCKSCOUT_API_ENDPOINTS.get(Number(args.chain) as SupportedChain)!, `/addresses/${args.address}/token-transfers`); }
+      catch (err) { failure = { ...safeResearchError("getNFTTransferRecipients", err), partialResult: events.length > 0 }; break; }
+      unknown += result.coverage.unknownRecords;
+      scanned += result.coverage.scannedRecords;
+      for (const e of result.items) {
+        if (e.standard !== "ERC-721" && e.standard !== "ERC-1155") { if (e.standard !== "ERC-20") unknown++; continue; }
+        const id = e.transactionHash && e.blockHash && e.logIndex !== null && e.contract && e.tokenId !== null && (e.standard !== "ERC-1155" || e.batchIndex !== null)
+          ? JSON.stringify([e.blockHash,e.transactionHash,e.logIndex,e.batchIndex,e.contract,e.tokenId]) : null;
+        if (id && seen.has(id)) continue;
+        if (id) seen.add(id);
+        events.push(e);
+      }
+      continuation = result.continuation ?? undefined;
+      exhausted = result.coverage.endpointExhausted;
+      if (!continuation) break;
+    }
+    return { schemaVersion: 1, operation: "getNFTTransferRecipients", network: { namespace: "eip155", chainId: String(args.chain) },
+      sender: args.address, collection: args.collection, status: failure || unknown ? "partial" : "ok",
+      recipients: [...new Set(events.map(e => e.recipient).filter(Boolean))], events,
+      coverage: { scope: "explorer_indexed_history", scannedRecords: scanned, unknownRecords: unknown,
+        endpointExhausted: exhausted, allRecipientsEstablished: !args.continuation && exhausted && !unknown && !failure,
+        completeness: !args.continuation && exhausted && !unknown && !failure ? "supported_history_exhausted" : "incomplete",
+        limitations: ["Explorer indexing and reorg coverage are unverified. Continuations return observed recipients for this scan; accumulate and deduplicate event identities across scans."] },
+      continuation: continuation ?? null, error: failure };
   },
 });

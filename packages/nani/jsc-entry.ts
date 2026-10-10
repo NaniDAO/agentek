@@ -52,6 +52,7 @@ import { readOnlyChainTools } from "../shared/readonlyChains/index.js";
 // Not ../shared/x402/index.js: that path signs and pays inside JavaScript.
 import { x402NaniTools } from "../shared/x402/payments.js";
 import { researchCATools } from "../shared/researchCA/index.js";
+import { safeResearchError } from "../shared/blockscout/research.js";
 import { robinhood } from "../shared/chains/robinhood.js";
 
 interface NaniSolanaConfig {
@@ -165,6 +166,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
     const text = typeof result === "object" ? JSON.stringify(result) : String(result);
     return JSON.stringify({ result: text });
   } catch (err) {
-    return JSON.stringify({ error: String(err instanceof Error ? err.message : err) });
+    return JSON.stringify({ error: "Tool read or action failed", errorInfo: safeResearchError(name, err) });
   }
 };
