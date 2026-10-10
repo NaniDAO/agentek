@@ -41,6 +41,7 @@ export async function verifyResearch(call, setFetch) {
   const recipients=await call('getNFTTransferRecipients',{chain:'1',address:sender,collection});
   assert.equal(recipients.events.length,4); assert.deepEqual(recipients.recipients,[recipient]);
   assert.equal(recipients.coverage.allRecipientsEstablished,true);
+  assert.equal(recipients.coverage.scannedBlockRange.oldest,'123');assert.equal(recipients.coverage.scannedBlockRange.newest,'123');assert.equal(recipients.coverage.scannedBlockRange.snapshotPinned,false);
   // Incoming sender/recipient filtering is independent of collection.
   const incoming=await call('getAddressTokenTransfers',{...args,direction:'incoming',limit:20});
   assert.equal(incoming.items.length,1); assert.equal(incoming.items[0].sender,recipient);
@@ -54,6 +55,25 @@ export async function verifyResearch(call, setFetch) {
   setFetch(async()=>new Response(JSON.stringify({items:[event(1,{from:null})],next_page_params:null})));
   const unknown=await call('getNFTTransferRecipients',{chain:1,address:sender,collection});
   assert.equal(unknown.coverage.allRecipientsEstablished,false); assert.equal(unknown.coverage.unknownRecords,1);
+  assert.equal(unknown.uncertainEvents.length,1);
+  assert.equal(unknown.uncertainEvents[0].transactionHash,tx);
+  // Replay detects a changed upstream page and rejects a cursor for another operation.
+  setFetch(async()=>new Response(JSON.stringify({items:[event(1),event(2)],next_page_params:null})));
+  const replay=await call('getAddressTokenTransfers',args);
+  await assert.rejects(()=>call('getAddressTokenTransfers',{...args,chain:'8453',continuation:replay.continuation}));
+  await assert.rejects(()=>call('getAddressTokenTransfers',{...args,collection:other,continuation:replay.continuation}));
+  setFetch(async()=>new Response(JSON.stringify({items:[event(3),event(2)],next_page_params:null})));
+  await assert.rejects(()=>call('getAddressTokenTransfers',{...args,continuation:replay.continuation}));
+  // A full first page may contain only incoming/unrelated events: continue, never report empty complete history.
+  setFetch(async url=>new Response(JSON.stringify(String(url).includes('?')
+    ? {items:[event(7)],next_page_params:null}
+    : {items:[event(1,{from:{hash:recipient},to:{hash:sender}})],next_page_params:{block_number:122,index:4}})));
+  const filtered=await call('getNFTTransferRecipients',{chain:1,address:sender,collection});
+  assert.equal(filtered.events.length,1);assert.equal(filtered.events[0].tokenId,'7');assert.equal(filtered.coverage.allRecipientsEstablished,true);
+  // ERC1155 without sub-event identity stays separate, even with the same log and token ID.
+  const ambiguous=event(9,{token_type:'ERC-1155',total:{token_id:'1',value:'2'}});
+  setFetch(async()=>new Response(JSON.stringify({items:[ambiguous,ambiguous],next_page_params:null})));
+  assert.equal((await call('getNFTTransferRecipients',{chain:1,address:sender,collection})).events.length,2);
   for(const data of [{items:[]},{items:'invalid'},'not json']) {
     setFetch(async()=>new Response(typeof data==='string'?data:JSON.stringify(data)));
     if(typeof data==='object' && Array.isArray(data.items)) {

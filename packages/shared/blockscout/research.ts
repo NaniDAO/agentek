@@ -44,8 +44,16 @@ function ownership(v: unknown) {
     tokens: instances.map((t: any) => ({ tokenId: exact(t?.id), quantity: exact(t?.value) })),
     tokenInstancesComplete: false };
 }
+export function scannedBlockRange(numbers: string[]) {
+  let oldest: string | null = null, newest: string | null = null;
+  for (const n of numbers) {
+    if (oldest === null || BigInt(n) < BigInt(oldest)) oldest = n;
+    if (newest === null || BigInt(n) > BigInt(newest)) newest = n;
+  }
+  return { oldest, newest, snapshotPinned: false };
+}
 export async function researchPage(operation: string, kind: "transfers" | "ownership", args: Obj, base: string, path: string) {
-  const identity = JSON.stringify([String(args.chain), args.address.toLowerCase(), args.direction ?? "both", args.collection?.toLowerCase() ?? null, kind]);
+  const identity = JSON.stringify([String(args.chain), args.address.toLowerCase(), args.direction ?? "both", args.collection?.toLowerCase() ?? null, kind, operation]);
   let query: Record<string,string> = {}, skip = 0, expected: string | undefined;
   if (args.continuation) {
     try {
@@ -71,28 +79,30 @@ export async function researchPage(operation: string, kind: "transfers" | "owner
   const fingerprint = keccak256(stringToHex(JSON.stringify(records)));
   if (expected !== undefined && expected !== fingerprint) throw new ReadFailure("page_changed", true);
   const limit = args.limit ?? 10;
-  const items: any[] = [], seen = new Set<string>();
+  const items: any[] = [], unclassifiedItems: any[] = [], seen = new Set<string>();
   let unknown = 0, duplicates = 0, scanned = 0, i = skip;
   for (const r of records.slice(0,skip) as any[]) {
-    if (r.transactionHash && r.logIndex !== null && r.blockHash && r.contract && (r.standard !== "ERC-1155" || r.batchIndex !== null))
+    if (r.transactionHash && r.logIndex !== null && r.blockHash && r.contract && (r.standard === "ERC-20" || r.tokenId !== null) && (r.standard !== "ERC-1155" || r.batchIndex !== null))
       seen.add(JSON.stringify([r.blockHash,r.transactionHash,r.logIndex,r.batchIndex,r.contract,r.tokenId]));
   }
   for (; i < records.length; i++) {
     const r: any = records[i]; scanned++;
     if (kind === "transfers") {
-      const id = r.transactionHash && r.logIndex !== null && r.blockHash && r.contract ? JSON.stringify([r.blockHash,r.transactionHash,r.logIndex,r.batchIndex,r.contract,r.tokenId]) : null;
+      const id = r.transactionHash && r.logIndex !== null && r.blockHash && r.contract && (r.standard === "ERC-20" || r.tokenId !== null) ? JSON.stringify([r.blockHash,r.transactionHash,r.logIndex,r.batchIndex,r.contract,r.tokenId]) : null;
       // Without batch identity, equal ERC1155 rows may be distinct: preserve them.
       if (id && (r.standard !== "ERC-1155" || r.batchIndex !== null)) {
         if (seen.has(id)) { duplicates++; continue; } seen.add(id);
       }
       if (Object.entries(r).some(([k,v]) => v === null && k !== "batchIndex" && !(k === "tokenId" && r.standard === "ERC-20"))) unknown++;
-      if (args.direction === "outgoing" && r.sender?.toLowerCase() !== args.address.toLowerCase()) continue;
-      if (args.direction === "incoming" && r.recipient?.toLowerCase() !== args.address.toLowerCase()) continue;
+      if (args.direction === "outgoing" && r.sender !== null && r.sender.toLowerCase() !== args.address.toLowerCase()) continue;
+      if (args.direction === "incoming" && r.recipient !== null && r.recipient.toLowerCase() !== args.address.toLowerCase()) continue;
     }
     if (kind === "ownership" && (r.contract === null || r.standard === null || r.quantity === null || r.tokens.some((t: any) => t.tokenId === null || t.quantity === null))) unknown++;
-    if (args.collection && r.contract?.toLowerCase() !== args.collection.toLowerCase()) continue;
-    items.push(r);
-    if (items.length === limit) { i++; break; }
+    if (args.collection && r.contract !== null && r.contract.toLowerCase() !== args.collection.toLowerCase()) continue;
+    const uncertain = (args.collection && r.contract === null)
+      || (kind === "transfers" && ((args.direction === "outgoing" && r.sender === null) || (args.direction === "incoming" && r.recipient === null)));
+    if (uncertain) unclassifiedItems.push(r); else items.push(r);
+    if (items.length + unclassifiedItems.length === limit) { i++; break; }
   }
   let next: string | null = null, paginationUnknown = false;
   const encode = (p: Record<string,string>, offset: number, fp?: string) => JSON.stringify({ identity, params: p, skip: offset, ...(fp ? { fingerprint: fp } : {}) });
@@ -108,11 +118,11 @@ export async function researchPage(operation: string, kind: "transfers" | "owner
   const blocks = records.slice(skip,i).map((r: any) => r.blockNumber).filter((b: any) => b !== null && b !== undefined);
   const exhausted = next === null && !paginationUnknown;
   const result = { schemaVersion: 1, operation, network: { namespace: "eip155", chainId: String(args.chain) }, kind,
-    address: args.address, filters: { direction: args.direction ?? "both", collection: args.collection ?? null }, items,
+    address: args.address, filters: { direction: args.direction ?? "both", collection: args.collection ?? null }, items, unclassifiedItems,
     status: unknown || paginationUnknown ? "partial" : "ok",
-    coverage: { scope: "explorer_indexed_history", scannedRecords: scanned, duplicatesRemoved: duplicates, unknownRecords: unknown,
-      scannedBlockNumbers: blocks, endpointExhausted: exhausted, completeness: exhausted && !unknown ? "page_exhausted" : "incomplete",
+    coverage: { scope: kind === "ownership" ? "explorer_current_ownership" : "explorer_indexed_history", scannedRecords: scanned, duplicatesRemoved: duplicates, unknownRecords: unknown,
+      scannedBlockNumbers: blocks, scannedBlockRange: scannedBlockRange(blocks), endpointExhausted: exhausted, completeness: exhausted && !unknown ? "page_exhausted" : "incomplete",
       allRecipientsEstablished: false, limitations: ["Explorer indexing and reorg coverage are unverified. Accumulate every continuation; a terminal page alone does not prove earlier pages were read."] }, continuation: next };
-  if (JSON.stringify(result).length > 64000) throw new ReadFailure("result_too_large", false);
+  if (new TextEncoder().encode(JSON.stringify(result)).length > 64000) throw new ReadFailure("result_too_large", false);
   return result;
 }

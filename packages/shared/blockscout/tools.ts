@@ -3,7 +3,7 @@ import { createTool } from "../client.js";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
 import { formatEther } from "viem";
 import { addressSchema } from "../utils.js";
-import { researchPage, continuationSchema, ReadFailure, safeResearchError } from "./research.js";
+import { researchPage, continuationSchema, ReadFailure, safeResearchError, scannedBlockRange } from "./research.js";
 
 const supportedChains = [mainnet, polygon, arbitrum, optimism, base];
 const chainSchema = z
@@ -1002,7 +1002,7 @@ export const getTokenTransfers = createTool({
   supportedChains,
   parameters: z.object({ chain: chainSchema, tokenContract: addressSchema,
     limit: z.number().int().min(1).max(20).optional(), continuation: continuationSchema }).strict(),
-  execute: async (_, args) => researchPage("getTokenTransfers", "transfers", { ...args, address: args.tokenContract },
+  execute: async (_, args) => researchPage("getTokenTransfers", "transfers", { ...args, address: args.tokenContract, collection: args.tokenContract },
     BLOCKSCOUT_API_ENDPOINTS.get(Number(args.chain) as SupportedChain)!, `/tokens/${args.tokenContract}/transfers`),
 });
 
@@ -1038,15 +1038,18 @@ export const getNFTTransferRecipients = createTool({
     continuation: continuationSchema }).strict(),
   execute: async (_, args) => {
     let continuation = args.continuation;
-    const events: any[] = [], seen = new Set<string>();
+    const events: any[] = [], uncertainEvents: any[] = [], seen = new Set<string>();
+    const scannedBlocks: string[] = [];
     let unknown = 0, scanned = 0, exhausted = false, failure: any = null;
     for (let page = 0; page < 5; page++) {
       let result;
       try { result = await researchPage("getAddressTokenTransfers", "transfers", { ...args, direction: "outgoing", limit: 10, continuation },
         BLOCKSCOUT_API_ENDPOINTS.get(Number(args.chain) as SupportedChain)!, `/addresses/${args.address}/token-transfers`); }
-      catch (err) { failure = { ...safeResearchError("getNFTTransferRecipients", err), partialResult: events.length > 0 }; break; }
+      catch (err) { failure = { ...safeResearchError("getNFTTransferRecipients", err), partialResult: events.length > 0 || uncertainEvents.length > 0 }; break; }
       unknown += result.coverage.unknownRecords;
       scanned += result.coverage.scannedRecords;
+      scannedBlocks.push(...result.coverage.scannedBlockNumbers);
+      uncertainEvents.push(...result.unclassifiedItems);
       for (const e of result.items) {
         if (e.standard !== "ERC-721" && e.standard !== "ERC-1155") { if (e.standard !== "ERC-20") unknown++; continue; }
         const id = e.transactionHash && e.blockHash && e.logIndex !== null && e.contract && e.tokenId !== null && (e.standard !== "ERC-1155" || e.batchIndex !== null)
@@ -1059,13 +1062,15 @@ export const getNFTTransferRecipients = createTool({
       exhausted = result.coverage.endpointExhausted;
       if (!continuation) break;
     }
-    return { schemaVersion: 1, operation: "getNFTTransferRecipients", network: { namespace: "eip155", chainId: String(args.chain) },
+    const result = { schemaVersion: 1, operation: "getNFTTransferRecipients", network: { namespace: "eip155", chainId: String(args.chain) },
       sender: args.address, collection: args.collection, status: failure || unknown ? "partial" : "ok",
-      recipients: [...new Set(events.map(e => e.recipient).filter(Boolean))], events,
-      coverage: { scope: "explorer_indexed_history", scannedRecords: scanned, unknownRecords: unknown,
+      recipients: [...new Set(events.map(e => e.recipient).filter(Boolean))], events, uncertainEvents,
+      coverage: { scope: "explorer_indexed_history", scannedRecords: scanned, unknownRecords: unknown, scannedBlockRange: scannedBlockRange(scannedBlocks),
         endpointExhausted: exhausted, allRecipientsEstablished: !args.continuation && exhausted && !unknown && !failure,
         completeness: !args.continuation && exhausted && !unknown && !failure ? "supported_history_exhausted" : "incomplete",
         limitations: ["Explorer indexing and reorg coverage are unverified. Continuations return observed recipients for this scan; accumulate and deduplicate event identities across scans."] },
       continuation: continuation ?? null, error: failure };
+    if (new TextEncoder().encode(JSON.stringify(result)).length > 64000) throw new ReadFailure("result_too_large", false);
+    return result;
   },
 });
