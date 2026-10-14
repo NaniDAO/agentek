@@ -45,6 +45,21 @@ describe("native Max offline fee evidence", () => {
   const fetchGuard = vi.fn(() => { throw new Error("External network forbidden"); });
   beforeEach(() => { fetchGuard.mockClear(); vi.stubGlobal("fetch", fetchGuard); });
   afterEach(() => { expect(fetchGuard).not.toHaveBeenCalled(); vi.unstubAllGlobals(); });
+  it("keeps Sepolia Send identity and rejects mainnet RPC evidence", async () => {
+    const { result } = await quote({ chain: "0xaa36a7" }, { chainId: 11155111 });
+    expect(result.availability).toBe("available");
+    expect(result.identity.chainId).toBe(11155111);
+    expect(result.transaction.chainId).toBe(11155111);
+    expect(result.identity.owner).toBe(owner);
+    expect(result.transaction.to).toBe(recipient);
+    expect(result.spendable).toBe((900719925474099312345n - 5302500n).toString());
+    const mismatch = (await quote({ chain: "0x1" }, { chainId: 11155111 })).result;
+    expect(mismatch.reason).toBe("IDENTITY_CHANGED");
+    expect(mismatch.transaction).toBeNull();
+    const failed = (await quote({ chain: "0xaa36a7", fail: "eth_getBalance" }, { chainId: 11155111 })).result;
+    expect(failed.availability).toBe("unavailable");
+    expect(failed.spendable).toBeNull();
+  });
   it("reserves buffered gas at fee cap and preserves exact values above Number precision", async () => {
     const { result, estimates } = await quote();
     expect(result.availability).toBe("available");

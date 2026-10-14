@@ -26,6 +26,15 @@ function client(options: { upgrade?: boolean; initialized?: boolean; chain?: str
   } }) } as any;
 }
 describe("unsigned batch approval evidence", () => {
+  it("uses Sepolia for unsigned batch construction and rejects a mainnet node", async () => {
+    const sepoliaArgs = { ...args, chainId: 11155111 };
+    const result = await quoteNaniBatchTool.execute(client({ chain: "0xaa36a7" }), sepoliaArgs);
+    expect(result.chainId).toBe(11155111);
+    expect(result.owner).toBe(owner);
+    expect(result.additionalFeeKnown).toBe(true);
+    await expect(quoteNaniBatchTool.execute(client({ chain: "0x1" }), sepoliaArgs)).rejects.toThrow("network mismatch");
+    await expect(quoteNaniBatchTool.execute(client({ chain: "0xaa36a7", fail: "eth_getBalance" }), sepoliaArgs)).rejects.toThrow();
+  });
   it("quotes the whole batch and preserves values above Number precision", async () => {
     const result = await quoteNaniBatchTool.execute(client(), args);
     expect(result.totalValue).toBe(args.calls[0].value);
