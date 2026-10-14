@@ -3,7 +3,7 @@ import { createTool } from "../client.js";
 import { quote } from "zrouter-sdk";
 import { mainnet } from "viem/chains";
 import { resolveInputToToken, toBaseUnits, asToken } from "./utils.js";
-import { SymbolOrTokenSchema } from "./types.js";
+import { AmountSchema, SymbolOrTokenSchema } from "./types.js";
 import { supportedChains } from "./constants.js";
 import { fetchApiRoutes } from "./api.js";
 
@@ -15,14 +15,13 @@ export const getQuote = createTool({
     chainId: z.number().default(1).describe("Chain ID (1 for Mainnet, 8453 for Base). Default: 1"),
     tokenIn: SymbolOrTokenSchema.describe('Input token — either a symbol string (e.g. "USDT", "ETH") or an object { address, id? } for ERC6909 tokens'),
     tokenOut: SymbolOrTokenSchema.describe('Output token — either a symbol string (e.g. "IZO", "WETH") or an object { address, id? } for ERC6909 tokens'),
-    amount: z.union([z.number(), z.string()]).describe("Amount in human-readable units (e.g. 1.5 or '1.5'). Refers to tokenIn for EXACT_IN, tokenOut for EXACT_OUT."),
+    amount: AmountSchema.describe("Amount in human-readable units (e.g. 1.5 or '1.5'). Refers to tokenIn for EXACT_IN, tokenOut for EXACT_OUT."),
     side: z.enum(["EXACT_IN", "EXACT_OUT"]).describe("EXACT_IN: specify the input amount and get the best output. EXACT_OUT: specify the desired output and get the required input."),
   }),
   execute: async (client, args) => {
     const { tokenIn, tokenOut, side } = args;
     const chainId = (args.chainId || mainnet.id) as 1 | 8453;
-    const amountInput =
-      typeof args.amount === "number" ? args.amount.toString() : args.amount;
+    const amountInput = args.amount;
 
     const publicClient = client.getPublicClient(chainId);
 

@@ -1,9 +1,10 @@
 import { Token } from "zrouter-sdk";
 import z from "zod";
 import { addressSchema } from "../utils.js";
+import { quantitySchema } from "../utils/exact.js";
 import { Address, isAddress } from "viem";
 
-export type ResolvedToken = Token & { standard: "ERC20" | "ERC6909"; decimals: number };
+export type ResolvedToken = Token & { standard: "ERC20" | "ERC6909"; decimals: number; precisionSource: "contract" | "native-chain-unit" };
 
 type TokenInput = {
   address: string; // raw input comes in as a string
@@ -18,11 +19,11 @@ export const TokenSchema = z.object({
    }
    return val as Address;
  }),
- id: z.union([z.number().int(), z.string()]).optional().transform((val) => val !== undefined ? BigInt(val) : undefined),
+ id: quantitySchema.optional().transform((val) => val !== undefined ? BigInt(val) : undefined),
 });
 
 export type ZToken = z.infer<typeof TokenSchema>;
 
 export const SymbolOrTokenSchema = z.union([z.string(), TokenSchema]);
 
-export const AmountSchema = z.union([z.number(), z.string()]);
+export const AmountSchema = z.string().max(335);

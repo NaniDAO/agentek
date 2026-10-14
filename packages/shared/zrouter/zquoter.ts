@@ -1,4 +1,5 @@
-import type { Address, Hex, PublicClient } from "viem";
+import { encodeFunctionData, type Address, type Hex, type PublicClient } from "viem";
+import { byteHex, dynamicBytes } from "../utils/exact.js";
 
 /**
  * Direct on-chain routing via the zQuoter contract.
@@ -93,7 +94,7 @@ export const zQuoterAbi = [
 
 /** `zQuoter.AMM` — indices match the contract enum. */
 const AMM_NAMES = [
-  "UNI_V2", "SUSHI", "UNI_V3", "UNI_V4", "CURVE", "BALANCER", "ZAMM", "MATCHA",
+  "UNI_V2", "SUSHI_V2", "ZAMM", "UNI_V3", "UNI_V4", "CURVE",
 ];
 
 export type BuiltSwap = {
@@ -123,6 +124,7 @@ export async function buildBestSwap(
   publicClient: PublicClient,
   params: {
     chainId: number;
+    blockNumber?: bigint;
     to: Address;
     exactOut: boolean;
     tokenIn: Address;
@@ -136,36 +138,10 @@ export async function buildBestSwap(
   if (!quoter) return null;
 
   try {
-    const [best, callData, amountLimit, msgValue] = (await publicClient.readContract({
-      address: quoter,
-      abi: zQuoterAbi,
-      functionName: "buildBestSwap",
-      args: [
-        params.to,
-        params.exactOut,
-        params.tokenIn,
-        params.tokenOut,
-        params.swapAmount,
-        BigInt(params.slippageBps),
-        params.deadline,
-      ],
-    })) as unknown as [
-      { source: number; feeBps: bigint; amountIn: bigint; amountOut: bigint },
-      Hex,
-      bigint,
-      bigint,
-    ];
+    const data = encodeFunctionData({ address: quoter, abi: zQuoterAbi, functionName: "buildBestSwap", args: [params.to, params.exactOut, params.tokenIn, params.tokenOut, params.swapAmount, BigInt(params.slippageBps), params.deadline] } as any);
+    const response = await publicClient.call({ to: quoter, data, ...(params.blockNumber !== undefined ? { blockNumber: params.blockNumber } : {}) });
+    return decodeBuiltSwap(response.data);
 
-    if (!callData || callData === "0x") return null;
-
-    return {
-      venue: AMM_NAMES[Number(best.source)] ?? null,
-      amountIn: best.amountIn,
-      amountOut: best.amountOut,
-      callData,
-      amountLimit,
-      msgValue,
-    };
   } catch (err) {
     console.warn(
       `[zrouter] zQuoter.buildBestSwap failed on chain ${params.chainId}: ${
@@ -174,6 +150,20 @@ export async function buildBestSwap(
     );
     return null;
   }
+}
+
+/** Bounded `(Quote,bytes,uint256,uint256)` response reader. No number conversion for quantities. */
+export function decodeBuiltSwap(input: unknown): BuiltSwap {
+  const data = byteHex(input, 4096);
+  if (data.length < 2 + 7 * 64) throw new Error("Short buildBestSwap response");
+  const n = (i: number) => BigInt("0x" + data.slice(2 + i * 64, 66 + i * 64));
+  const source = n(0);
+  if (source > 255n) throw new Error("Unknown AMM encoding");
+  const callData = dynamicBytes(data, n(4), 224);
+  if (!callData || callData === "0x") throw new Error("Missing executable swap");
+  const end = n(4) + 32n + BigInt((callData.length - 2) / 2 + 31) / 32n * 32n;
+  if (n(4) !== 224n || end !== BigInt((data.length - 2) / 2)) throw new Error("Noncanonical swap response tail");
+  return { venue: AMM_NAMES[Number(source)] ?? null, amountIn: n(2), amountOut: n(3), callData, amountLimit: n(5), msgValue: n(6) };
 }
 
 /** zRouter's convention for native ETH. */

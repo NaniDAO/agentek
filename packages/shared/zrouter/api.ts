@@ -1,97 +1,35 @@
 import { type RouteOption, type RouteStep } from "zrouter-sdk";
 import { ZROUTER_API_URL } from "./constants.js";
+import { byteHex, identityAddress, uint256 } from "../utils/exact.js";
+import { readBoundedJSON } from "../utils/fetch.js";
 
-/**
- * Serialize a token for JSON transport (BigInt -> string).
- */
-function serializeToken(token: { address: string; id?: bigint }) {
-  return {
-    ...token,
-    id: token.id != null ? token.id.toString() : undefined,
-  };
+const serializeToken = (token: { address: string; id?: bigint }) => ({ address: token.address, ...(token.id !== undefined ? { id: token.id.toString() } : {}) });
+const exact = (v: unknown) => uint256(v);
+function token(value: any) {
+  return { address: identityAddress.parse(value?.address), ...(value?.id !== undefined ? { id: exact(value.id) } : {}) };
+}
+/** Provider quantities must be exact strings; missing economics are never zero. */
+export function deserializeRoutes(input: unknown): RouteOption[] {
+  const routes = (input as any)?.routes;
+  if (!Array.isArray(routes) || routes.length > 32) throw new Error("Unreadable or oversized route array");
+  return routes.map(route => {
+    if (!Array.isArray(route.steps) || !route.steps.length || route.steps.length > 32) throw new Error("Unreadable route steps");
+    return { ...route, expectedAmount: exact(route.expectedAmount), steps: route.steps.map((s: any) => {
+      if (!["V2", "V3", "V4", "VZ", "MATCHA", "WRAP", "UNWRAP"].includes(s.kind) || !["EXACT_IN", "EXACT_OUT"].includes(s.side)) throw new Error("Unknown route mode or ABI");
+      return { ...s, tokenIn: token(s.tokenIn), tokenOut: token(s.tokenOut), amount: exact(s.amount), limit: exact(s.limit),
+        deadline: s.deadline === undefined ? undefined : exact(s.deadline), expectedAmount: s.expectedAmount === undefined ? undefined : exact(s.expectedAmount),
+        ...(s.to === undefined ? {} : { to: identityAddress.parse(s.to) }), ...(s.router === undefined ? {} : { router: identityAddress.parse(s.router) }),
+        ...(s.kind === "VZ" ? { feeOrHook: exact(s.feeOrHook) } : {}),
+        ...(s.transaction ? { transaction: { to: identityAddress.parse(s.transaction.to), data: byteHex(s.transaction.data), value: exact(s.transaction.value) } } : {}) };
+    }) as RouteStep[] } as RouteOption;
+  });
 }
 
-/**
- * Deserialize a single route from the API (string -> BigInt).
- */
-function deserializeRoute(route: any): RouteOption {
-  return {
-    ...route,
-    expectedAmount: BigInt(route.expectedAmount),
-    steps: route.steps.map((step: any) => ({
-      ...step,
-      amount: step.amount != null ? BigInt(step.amount) : 0n,
-      limit: step.limit != null ? BigInt(step.limit) : 0n,
-      deadline: step.deadline != null ? BigInt(step.deadline) : 0n,
-      expectedAmount: step.expectedAmount != null ? BigInt(step.expectedAmount) : undefined,
-      tokenIn: {
-        ...step.tokenIn,
-        id: step.tokenIn?.id ? BigInt(step.tokenIn.id) : undefined,
-      },
-      tokenOut: {
-        ...step.tokenOut,
-        id: step.tokenOut?.id ? BigInt(step.tokenOut.id) : undefined,
-      },
-      // Preserve Matcha transaction data
-      ...(step.transaction
-        ? {
-            transaction: {
-              ...step.transaction,
-              value: step.transaction.value != null ? BigInt(step.transaction.value) : 0n,
-            },
-          }
-        : {}),
-    })) as RouteStep[],
-  };
-}
-
-/**
- * Fetch routes from the zrouter-api HTTP service.
- * Returns RouteOption[] sorted best-first, or null on failure.
- */
-export async function fetchApiRoutes(params: {
-  chainId: number;
-  tokenIn: { address: string; id?: bigint };
-  tokenOut: { address: string; id?: bigint };
-  side: string;
-  amount: bigint;
-  owner: string;
-  slippageBps?: number;
-}): Promise<RouteOption[] | null> {
+export async function fetchApiRoutes(params: { chainId: number; tokenIn: { address: string; id?: bigint }; tokenOut: { address: string; id?: bigint }; side: string; amount: bigint; owner: string; slippageBps?: number }): Promise<RouteOption[] | null> {
   try {
-    const response = await fetch(`${ZROUTER_API_URL}/quote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chainId: params.chainId.toString(),
-        tokenIn: serializeToken(params.tokenIn),
-        tokenOut: serializeToken(params.tokenOut),
-        side: params.side,
-        amount: params.amount.toString(),
-        owner: params.owner,
-        slippageBps: params.slippageBps ?? 50,
-      }),
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (!response.ok) {
-      // Loud on the way past. Returning null here is correct — the SDK can
-      // still route many pairs — but silently doing so is how a dead endpoint
-      // masqueraded as "no route found" for months.
-      console.warn(
-        `[zrouter] route API ${response.status} from ${ZROUTER_API_URL}/quote; falling back to on-chain routing`
-      );
-      return null;
-    }
-
-    const data = await response.json();
-    if (!data.routes || data.routes.length === 0) return null;
-
-    return data.routes.map(deserializeRoute);
-  } catch (err) {
-    console.warn(
-      `[zrouter] route API unreachable at ${ZROUTER_API_URL}: ${err instanceof Error ? err.message : String(err)}`
-    );
-    return null;
-  }
+    const response = await fetch(`${ZROUTER_API_URL}/quote`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chainId: params.chainId.toString(), tokenIn: serializeToken(params.tokenIn), tokenOut: serializeToken(params.tokenOut), side: params.side, amount: params.amount.toString(), owner: params.owner, slippageBps: params.slippageBps ?? 50 }), signal: AbortSignal.timeout(15000) });
+    if (!response.ok) return null;
+    return deserializeRoutes(await readBoundedJSON(response, 1048576));
+  } catch { return null; }
 }

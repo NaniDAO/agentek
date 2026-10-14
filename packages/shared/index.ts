@@ -198,3 +198,9 @@ export {
   resolveTransports,
   parseRpcUrlsEnv,
 };
+
+export { getNativeSwapProposal, buildNativeSwapProposal, swapRequestSchema, validateSwapCall, validateSwapOps } from "./zrouter/proposal.js";
+export type { SwapRequest } from "./zrouter/proposal.js";
+export { observeWalletAsset, observeAsset } from "./erc20/observations.js";
+export { observeGuardianQueue, queueStateSchema } from "./nani/queue.js";
+export { dnsEncode, readENSBytes, validateENSName } from "./ens/bounds.js";

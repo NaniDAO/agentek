@@ -1,4 +1,5 @@
 import { BaseTool, createToolCollection } from "../client.js";
+import { observeWalletAsset } from "./observations.js";
 import { intentApproveTool } from "./intents.js";
 import {
   getAllowanceTool,
@@ -12,6 +13,7 @@ import {
 
 export function erc20Tools(): BaseTool[] {
   return createToolCollection([
+    observeWalletAsset,
     // tools
     getAllowanceTool,
     getBalanceOfTool,
@@ -25,3 +27,5 @@ export function erc20Tools(): BaseTool[] {
     intentApproveTool,
   ]);
 }
+
+export { observeWalletAsset, observeAsset } from "./observations.js";

@@ -1,19 +1,23 @@
 import { z } from "zod";
 import { createTool } from "../client.js";
 import { Address } from "viem";
+import { validateENSName } from "./bounds.js";
 import { normalize } from 'viem/ens'
 
 export const resolveENSTool = createTool({
   name: "resolveENS",
   description: "Resolve an ENS wallet name to an Ethereum address for sender, recipient, collection or transfer history research",
   parameters: z.object({
-    name: z.string().describe("The ENS name to resolve"),
+    name: z.string().min(1).max(4096).describe("The ENS name to resolve"),
   }),
   execute: async (client, args) => {
     const publicClient = client.getPublicClient(1);
     const ensName = args.name.includes(".") ? args.name : `${args.name}.eth`;
+    validateENSName(ensName);
+    const normalized = normalize(ensName);
+    validateENSName(normalized);
     const address = await publicClient.getEnsAddress({
-      name: normalize(ensName),
+      name: normalized,
     });
 
     if (address === null) {

@@ -5,11 +5,13 @@ import {
   intentProposeNani,
   intentVoteNaniProposal,
 } from "./intents.js";
+import { observeGuardianQueue } from "./queue.js";
 import { getNaniProposals } from "./tools.js";
 
 export function naniTools(): BaseTool[] {
   return createToolCollection([
     getNaniProposals,
+    observeGuardianQueue,
     // intents
     intentStakeNani,
     intentUnstakeNani,
@@ -17,3 +19,5 @@ export function naniTools(): BaseTool[] {
     intentVoteNaniProposal,
   ]);
 }
+
+export { observeGuardianQueue, queueStateSchema } from "./queue.js";

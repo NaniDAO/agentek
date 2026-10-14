@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Address } from "viem";
 import { erc20Abi } from "viem";
+import { precision } from "../utils/exact.js";
 import { createTool } from "../client.js";
 import { assertOkResponse } from "../utils/fetch.js";
 import {
@@ -99,6 +100,8 @@ export const resolveTokenTool = createTool({
           decimals: entry.decimals,
           name: entry.name,
           source: "registry",
+          precisionStatus: "pinned-display",
+          authorizesConstruction: false,
         };
       }
     }
@@ -115,16 +118,16 @@ export const resolveTokenTool = createTool({
     }
 
     // 3. Fetch on-chain decimals for the CoinGecko result
-    let decimals = 18; // sensible default
+    let decimals: number | null = null;
     try {
       const publicClient = client.getPublicClient(chainId);
-      decimals = await publicClient.readContract({
+      decimals = precision(await publicClient.readContract({
         address: cgResult.address as Address,
         abi: erc20Abi,
         functionName: "decimals",
-      });
+      }));
     } catch {
-      // If decimals() call fails, keep the default
+      // Preserve unreadable precision as unknown; never invent a financial scale.
     }
 
     return {
@@ -135,6 +138,8 @@ export const resolveTokenTool = createTool({
       name: cgResult.name,
       coingeckoId: cgResult.id,
       source: "coingecko",
+      precisionStatus: decimals === null ? "unknown" : "contract-read",
+      authorizesConstruction: false,
     };
   },
 });

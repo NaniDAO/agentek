@@ -1,3 +1,4 @@
+import { quantitySchema } from "../utils/exact.js";
 import { z } from "zod";
 import { createTool } from "../client.js";
 import { clean, addressSchema } from "../utils.js";
@@ -10,7 +11,7 @@ export const getNFTMetadataTool = createTool({
   supportedChains,
   parameters: z.object({
     contractAddress: addressSchema.describe("The NFT contract address"),
-    tokenId: z.string().describe("The token ID of the NFT"),
+    tokenId: quantitySchema.describe("The token ID of the NFT"),
     chainId: z.number().describe("The chain ID where the NFT exists"),
   }),
   execute: async (client, args) => {
