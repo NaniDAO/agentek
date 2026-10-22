@@ -116,6 +116,12 @@ export function evaluatePolicy(policy: PolicyConfig, tx: TxRequest): PolicyResul
     if (txValue > threshold) {
       return { allowed: true, needsApproval: true };
     }
+    if (policy.contracts !== undefined) {
+      const approved = to && Object.prototype.hasOwnProperty.call(policy.contracts, to) ? policy.contracts[to] : [];
+      const selector = tx.data && tx.data.length >= 10 ? tx.data.slice(0, 10).toLowerCase() : undefined;
+      const preapproved = approved.includes("*") || (selector !== undefined && approved.includes(selector));
+      return { allowed: true, needsApproval: !preapproved };
+    }
   }
 
   return { allowed: true, needsApproval: false };

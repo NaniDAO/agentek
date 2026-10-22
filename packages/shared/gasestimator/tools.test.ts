@@ -1,11 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { estimateGasCostTool } from "./tools.js";
+import { getCryptoPriceTool } from "../cryptoprices/tools.js";
 import type { AgentekClient } from "../client.js";
 
 describe("estimateGasCostTool", () => {
   let mockClient: AgentekClient;
   
   beforeEach(() => {
+    vi.spyOn(getCryptoPriceTool, "execute").mockResolvedValue({
+      symbol: "ETH", price: 3000, currency: "USD",
+      timestamp: "2026-10-22T00:00:00.000Z", source: "CoinGecko",
+    });
     // Mock client with necessary methods
     mockClient = {
       getPublicClient: vi.fn().mockReturnValue({
@@ -14,14 +19,11 @@ describe("estimateGasCostTool", () => {
           maxPriorityFeePerGas: BigInt(1000000000) // 1 gwei
         }),
         getGasPrice: vi.fn().mockResolvedValue(BigInt(2000000000)) // 2 gwei
-      }),
-      getTools: vi.fn().mockReturnValue({
-        getCryptoPrice: {
-          execute: vi.fn().mockResolvedValue({ price: 3000 }) // Mock ETH at $3000
-        }
       })
     } as unknown as AgentekClient;
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it("should estimate gas cost correctly for Ethereum mainnet", async () => {
     const args = {
@@ -44,7 +46,8 @@ describe("estimateGasCostTool", () => {
     
     // Check USD calculation (0.000042 ETH * $3000 = $0.126)
     // Note: getCryptoPrice is mocked and the mock returns $3000 for ETH price
-    expect(parseFloat(result.usdCost!)).toBeCloseTo(0.126, 0); // Using lower precision
+    expect(result.usdPrice).toBe(3000);
+    expect(result.usdCost).toBe("0.13");
   });
 
   it("should estimate gas cost correctly for Polygon", async () => {

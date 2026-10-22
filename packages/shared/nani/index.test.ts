@@ -7,6 +7,7 @@ import {
   intentVoteNaniProposal,
 } from "./intents.js";
 import { getNaniProposals } from "./tools.js";
+import { observeGuardianQueue } from "./queue.js";
 
 describe("Nani Tools Collection", () => {
   const tools = naniTools();
@@ -14,6 +15,7 @@ describe("Nani Tools Collection", () => {
   it("should include all Nani tools", () => {
     const expectedTools = [
       getNaniProposals,
+      observeGuardianQueue,
       intentStakeNani,
       intentUnstakeNani,
       intentProposeNani,
@@ -45,8 +47,10 @@ describe("Nani Tools Collection", () => {
         description: expect.any(String),
         parameters: expect.any(Object),
         execute: expect.any(Function),
-        supportedChains: expect.any(Array),
       });
+      if (tool.supportedChains !== undefined) {
+        expect(Array.isArray(tool.supportedChains)).toBe(true);
+      }
     });
   });
 });

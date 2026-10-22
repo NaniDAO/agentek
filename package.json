@@ -3,6 +3,7 @@
   "description": "A collection of AI agent tools for blockchain interaction",
   "type": "module",
   "private": true,
+  "packageManager": "pnpm@10.20.0",
   "workspaces": [
     "packages/ai-sdk",
     "packages/shared",
@@ -16,6 +17,11 @@
     "dev": "pnpm -r dev",
     "clean": "rm -rf dist packages/*/dist",
     "test": "vitest -c ./test/vitest.config.ts",
+    "test:offline": "vitest run -c ./test/vitest.offline.config.ts",
+    "test:live": "vitest run -c ./test/vitest.live.config.ts",
+    "test:release": "node --test scripts/release.test.mjs",
+    "check:packages": "node scripts/check-packages.mjs",
+    "release:check": "pnpm build && pnpm test:offline && pnpm test:release && pnpm check:packages",
     "list": "bun run scripts/tool-count.ts",
     "release": "bash scripts/release.sh"
   },

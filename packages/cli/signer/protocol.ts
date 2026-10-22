@@ -103,6 +103,8 @@ export interface PolicyConfig {
   blockedContracts: string[]; // lowercase addresses
   allowedContracts: string[]; // lowercase addresses, empty = allow all
   blockedFunctions: string[]; // 4-byte selectors, e.g. "0x095ea7b3"
+  /** Contract/function approval map from the published 0.1.27 CLI keyfiles. */
+  contracts?: Record<string, string[]>;
   requireApproval: "always" | "above_threshold" | "never";
   approvalThresholdPct: number; // 0-100, percentage of maxValuePerTx
 }

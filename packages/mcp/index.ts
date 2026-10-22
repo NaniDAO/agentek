@@ -11,7 +11,8 @@ import {
 } from "@agentek/tools";
 import { privateKeyToAccount } from "viem/accounts";
 
-const VERSION = "0.1.26";
+declare const __AGENTEK_VERSION__: string;
+const VERSION = __AGENTEK_VERSION__;
 
 /** Timeout for individual tool executions (2 minutes). */
 const TOOL_TIMEOUT_MS = 120_000;

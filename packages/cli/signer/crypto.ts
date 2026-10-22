@@ -117,6 +117,13 @@ export function decrypt(keyfile: AgentekKeyfile, passphrase: string): DecryptedP
     policyDecipher.final(),
   ]);
   const policy = JSON.parse(policyDecrypted.toString("utf-8"));
+  // npm 0.1.27 shipped a contract approval map without these legacy lists.
+  // Retain that map and its approval semantics without rewriting the keyfile.
+  if (policy.contracts !== undefined) {
+    policy.blockedContracts ??= [];
+    policy.allowedContracts ??= [];
+    policy.blockedFunctions ??= [];
+  }
 
   return { privateKey, policy };
 }

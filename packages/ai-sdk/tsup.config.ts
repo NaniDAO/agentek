@@ -11,7 +11,7 @@ export default defineConfig({
   outDir: 'dist',
   outExtension({ format }) {
     return {
-      js: format === 'esm' ? '.mjs' : '.js'
+      js: format === 'esm' ? '.mjs' : '.cjs'
     };
   },
   onSuccess: 'rm -rf dist/cjs dist/esm'

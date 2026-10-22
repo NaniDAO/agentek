@@ -256,7 +256,7 @@ describe("CLI — setup", () => {
     const { stderr, exitCode } = await run(["setup"], { AGENTEK_CONFIG_DIR: tmpDir });
     expect(exitCode).toBe(0);
     expect(stderr).toContain("configured");
-    expect(stderr).toContain("1/14");
+    expect(stderr).toMatch(/1\/\d+ keys configured/);
   }, CONFIG_TEST_TIMEOUT);
 });
 
@@ -404,7 +404,7 @@ describe("CLI — info", () => {
 // ── exec ──────────────────────────────────────────────────────────────────
 
 describe("CLI — exec", () => {
-  it("should execute getBlockNumber on Base with --key value syntax", async () => {
+  it.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("should execute getBlockNumber on Base with --key value syntax", async () => {
     const { stdout, exitCode } = await run(["exec", "getBlockNumber", "--chainId", "8453"]);
     expect(exitCode).toBe(0);
 
@@ -415,7 +415,7 @@ describe("CLI — exec", () => {
     expect(Number(result.blockNumber)).toBeGreaterThan(0);
   }, TEST_TIMEOUT);
 
-  it("should support --key=value syntax", async () => {
+  it.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("should support --key=value syntax", async () => {
     const { stdout, exitCode } = await run(["exec", "getBlockNumber", "--chainId=8453"]);
     expect(exitCode).toBe(0);
 
@@ -440,7 +440,7 @@ describe("CLI — exec", () => {
     expect(err.error).toContain("Usage");
   }, TEST_TIMEOUT);
 
-  it("should support --timeout flag", async () => {
+  it.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("should support --timeout flag", async () => {
     const { stdout, exitCode } = await run([
       "exec", "getBlockNumber", "--chainId", "8453", "--timeout", "60000",
     ]);

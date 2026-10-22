@@ -378,13 +378,19 @@ git clone https://github.com/NaniDAO/agentek.git
 cd agentek
 pnpm i
 pnpm run build
-pnpm exec vitest run -c ./test/vitest.config.ts
-# The default test script watches; the command above runs once.
+pnpm test:offline
+pnpm test:release
+pnpm check:packages
 ```
 
-Some existing tests call public RPCs or external APIs; a full run is not an
-offline test suite. A `.env` file is not automatically loaded by every command;
+`pnpm release:check` runs the build and all checks above in order. CI runs this
+on Node 22 and 24. Local Gym integration tests require Anvil and skip without it.
+`pnpm test:live` selects the tests that call public RPCs or external APIs;
+`pnpm test` retains the full suite in watch mode. A `.env` file is not automatically loaded by every command;
 pass it explicitly where needed, for example `node --env-file=.env ...`.
+
+`pnpm release 0.2.0` previews version changes; adding `--prepare` verifies them
+and updates manifests. It does not publish.
 
 Interested in contributing? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) guide.
 

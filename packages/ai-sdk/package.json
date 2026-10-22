@@ -3,7 +3,7 @@
   "version": "0.1.26",
   "description": "AI SDK integration for Agentek tools",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,7 +14,7 @@
       },
       "require": {
         "types": "./dist/index.d.cts",
-        "default": "./dist/index.js"
+        "default": "./dist/index.cjs"
       }
     },
     "./tool": {
@@ -24,7 +24,7 @@
       },
       "require": {
         "types": "./dist/tool.d.cts",
-        "default": "./dist/tool.js"
+        "default": "./dist/tool.cjs"
       }
     },
     "./toolkit": {
@@ -34,7 +34,7 @@
       },
       "require": {
         "types": "./dist/toolkit.d.cts",
-        "default": "./dist/toolkit.js"
+        "default": "./dist/toolkit.cjs"
       }
     }
   },

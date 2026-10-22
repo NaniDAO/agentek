@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { createTool } from "../client.js";
-import { Address, erc20Abi, formatUnits } from "viem";
+import { Address, erc20Abi, formatUnits, getAddress } from "viem";
 import { erc20Chains } from "./constants.js";
+
+/** Normalize an address string to proper EIP-55 checksum so mixed-case input never fails. */
+const normalizeAddress = (addr: string): Address => getAddress(addr.toLowerCase());
 
 const getAllowanceParameters = z.object({
   token: z.string().describe("The token address"),
@@ -68,6 +71,9 @@ export const getAllowanceTool = createTool({
   parameters: getAllowanceParameters,
   execute: async (client, args) => {
     const { token, owner, spender, chainId } = args;
+    const tokenAddr = normalizeAddress(token);
+    const ownerAddr = normalizeAddress(owner);
+    const spenderAddr = normalizeAddress(spender);
     const chains = client.filterSupportedChains(erc20Chains, chainId);
 
     const allowances = await Promise.all(
@@ -75,15 +81,15 @@ export const getAllowanceTool = createTool({
         const publicClient = client.getPublicClient(chain.id);
         try {
           const decimals = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "decimals",
           });
           const allowance = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "allowance",
-            args: [owner as Address, spender as Address],
+            args: [ownerAddr, spenderAddr],
           });
 
           return {
@@ -111,6 +117,8 @@ export const getBalanceOfTool = createTool({
   parameters: getBalanceOfParameters,
   execute: async (client, args) => {
     const { token, owner, chainId } = args;
+    const tokenAddr = normalizeAddress(token);
+    const ownerAddr = normalizeAddress(owner);
     const chains = client.filterSupportedChains(erc20Chains, chainId);
 
     const balances = await Promise.all(
@@ -118,15 +126,15 @@ export const getBalanceOfTool = createTool({
         const publicClient = client.getPublicClient(chain.id);
         try {
           const decimals = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "decimals",
           });
           const balance = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "balanceOf",
-            args: [owner as Address],
+            args: [ownerAddr],
           });
 
           return {
@@ -153,6 +161,7 @@ export const getTotalSupplyTool = createTool({
   parameters: getTotalSupplyParameters,
   execute: async (client, args) => {
     const { token, chainId } = args;
+    const tokenAddr = normalizeAddress(token);
     const chains = client.filterSupportedChains(erc20Chains, chainId);
 
     const supplies = await Promise.all(
@@ -160,12 +169,12 @@ export const getTotalSupplyTool = createTool({
         const publicClient = client.getPublicClient(chain.id);
         try {
           const decimals = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "decimals",
           });
           const totalSupply = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "totalSupply",
           });
@@ -194,6 +203,7 @@ export const getDecimalsTool = createTool({
   parameters: getDecimalsParameters,
   execute: async (client, args) => {
     const { token, chainId } = args;
+    const tokenAddr = normalizeAddress(token);
     const chains = client.filterSupportedChains(erc20Chains, chainId);
 
     const tokenDecimals = await Promise.all(
@@ -201,7 +211,7 @@ export const getDecimalsTool = createTool({
         const publicClient = client.getPublicClient(chain.id);
         try {
           const decimals = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "decimals",
           });
@@ -230,6 +240,7 @@ export const getNameTool = createTool({
   parameters: getNameParameters,
   execute: async (client, args) => {
     const { token, chainId } = args;
+    const tokenAddr = normalizeAddress(token);
     const chains = client.filterSupportedChains(erc20Chains, chainId);
 
     const names = await Promise.all(
@@ -237,7 +248,7 @@ export const getNameTool = createTool({
         const publicClient = client.getPublicClient(chain.id);
         try {
           const name = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "name",
           });
@@ -266,6 +277,7 @@ export const getSymbolTool = createTool({
   parameters: getSymbolParameters,
   execute: async (client, args) => {
     const { token, chainId } = args;
+    const tokenAddr = normalizeAddress(token);
     const chains = client.filterSupportedChains(erc20Chains, chainId);
 
     const symbols = await Promise.all(
@@ -273,7 +285,7 @@ export const getSymbolTool = createTool({
         const publicClient = client.getPublicClient(chain.id);
         try {
           const symbol = await publicClient.readContract({
-            address: token as Address,
+            address: tokenAddr,
             abi: erc20Abi,
             functionName: "symbol",
           });
@@ -303,25 +315,26 @@ export const getTokenMetadataTool = createTool({
   parameters: tokenMetadataParameters,
   execute: async (client, args) => {
     const { token, chainId } = args;
+    const tokenAddr = normalizeAddress(token);
     const publicClient = client.getPublicClient(chainId);
     const [name, symbol, decimals, totalSupply] = await Promise.all([
       publicClient.readContract({
-        address: token as Address,
+        address: tokenAddr,
         abi: erc20Abi,
         functionName: "name",
       }),
       publicClient.readContract({
-        address: token as Address,
+        address: tokenAddr,
         abi: erc20Abi,
         functionName: "symbol",
       }),
       publicClient.readContract({
-        address: token as Address,
+        address: tokenAddr,
         abi: erc20Abi,
         functionName: "decimals",
       }),
       publicClient.readContract({
-        address: token as Address,
+        address: tokenAddr,
         abi: erc20Abi,
         functionName: "totalSupply",
       }),

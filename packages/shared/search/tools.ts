@@ -20,6 +20,7 @@ export function createAskPerplexitySearchTool(
         headers: {
           Authorization: `Bearer ${perplexityApiKey}`,
           "Content-Type": "application/json",
+          "X-Pplx-Integration": "agentek",
         },
         body: JSON.stringify({
           model: "sonar",

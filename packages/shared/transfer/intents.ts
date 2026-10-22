@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AgentekClient, createTool, Intent } from "../client.js";
-import { arbitrum, base, mainnet, sepolia } from "viem/chains";
+import { arbitrum, base, mainnet, optimism, sepolia } from "viem/chains";
 import {
   Address,
   encodeFunctionData,
@@ -12,7 +12,7 @@ import {
 import { addressSchema } from "../utils.js";
 import { resolveENSTool } from "../ens/tools.js";
 
-const intentTransferChains = [mainnet, arbitrum, base, sepolia];
+const intentTransferChains = [mainnet, arbitrum, base, optimism, sepolia];
 const intentTransferParameters = z.object({
   token: addressSchema.describe("The token contract address (0x...), or 0x0000000000000000000000000000000000000000 for native ETH"),
   amount: z.string().describe("Amount to transfer in human-readable units (e.g. '1.5' for 1.5 tokens). Decimals are resolved automatically."),
@@ -187,7 +187,7 @@ const intentTransferFromParameters = z.object({
   chainId: z.number().optional().describe("Chain ID to transfer on (e.g. 1, 42161, 8453). If omitted, automatically selects the cheapest chain where the 'from' address has sufficient balance."),
 });
 
-const intentTransferFromChains = [mainnet, arbitrum, base, sepolia];
+const intentTransferFromChains = [mainnet, arbitrum, base, optimism, sepolia];
 
 export const intentTransferFromTool = createTool({
   name: "intentTransferFrom",

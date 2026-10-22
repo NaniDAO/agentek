@@ -8,7 +8,8 @@ import { handleConfig } from "./commands/config.js";
 import { handleSetup } from "./commands/setup.js";
 import { handleSigner } from "./commands/signer.js";
 
-const VERSION = "0.0.2";
+declare const __AGENTEK_VERSION__: string;
+const VERSION = __AGENTEK_VERSION__;
 
 /** Print version to stdout and exit 0. */
 function printVersion(): never {

@@ -698,6 +698,8 @@ describe("Signer — daemon hardening", () => {
       const socket = connect(getSocketPath(), () => {
         socket.write("x".repeat(300 * 1024));
       });
+      // Drain the error response so EOF/close can be observed on the client.
+      socket.resume();
 
       let settled = false;
       const settle = (fn: () => void) => {
