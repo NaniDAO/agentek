@@ -2,7 +2,7 @@ import { parseAbi, type Hex } from "viem";
 const oracle="0x420000000000000000000000000000000000000f" as const;
 const abi=parseAbi(["function getL1FeeUpperBound(uint256) view returns (uint256)","function getOperatorFee(uint256) view returns (uint256)"]);
 export const opFeeChains=new Set([10,8453,84532,11155420]);
-export const arbitrumFeeChains=new Set([42161,421614]);
+export const arbitrumFeeChains=new Set([42161,421614,4663]);
 export const ordinaryFeeChains=new Set([1,11155111,137,80002]);
 const uint=(value:unknown):bigint=>{if(typeof value!=="bigint"||value<0n||value>=(1n<<256n))throw new Error("Unreadable fee component");return value;};
 /** Same predeploy strategy as native NetworkAdditionalFees. No inferred zero fees. */

@@ -429,7 +429,7 @@ Fee estimates return exact wei components and a nullable total. Supply exact
 transaction identity on OP/Base/Arbitrum; failed or absent extra-fee evidence
 leaves the total unknown. OP/Base use the existing GasPriceOracle's
 getL1FeeUpperBound and getOperatorFee with a conservative envelope and reserve.
-Arbitrum's RPC estimate already includes posting cost; no second L1 fee is added.
+Arbitrum/Nitro RPC estimates (including Robinhood Chain 4663) include posting cost; no second L1 fee is added. This applies the Nitro fee model documented by Arbitrum to Robinhood's documented Nitro chain; it is not live deployment acceptance.
 Testnet assets receive no USD valuation. Quotes are estimates/reserves, not
 protocol-enforceable final-charge caps. Other networks stay explicitly unknown
 unless a fee model is configured. Native hosts independently recheck before signing.
@@ -438,3 +438,5 @@ Protocol references: [OP fees](https://docs.optimism.io/op-stack/transactions/fe
 [Base fees](https://docs.base.org/specifications/transactions/network-fees),
 [Arbitrum gas estimates](https://developer.arbitrum.io/arbitrum-essentials/how-to-estimate-gas).
 Offline source fixtures: `packages/shared/catalogue-readiness.test.ts`.
+
+Robinhood protocol reference: [Nitro chain](https://docs.robinhood.com/chain/run-a-full-node/).

@@ -71,9 +71,9 @@ describe('complete fee evidence',()=>{
   f.readContract.mockRejectedValue(new Error('oracle unavailable'));
   const failed=await call(estimateGasCostTool,f.client,{chainId:8453,gasUnits:21000,transaction:tx});expect(failed.totalFeeWei).toBeNull();expect(failed.coverage).toBe('incomplete');
  });
- it('uses Arbitrum estimate including posting, without a second L1 charge',async()=>{
+ for(const chainId of [42161,4663])it(`uses Nitro ${chainId} estimate including posting, without a second L1 charge`,async()=>{
   vi.spyOn(getCryptoPriceTool,'execute').mockResolvedValue({price:3000} as any);
-  const f=fixture(42161);const result=await call(estimateGasCostTool,f.client,{chainId:42161,gasUnits:1,transaction:tx});
+  const f=fixture(chainId);const result=await call(estimateGasCostTool,f.client,{chainId,gasUnits:1,transaction:tx});
   expect(result.gasUnits).toBe(21000);expect(result.additionalFeeWei).toBe('0');expect(f.readContract).not.toHaveBeenCalled();
  });
  it('keeps testnet USD and mismatched network totals unknown',async()=>{
