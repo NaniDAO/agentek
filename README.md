@@ -2,7 +2,7 @@
 
 ![agentek-logo-1](https://github.com/user-attachments/assets/c73ccd7b-4c4e-4c90-8ccc-1ed101fa1b0b)
 
-An extensible TypeScript toolkit for EVM and Solana blockchain interactions. Up to 205 composable tools (191 without optional API credentials) covering on-chain actions, DeFi protocols, market data, and off-chain services — designed for AI agents, MCP clients, and developers.
+An extensible TypeScript toolkit for EVM and Solana blockchain interactions. Up to 205 standard tools (191 without optional API credentials), plus 11 opt-in Tacit privacy tools with a configured wallet host, covering on-chain actions, DeFi protocols, market data, and off-chain services — designed for AI agents, MCP clients, and developers.
 
 ## Quick Start
 
@@ -29,7 +29,7 @@ pnpm add @agentek/tools
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| [`@agentek/tools`](packages/shared) | Core toolkit — up to 205 tools | 0.1.26 |
+| [`@agentek/tools`](packages/shared) | Core toolkit — up to 205 standard tools, plus 11 opt-in privacy tools | 0.1.26 |
 | [`@agentek/ai-sdk`](packages/ai-sdk) | Vercel AI SDK integration | 0.1.26 |
 | [`@agentek/mcp-server`](packages/mcp) | Model Context Protocol server | 0.1.26 |
 | [`@agentek/cli`](packages/cli) | Command-line interface | 0.0.2 |
@@ -323,6 +323,64 @@ a Jupiter swap intent:
 
 The public mainnet-beta endpoint is heavily rate limited — set
 `SOLANA_RPC_URL` to your own endpoint for anything beyond casual use.
+
+## Tacit privacy tools
+
+An opt-in wallet backend adds 11 tools for private ETH payments on Ethereum and Base:
+`getPrivacyOptions`, `getPrivateBalance`, `getPrivateReceiveAddress`, `quotePrivatePayment`,
+`intentShieldFunds`, `intentPrivateTransfer`, `intentPrivateWithdraw`, `getPrivateOperationStatus`,
+`recoverPrivateWallet`, `createPrivatePaymentReceipt`, and `verifyPrivatePaymentReceipt`.
+
+Hosts should expose the static unified `tacit1…` identity with its pool lane for
+shielded receiving. Its `bp1…` pool address remains compatible and uses the same keys.
+
+```typescript
+import { allTools } from '@agentek/tools';
+import { createTacitBackend } from '@agentek/tools/tacit';
+
+// These are supplied by the trusted wallet host, outside the model context.
+// createTacitWalletSession wraps Tacit's makeEvmPoolWallet with explicit chain/relayer pins.
+// The host supplies its runtime, keys, local prover, RPC and keeper to that factory.
+const { wallet, watchDepositAddress } = hostTacitSession;
+const privacy = createTacitBackend({
+  operationStore, // atomic durable load()/save(); async save resolves only after native storage acknowledges it
+  wallets: [{
+    walletRef: 'wallet_primary', chainId: 8453,
+    openWallet: async () => wallet,
+    getChainId: () => publicClient.getChainId(),
+    validateRecipient, // Tacit's poolRecipient/recipientOf; verify network, checksum and curve points
+    confirm: confirmPaymentOnChain, // bind the actual payment, not merely a successful relay transaction
+    relayer: { address: '0xfA2afbaB631C7Eda7CeA6AE1440605C504E322Ec', maxFeeWei: '2000000000000000' },
+    canShield: true, watchDepositAddress,
+    receipts: receiptService, // createTacitReceiptService with Tacit's local paymentKey/verifyPayment primitives
+  }],
+});
+const tools = await allTools({ tacitBackend: privacy.tools });
+
+// Host UI only: never expose this method as a model tool.
+await privacy.approveAndExecute(intent, review => showPaymentApproval(review));
+```
+
+The host owns unlocking, proving artifacts, the signer, local proof verification and receipt sharing.
+Agentek does not bundle a prover, create an identity, download executable wallet code, or provide a hosted wallet.
+Keep identity keys, identity-derivation signatures, notes and bearer gift links out of tool inputs and outputs.
+Generic Agentek personal-sign requests for Tacit identity derivation are rejected for the same reason.
+
+Amounts are exact decimal wei strings. A quote shows estimated relay fees and a conservative maximum for
+up to eight transactions (seven note consolidations plus the payment); unused budget is not charged.
+Shielding also needs the host wallet's normal gas review. Intents never submit: they return an opaque operation
+reference for host approval. Use one active coordinator per wallet. Unknown outcomes block further spending until the host reconciles them, including
+after restart. Receipt proofs stay in a host-only vault; models get opaque references and verified payment facts.
+Ordinary deposit addresses are offered only when the host registers automatic collection; otherwise use a shielded address.
+Their maximum collection charge is 25 basis points (0.25%).
+
+Private transfers inside the pool hide sender, recipient and amount from chain observers. Deposits and withdrawals
+remain public and may be correlated by timing and amount; this does not guarantee anonymity. Provider IP metadata is
+also outside the pool's protection. No swaps, Bitcoin bridge, gift links or V1 pool operations are included.
+
+Native hosts may use `createTacitHostTransport` with the nine read/prepare methods of `TacitToolBackend`.
+The Nani bundle registers these tools only when its host provides an `agentekTacit` reply handler and passes
+`true` as the fifth `__naniInit` argument. Approval and execution remain outside that bridge.
 
 ## Environment Variables
 

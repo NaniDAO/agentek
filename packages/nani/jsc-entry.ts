@@ -5,13 +5,14 @@
  * No IPC, no child process, no MCP SDK.
  *
  * Exports:
- *   __naniInit(account?, rpcUrlsByChainId?, solana?) -> number (tool count)
+ *   __naniInit(account?, rpcUrlsByChainId?, solana?, enabledCredentials?, enableTacit?) -> number (tool count)
  *     - account: 0x address; defaults to zeroAddress
  *     - rpcUrlsByChainId: e.g. { "1": "https://...", "11155111": "https://..." }
  *       Per-chain RPC URLs the user configured in Settings. Falls back to the
  *       chain's viem default when a chain is not present in the map.
  *     - solana: optional public address, RPC URL and Jupiter API key. The key
  *       remains client configuration and never appears in a tool schema.
+ *     - enableTacit: opt-in; requires the native agentekTacit read/prepare reply handler.
  *   __naniList() -> string (JSON array of {name, description, schema})
  *   __naniCall(name, argsJSON) -> Promise<string> (JSON {result} or {error})
  */
@@ -54,6 +55,7 @@ import { x402NaniTools } from "../shared/x402/payments.js";
 import { researchCATools } from "../shared/researchCA/index.js";
 import { safeResearchError } from "../shared/blockscout/research.js";
 import { robinhood } from "../shared/chains/robinhood.js";
+import { tacitTools, createTacitHostTransport } from "../shared/tacit/index.js";
 
 interface NaniSolanaConfig {
   address?: string;
@@ -89,6 +91,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   rpcUrlsByChainId?: Record<string, string>,
   solana?: NaniSolanaConfig,
   enabledCredentials: string[] = [],
+  enableTacit: boolean = false,
 ): number => {
   const chains = [mainnet, optimism, arbitrum, polygon, base, robinhood, sepolia];
   const transports = chains.map((chain) => {
@@ -113,6 +116,11 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
     ...credentialTools(enabledCredentials),
     ...x402NaniTools(),
   ];
+
+  const tacitHost = (globalThis as any).webkit?.messageHandlers?.agentekTacit;
+  if (enableTacit && tacitHost) {
+    tools.push(...tacitTools(createTacitHostTransport(message => tacitHost.postMessage(message))));
+  }
 
   agentekClient = createAgentekClient({
     transports,

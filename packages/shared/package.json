@@ -17,6 +17,16 @@
         "default": "./dist/cjs/index.js"
       }
     },
+    "./tacit": {
+      "import": {
+        "types": "./dist/esm/tacit/index.d.ts",
+        "default": "./dist/esm/tacit/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/tacit/index.d.ts",
+        "default": "./dist/cjs/tacit/index.js"
+      }
+    },
     "./client": {
       "import": {
         "types": "./dist/esm/client.d.ts",

@@ -1,0 +1,10 @@
+export { tacitTools, TacitToolError } from "./tools.js";
+export { createTacitBackend, consolidationCount } from "./backend.js";
+export { createTacitReceiptService } from "./receipts.js";
+export type { TacitReceiptReader, TacitPaymentProofRuntime } from "./receipts.js";
+export { adaptTacitCoreWallet, createTacitWalletSession, createTacitHostTransport } from "./adapter.js";
+export type { TacitCoreWallet, TacitCoreSessionOptions, TacitCoreProof, TacitHostRequest } from "./adapter.js";
+export type { TacitToolBackend, TacitWalletBinding, TacitEvmWallet, TacitReceiptService, TacitHost, TacitOperationStore } from "./types.js";
+export type { TacitContext, TacitPayment, TacitQuote, TacitOperation, TacitBalance, TacitReceipt } from "./schemas.js";
+export { confirmTacitSubmission, tacitSubmissionSchema } from "./confirmation.js";
+export type { TacitSubmission, TacitSubmissionConfirmation } from "./confirmation.js";

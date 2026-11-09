@@ -21,6 +21,7 @@ import type {
 } from "@solana/web3.js";
 import { DEFAULT_SOLANA_RPC_URL } from "./solana/constants.js";
 import { decodeBase58, encodeBase58 } from "./solana/base58.js";
+import { isTacitIdentityMessage } from "./tacit/identity.js";
 
 const SOLANA_RPC_OUTCOME_TIMEOUT_MS = 120_000;
 
@@ -394,6 +395,9 @@ export class AgentekClient {
   }
 
   public async executeSign(signs: Sign[], chainId: number): Promise<string[]> {
+    if (signs.some(sign => isPersonalSign(sign) && isTacitIdentityMessage(sign.message))) {
+      throw new Error("Tacit identity derivation must run in the trusted wallet host; its signature cannot be returned by an agent tool.");
+    }
     const walletClient = this.getWalletClient(chainId);
     const account = await this.getAddress()
     if (!walletClient) {

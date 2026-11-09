@@ -37,6 +37,8 @@ import { approvalTools } from "./approvals/index.js";
 import { contractTools } from "./contract/index.js";
 import { solanaTools } from "./solana/index.js";
 import { researchCATools } from "./researchCA/index.js";
+import { tacitTools } from "./tacit/index.js";
+import type { TacitToolBackend } from "./tacit/index.js";
 import { assertOkResponse } from "./utils/fetch.js";
 import {
   DEFAULT_CHAINS,
@@ -58,6 +60,7 @@ const allTools = async ({
   xApiKeySecret,
   xAccessToken,
   xAccessTokenSecret,
+  tacitBackend,
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
@@ -71,6 +74,7 @@ const allTools = async ({
   xApiKeySecret?: string;
   xAccessToken?: string;
   xAccessTokenSecret?: string;
+  tacitBackend?: TacitToolBackend;
 }) => {
   let tools = [
     ...ensTools(),
@@ -106,6 +110,8 @@ const allTools = async ({
     ...solanaTools(),
     ...researchCATools(),
   ];
+
+  if (tacitBackend) tools.push(...tacitTools(tacitBackend));
 
   if (perplexityApiKey) {
     tools.push(...searchTools({ perplexityApiKey }));
@@ -149,6 +155,7 @@ const allTools = async ({
 
 export {
   allTools,
+  tacitTools,
 
   // Exporting all tool collections for easier composition
   transferTools,
@@ -204,3 +211,5 @@ export type { SwapRequest } from "./zrouter/proposal.js";
 export { observeWalletAsset, observeAsset } from "./erc20/observations.js";
 export { observeGuardianQueue, queueStateSchema } from "./nani/queue.js";
 export { dnsEncode, readENSBytes, validateENSName } from "./ens/bounds.js";
+export { createTacitBackend, createTacitReceiptService, adaptTacitCoreWallet, createTacitWalletSession, createTacitHostTransport, TacitToolError } from "./tacit/index.js";
+export type { TacitToolBackend, TacitWalletBinding, TacitEvmWallet, TacitHost, TacitReceiptService, TacitReceiptReader, TacitPaymentProofRuntime, TacitOperationStore, TacitCoreWallet, TacitCoreSessionOptions, TacitHostRequest } from "./tacit/index.js";
