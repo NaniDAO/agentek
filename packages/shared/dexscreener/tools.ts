@@ -4,7 +4,7 @@ import { z } from "zod";
 import { assertOkResponse, readBoundedJSON } from "../utils/fetch.js";
 
 const finite = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
-const address = (value: unknown): value is string => typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value);
+const address = (value: unknown): value is string => typeof value === "string" && /^0x[0-9a-fA-F]{40}$/i.test(value);
 const TIMEOUT = 15_000;
 const minimum = { liquidityUSD: 10_000, volume24h: 5_000, trades24h: 20, pairAgeHours: 1 };
 

@@ -36,7 +36,7 @@ describe('catalogue evidence and workflow contracts',()=>{
  it('ranks real activity above a thin price pump, excluding unknown metrics',()=>{
   const now=1800000000000;const profile={tokenAddress:token};
   const pair={baseToken:{address:token},liquidity:{usd:100000},volume:{h24:100000,h1:10000},txns:{h24:{buys:100,sells:100}},pairCreatedAt:now-86400000,priceChange:{h24:10}};
-  const active=rankProfile(profile,[pair],now);expect(active.eligible).toBe(true);expect(active.trendScore).toBeGreaterThan(0);
+  const active=rankProfile(profile,[pair],now);expect(active.eligible).toBe(true);expect(rankProfile(profile,[{...pair,baseToken:{address:token.toUpperCase()}}],now).eligible).toBe(true);expect(active.trendScore).toBeGreaterThan(0);
   expect(rankProfile(profile,[{...pair,liquidity:{usd:1},priceChange:{h24:10000}}],now).eligible).toBe(false);
   const unknown=rankProfile(profile,[{baseToken:{address:token}}],now);expect(unknown.trendScore).toBeNull();expect(unknown.exclusionReasons).toContain('liquidityUSD unknown');
   expect(rankProfile(profile,[{...pair,pairCreatedAt:now+1}],now).eligible).toBe(false);
