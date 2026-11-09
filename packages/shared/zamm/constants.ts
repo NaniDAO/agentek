@@ -30,6 +30,7 @@ export async function zammFetch(path: string): Promise<any> {
       `ZAMM indexer returned ${res.status} for ${url}${json?.message ? ` — ${json.message}` : ""}. Set ZAMM_API_URL to point at a live indexer.`,
     );
   }
+  if (!json || typeof json !== "object") throw new Error("Unreadable ZAMM indexer response");
   return json;
 }
 

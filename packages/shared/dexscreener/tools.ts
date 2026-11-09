@@ -1,125 +1,72 @@
-import { base, mainnet } from "viem/chains";
-import { AgentekClient, createTool } from "../client.js";
-import z from "zod";
-import { assertOkResponse } from "../utils/fetch.js";
+import { mainnet, base } from "viem/chains";
+import { createTool } from "../client.js";
+import { z } from "zod";
+import { assertOkResponse, readBoundedJSON } from "../utils/fetch.js";
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const finite = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+const address = (value: unknown): value is string => typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value);
+const TIMEOUT = 15_000;
+const minimum = { liquidityUSD: 10_000, volume24h: 5_000, trades24h: 20, pairAgeHours: 1 };
 
-/** The shape of one entry from /tokens/v1/{chain}/{addresses}. */
-type PairInfo = {
-  pairAddress?: string;
-  dexId?: string;
-  priceUsd?: string;
-  baseToken?: { address?: string };
-  volume?: { h24?: number };
-  priceChange?: { h24?: number };
-  liquidity?: { usd?: number };
-};
-
-const getLatestTokensParameters = z.object({
-  chainId: z.number().describe("Chain ID to fetch trending tokens for (1 for Ethereum, 8453 for Base)"),
-});
-
-// This helper maps numeric chain IDs to the corresponding Dexscreener chain identifier.
-// Modify the mappings below as needed.
-const resolveChainId = (chainId: number) => {
-  switch (chainId) {
-    case 1:
-      return "ethereum";
-    case 8453:
-      return "base";
-    // Add more mappings for other chains as required.
-    default:
-      // Falling through to "ethereum" meant a request for an unsupported chain
-      // silently answered with Ethereum data.
-      throw new Error(
-        `Chain ${chainId} is not mapped to a DexScreener chain. Supported: 1 (ethereum), 8453 (base).`,
-      );
+/** A relative activity heuristic over latest-profile candidates, not a market-wide ranking. */
+export function rankProfile(profile: any, pairs: any[], now: number) {
+  const matched = pairs.filter(p => address(p?.baseToken?.address) && p.baseToken.address.toLowerCase() === profile.tokenAddress.toLowerCase());
+  matched.sort((a,b) => (finite(b?.liquidity?.usd) ?? -1) - (finite(a?.liquidity?.usd) ?? -1)
+    || String(a.pairAddress ?? "").localeCompare(String(b.pairAddress ?? "")));
+  const pair = matched[0];
+  const liquidityUSD = finite(pair?.liquidity?.usd), volume24h = finite(pair?.volume?.h24), volume1h = finite(pair?.volume?.h1);
+  const buys = finite(pair?.txns?.h24?.buys), sells = finite(pair?.txns?.h24?.sells);
+  const trades24h = buys !== null && sells !== null && Number.isSafeInteger(buys) && Number.isSafeInteger(sells) && Number.isSafeInteger(buys+sells) ? buys + sells : null;
+  const created = finite(pair?.pairCreatedAt);
+  const pairAgeHours = created !== null && created <= now ? (now-created)/3_600_000 : null;
+  const priceChange24h = typeof pair?.priceChange?.h24 === "number" && Number.isFinite(pair.priceChange.h24) ? pair.priceChange.h24 : null;
+  const activityAcceleration = volume24h !== null && volume24h > 0 && volume1h !== null ? Math.min(4, 24*volume1h/volume24h) : null;
+  const reasons: string[] = [];
+  for (const [key,value] of Object.entries({liquidityUSD,volume24h,trades24h,pairAgeHours})) {
+    if (value === null) reasons.push(`${key} unknown`);
+    else if (value < minimum[key as keyof typeof minimum]) reasons.push(`${key} below minimum`);
   }
-};
+  const eligible = reasons.length === 0;
+  // Liquidity and broad activity dominate; capped momentum cannot turn a thin pump into a ranked candidate.
+  const trendScore = eligible ? Math.round(1000*(Math.log10(1+liquidityUSD!) + 2*Math.log10(1+volume24h!)
+    + Math.log10(1+trades24h!) + (activityAcceleration ?? 0)/4 + Math.max(0,Math.min(25,priceChange24h ?? 0))/100))/1000 : null;
+  const rawPrice = pair?.priceUsd;
+  const priceUSD = typeof rawPrice === "string" && /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(rawPrice) ? rawPrice : null;
+  return {tokenAddress:profile.tokenAddress, description:typeof profile.description === "string" ? profile.description.slice(0,512) : null,
+    priceUSD,volume24h,volume1h,priceChange24h,liquidityUSD,trades24h,pairAgeHours,activityAcceleration,
+    pairAddress:pair?.pairAddress ?? null,dexId:pair?.dexId ?? null,
+    paidBoosts:finite(pair?.boosts?.active), trendScore,eligible,exclusionReasons:reasons};
+}
 
 export const getLatestTokens = createTool({
-  name: "getLatestTokens",
-  description: "Get trending tokens from Dexscreener with market data including USD price, 24h volume, and 24h price change. Filters by the specified chain.",
-  parameters: getLatestTokensParameters,
-  supportedChains: [mainnet, base],
-  execute: async (
-    _client: AgentekClient,
-    args: z.infer<typeof getLatestTokensParameters>,
-  ) => {
-    // Resolve the Dexscreener chain identifier from the provided chainId.
-    const dexChain = resolveChainId(args.chainId);
-
-    // Fetch token profiles from Dexscreener.
-    const profileResponse = await fetch(
-      "https://api.dexscreener.com/token-profiles/latest/v1",
-      { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
-    );
-    await assertOkResponse(profileResponse, "Failed to fetch token profiles");
-    let profileData = await profileResponse.json();
-
-    // Filter the token profiles by the resolved chain identifier.
-    profileData = profileData.filter(
-      (token: { chainId: string }) =>
-        token.chainId.toLowerCase() === dexChain.toLowerCase(),
-    );
-
-    // Nothing on this chain in the latest profiles. The pair endpoint 404s on
-    // an empty address list, which used to surface as "Failed to fetch pair
-    // data: 404" — an error, for what is really an empty result.
-    if (profileData.length === 0) {
-      return {
-        chainId: args.chainId,
-        trending: [],
-        note: `No ${dexChain} tokens in DexScreener's latest token profiles right now.`,
-      };
+  name:"getLatestTokens",
+  description:"Rank Ethereum/Base candidates from Dexscreener's latest token profiles using liquidity, volume, trading activity and capped momentum. Returns the relative activity score, missing evidence and exclusions. Profiles can be promotional; this is neither market-wide organic trending nor a safety/recommendation score.",
+  parameters:z.object({chainId:z.number().describe("1 for Ethereum or 8453 for Base")}), supportedChains:[mainnet,base],
+  execute:async(_client,args)=>{
+    const chain = args.chainId===1 ? "ethereum" : args.chainId===8453 ? "base" : null;
+    if (!chain) throw new Error("Unsupported Dexscreener network; no fallback network is used");
+    const response=await fetch("https://api.dexscreener.com/token-profiles/latest/v1",{signal:AbortSignal.timeout(TIMEOUT)});
+    await assertOkResponse(response,"Profile discovery failed");
+    const raw=await readBoundedJSON(response,2*1024*1024);
+    if (!Array.isArray(raw)) throw new Error("Unreadable profile discovery coverage");
+    const matching=raw.filter(p=>p?.chainId===chain && address(p.tokenAddress));
+    const unique=[...new Map(matching.map(p=>[p.tokenAddress.toLowerCase(),p])).values()];
+    const profiles=unique.slice(0,60);const pairs:any[]=[];const errors:{addresses:string[];message:string}[]=[];
+    for(let offset=0;offset<profiles.length;offset+=30){
+      const addresses=profiles.slice(offset,offset+30).map(p=>p.tokenAddress);
+      try {
+        const result=await fetch(`https://api.dexscreener.com/tokens/v1/${chain}/${addresses.join(",")}`,{signal:AbortSignal.timeout(TIMEOUT)});
+        await assertOkResponse(result,"Pair evidence failed");
+        const page=await readBoundedJSON(result,4*1024*1024);
+        if(!Array.isArray(page)||page.length>10000)throw new Error("Unreadable pair evidence");
+        pairs.push(...page.filter(p=>p?.chainId===undefined||p.chainId===chain));
+      } catch { errors.push({addresses,message:"Pair evidence unavailable; these candidates are not verified empty."}); }
     }
-
-    // Build a comma-separated list of token addresses.
-    const tokenAddresses = profileData
-      .map((token: { tokenAddress: string }) => token.tokenAddress)
-      .join(",");
-
-    // Build the pair data endpoint URL using the resolved chain.
-    const pairUrl = `https://api.dexscreener.com/tokens/v1/${dexChain}/${tokenAddresses}`;
-    const pairResponse = await fetch(pairUrl, {
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-    await assertOkResponse(pairResponse, "Failed to fetch pair data");
-
-    // /tokens/v1/{chain}/{addresses} returns a bare array of pairs. Reading
-    // `.pairs` off it always short-circuited to undefined, so every token fell
-    // through to the "0" defaults below and the market data was never real.
-    const pairs: PairInfo[] = await pairResponse.json();
-
-    // Map the token profiles and enrich them with their corresponding pair information.
-    return {
-      chainId: args.chainId,
-      trending: profileData.map(
-        (token: { tokenAddress: string; description?: string }) => {
-          // A token can have several pairs; the deepest liquidity is the one
-          // whose price is worth quoting.
-          const matches = pairs.filter(
-            (pair) =>
-              pair.baseToken?.address?.toLowerCase() ===
-              token.tokenAddress.toLowerCase(),
-          );
-          const pairInfo = matches.sort(
-            (a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0),
-          )[0];
-
-          return {
-            tokenAddress: token.tokenAddress,
-            description: token.description,
-            priceUSD: pairInfo?.priceUsd ?? null,
-            volume24h: pairInfo?.volume?.h24 ?? null,
-            priceChange24h: pairInfo?.priceChange?.h24 ?? null,
-            liquidityUSD: pairInfo?.liquidity?.usd ?? null,
-            pairAddress: pairInfo?.pairAddress ?? null,
-            dexId: pairInfo?.dexId ?? null,
-          };
-        },
-      ),
-    };
+    const now=Date.now();const candidates=profiles.map(p=>rankProfile(p,pairs,now));
+    candidates.sort((a,b)=>(b.trendScore??-1)-(a.trendScore??-1)||a.tokenAddress.toLowerCase().localeCompare(b.tokenAddress.toLowerCase()));
+    return {schemaVersion:1,chainId:args.chainId,observedAt:new Date(now).toISOString(),rankingVersion:"profile-activity-v1",minimum,
+      trending:candidates.filter(p=>p.eligible),candidates,errors,complete:errors.length===0&&unique.length<=60,
+      coverage:{source:"Dexscreener latest profiles",observedCandidates:unique.length,examinedCandidates:profiles.length,truncated:unique.length>60},
+      note:"Relative activity among the latest-profile sample only. Profiles and boosts may be paid promotion; activity can be manipulated. Missing data excludes a candidate from ranking. No safety or sellability verdict."};
   },
 });

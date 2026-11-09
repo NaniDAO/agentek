@@ -63,7 +63,7 @@ describe("estimateGasCostTool", () => {
       gasUnits: 21000,
       maxFeePerGas: "2",
       maxPriorityFeePerGas: "1",
-      nativeSymbol: "MATIC"
+      nativeSymbol: "POL"
     });
     
     // Same gas price as mainnet in this mock, so the same cost: the estimate is

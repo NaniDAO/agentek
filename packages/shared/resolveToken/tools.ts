@@ -33,41 +33,20 @@ async function fetchCoinGeckoList() {
   return coinListCache!;
 }
 
-/**
- * Look up a token symbol on CoinGecko and return its address on the
- * requested chain.  Prefers exact-match symbols; when multiple coins share
- * a symbol it picks the one that has an address on the requested chain
- * and the highest market-cap ranking (earliest in the list).
- */
-async function resolveViaCoinGecko(
-  symbol: string,
-  chainId: number,
-): Promise<{ address: string; id: string; name: string } | null> {
+/** Return all distinct matching contracts; provider ordering confers no identity. */
+async function resolveViaCoinGecko(symbol: string, chainId: number, coingeckoId?: string) {
   const list = await fetchCoinGeckoList();
-  const normalised = symbol.toLowerCase();
   const platformKey = CHAIN_TO_COINGECKO_PLATFORM[chainId];
-  if (!platformKey) return null;
-
-  // Find all coins matching the symbol that have an address on this chain
-  const matches = list.filter(
-    (c) =>
-      c.symbol.toLowerCase() === normalised &&
-      c.platforms[platformKey] &&
-      c.platforms[platformKey].startsWith("0x"),
-  );
-
-  if (matches.length === 0) return null;
-
-  // First match is the most "canonical" (CoinGecko sorts by market cap)
-  const best = matches[0];
-  return {
-    address: best.platforms[platformKey],
-    id: best.id,
-    name: best.name,
-  };
+  if (!platformKey) return [];
+  const matches = list.filter(c => c.symbol.toLowerCase() === symbol.toLowerCase()
+    && (!coingeckoId || c.id === coingeckoId)
+    && /^0x[0-9a-fA-F]{40}$/.test(c.platforms?.[platformKey] ?? ""));
+  const unique = new Map(matches.map(c => [c.platforms[platformKey].toLowerCase(), { address: c.platforms[platformKey], id: c.id, name: c.name }]));
+  return [...unique.values()].sort((a,b) => a.address.toLowerCase().localeCompare(b.address.toLowerCase()));
 }
 
 const resolveTokenParameters = z.object({
+  coingeckoId: z.string().min(1).max(160).optional().describe("Exact provider ID selected by the user from ambiguous candidates; never guess it."),
   symbol: z
     .string()
     .describe("Token symbol (e.g. 'USDC', 'DAI', 'WETH', 'PEPE')"),
@@ -81,16 +60,16 @@ const resolveTokenParameters = z.object({
 export const resolveTokenTool = createTool({
   name: "resolveToken",
   description:
-    "Resolve a token symbol (e.g. 'USDC', 'DAI', 'PEPE') to its contract address, decimals, and name on a specific chain. Checks a curated registry first, then falls back to CoinGecko for any listed token. Use this before calling tools like getBalanceOf, intentApprove, or intentTransfer when you only have a symbol.",
+    "Resolve a token symbol (e.g. 'USDC', 'DAI', 'PEPE') to its contract address, decimals, and name on a specific chain. Checks a curated registry first, then returns CoinGecko candidates. An ambiguous symbol requires the user to choose the exact contract or provider ID; never choose the first listing. A result never authorizes construction.",
   supportedChains: resolveTokenChains,
   parameters: resolveTokenParameters,
   execute: async (client, args) => {
-    const { symbol, chainId } = args;
+    const { symbol, chainId, coingeckoId } = args;
     const key = symbol.toUpperCase();
 
     // 1. Try the curated static registry first (instant, no network call)
     const tokenMap = TOKEN_REGISTRY[key] ?? TOKEN_REGISTRY[symbol];
-    if (tokenMap) {
+    if (tokenMap && !coingeckoId) {
       const entry = tokenMap[chainId];
       if (entry) {
         return {
@@ -107,7 +86,14 @@ export const resolveTokenTool = createTool({
     }
 
     // 2. Fall back to CoinGecko coin list
-    const cgResult = await resolveViaCoinGecko(symbol, chainId);
+    const matches = await resolveViaCoinGecko(symbol, chainId, coingeckoId);
+    if (matches.length > 1) return {
+      schemaVersion: 1, status: "ambiguous", symbol: key, chainId, address: null, decimals: null,
+      candidates: matches.slice(0, 20).map(c => ({address: c.address, coingeckoId: c.id, name: c.name})),
+      totalCandidates: matches.length, truncated: matches.length > 20, authorizesConstruction: false,
+      nextStep: "Ask the user to choose the exact contract or provider ID. Do not select the first candidate or propose a transaction from the symbol.",
+    };
+    const cgResult = matches[0];
     if (!cgResult) {
       const supportedPlatforms = Object.keys(COINGECKO_PLATFORM_TO_CHAIN).join(
         ", ",

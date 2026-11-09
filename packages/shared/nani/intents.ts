@@ -44,7 +44,7 @@ export const intentStakeNani = createTool({
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: "approve",
-          args: [XNANI_TOKEN, maxUint256],
+          args: [XNANI_TOKEN, amountBigInt],
         }),
       });
     }

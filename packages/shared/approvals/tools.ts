@@ -65,7 +65,13 @@ async function fetchApprovalLogs(
     }
 
     const data = (await res.json()) as EtherscanLogsResponse;
-    if (data.status !== "1" || !data.result || data.result.length === 0) break;
+    if (data.status !== "1") {
+      if (data.status === "0" && /no (records|transactions) found/i.test(data.message) && Array.isArray(data.result) && data.result.length === 0) break;
+      throw new Error("Approval discovery failed; coverage is unknown. Use bounded permission discovery.");
+    }
+    if (!Array.isArray(data.result)) throw new Error("Unreadable approval discovery response");
+    if (data.result.length === 0) break;
+    if (page === 10 && data.result.length >= 1000) throw new Error("Approval discovery reached its page limit; coverage is incomplete. Use bounded discovery.");
 
     allLogs.push(...data.result);
 
@@ -101,7 +107,7 @@ function deduplicateApprovals(
 export const getActiveApprovalsTool = createTool({
   name: "getActiveApprovals",
   description:
-    "Scan all ERC-20 token approvals for an address on a specific chain. Returns every (token, spender) pair that currently has a non-zero allowance, with the approved amount and token metadata. Similar to revoke.cash.",
+    "Legacy indexed ERC20 approval scan, not a complete authority inventory. Reports unreadable allowances explicitly. Prefer bounded discovery and explicitly selected revocations.",
   supportedChains: approvalChains,
   parameters: z.object({
     owner: z
@@ -117,7 +123,7 @@ export const getActiveApprovalsTool = createTool({
     // 1. Fetch all Approval logs for the owner from Blockscout
     const logs = await fetchApprovalLogs(chainId, owner);
     if (logs.length === 0) {
-      return { chainId, owner, approvals: [], total: 0, scannedPairs: 0 };
+      return { chainId, owner, approvals: [], total: 0, scannedPairs: 0, unknownAllowances: [], complete: true, coverage: "Indexed ERC20 Approval events only; excludes other authority types." };
     }
 
     // 2. Deduplicate to unique (token, spender) pairs
@@ -167,11 +173,11 @@ export const getActiveApprovalsTool = createTool({
       const allowance =
         allowanceResult.status === "success"
           ? (allowanceResult.result as bigint)
-          : 0n;
+          : null;
       const decimals =
         decimalsResult.status === "success"
           ? (decimalsResult.result as number)
-          : 18;
+          : null;
       const symbol =
         symbolResult.status === "success"
           ? (symbolResult.result as string)
@@ -187,14 +193,15 @@ export const getActiveApprovalsTool = createTool({
         tokenSymbol: symbol,
         decimals,
         spender: pair.spender,
-        allowance: allowance.toString(),
-        allowanceFormatted: formatUnits(allowance, decimals),
-        isUnlimited: allowance >= maxUint256 / 2n,
+        allowance: allowance?.toString() ?? null,
+        allowanceFormatted: allowance !== null && decimals !== null ? formatUnits(allowance, decimals) : null,
+        isUnlimited: allowance === null ? null : allowance >= maxUint256 / 2n,
+        error: allowance === null ? "Allowance could not be read; it is not zero." : null,
       };
     });
 
     // Filter to only active (non-zero) approvals
-    const active = results.filter((r) => BigInt(r.allowance) > 0n);
+    const active = results.filter((r) => r.allowance !== null && BigInt(r.allowance) > 0n);
 
     // Sort: unlimited first (highest risk), then by allowance descending
     active.sort((a: any, b: any) => {
@@ -209,6 +216,9 @@ export const getActiveApprovalsTool = createTool({
       approvals: active,
       total: active.length,
       scannedPairs: pairs.length,
+      unknownAllowances: results.filter(r => r.allowance === null),
+      complete: results.every(r => r.allowance !== null),
+      coverage: "Indexed ERC20 Approval events only; excludes other authority types.",
     };
   },
 });
@@ -286,6 +296,7 @@ export const intentRevokeAllApprovalsTool = createTool({
       allowFailure: true,
     });
 
+    if (allowanceResults.some(r => r.status !== "success")) throw new Error("Some allowances are unknown. Select explicit pairs and recheck them before revoking.");
     const activePairs = pairs.filter((_, i) => {
       const r = allowanceResults[i];
       return r.status === "success" && (r.result as bigint) > 0n;

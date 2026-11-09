@@ -6,7 +6,6 @@ import { createTallyProposalsTool, createTallyChainsTool, createTallyUserDaosToo
 import { createSearchRecentTweetsTool, createGetTweetByIdTool, createGetUserByUsernameTool, createGetUserTweetsTool, createGetHomeTimelineTool } from '../twitter/tools.js';
 import { searchSolanaTokensTool, getSolanaTrendingTokensTool, getSolanaRecentTokensTool, getSolanaTokenMarketDataTool } from '../solana/market-tools.js';
 
-import { createImageGenTools } from '../imagegen/index.js';
 
 // Configuration contains presence flags only. The native host attaches secrets to
 // pinned requests. Registering tools never authenticates or contacts a provider.
@@ -22,7 +21,6 @@ export function credentialTools(enabled: string[] = []): BaseTool[] {
     tools.push(createSearchRecentTweetsTool(reference), createGetTweetByIdTool(reference), createGetUserByUsernameTool(reference), createGetUserTweetsTool(reference));
   }
   if (has('jupiter.apiKey')) tools.push(searchSolanaTokensTool, getSolanaTrendingTokensTool, getSolanaRecentTokensTool, getSolanaTokenMarketDataTool);
-  if (has('fireworks.apiKey') && has('pinata.jwt')) tools.push(...createImageGenTools({fireworksApiKey: reference, pinataJWT: reference}));
   if (['x.apiKey', 'x.apiKeySecret', 'x.accessToken', 'x.accessTokenSecret'].every(has)) {
     // Shared tools keep timeline formatting; native host handles OAuth signatures.
     const get = async (path: string, params = {}) => {

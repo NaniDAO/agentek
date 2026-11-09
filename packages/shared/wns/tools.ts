@@ -197,7 +197,7 @@ export const getWNSTokenURITool = createTool({
 export const intentRegisterWNSTool = createTool({
   name: "intentRegisterWNS",
   description:
-    "Generate transaction intents for registering a .wei name. Returns the commit and reveal transactions needed for the two-step registration process.",
+    "Propose a .wei registration as separately approved commit and reveal steps. The host must confirm the commitment and wait at least 60 seconds before fresh review of the reveal; never batch these steps.",
   parameters: z.object({
     label: z.string().describe("The label to register (e.g. 'alice')"),
     secret: z
@@ -213,28 +213,14 @@ export const intentRegisterWNSTool = createTool({
     const commitTx = wns.encodeCommit(commitment);
     const revealTx = wns.encodeReveal(args.label, args.secret, BigInt(args.value));
 
-    // Returned as {intent, ops, chain} like every other intent in the library.
-    // The custom {intent, steps} shape left this tool outside the Intent type
-    // it declares, so anything iterating `ops` found undefined and silently
-    // executed neither half of the commit-reveal.
     return {
-      intent: `Register ${args.label}.wei`,
-      ops: [
-        { target: commitTx.to, data: commitTx.data, value: "0" },
-        {
-          target: revealTx.to,
-          data: revealTx.data,
-          value: revealTx.value?.toString() ?? args.value,
-        },
-      ],
-      chain: 1,
-      // Registration is commit-reveal: the two ops are ordered and the reveal
-      // is rejected until the commitment has aged. Callers that submit ops
-      // back-to-back need to know that.
-      notes: [
-        "Op 1 submits the commitment hash.",
-        "Wait at least 60 seconds before submitting op 2, or the reveal reverts.",
-      ],
+      intent: `Register ${args.label}.wei`, owner, chain: 1,
+      workflow: { schemaVersion: 1, mode: "sequential", steps: [
+        { id: "commit", title: `Commit ${args.label}.wei registration`, minimumDelaySeconds: 0,
+          ops: [{ target: commitTx.to, data: commitTx.data, value: "0" }] },
+        { id: "reveal", title: `Register ${args.label}.wei`, dependsOn: "commit", waitFor: "confirmation", minimumDelaySeconds: 60,
+          ops: [{ target: revealTx.to, data: revealTx.data, value: revealTx.value?.toString() ?? args.value }] },
+      ] },
     };
   },
 });

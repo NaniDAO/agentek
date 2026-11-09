@@ -57,7 +57,8 @@ export const getHolders = createTool({
       offset: args.offset.toString(),
     });
     const json = await zammFetch(`/api/holders?${params}`);
-    return json?.data ?? [];
+    if (!Array.isArray(json?.data)) throw new Error("Unreadable ZAMM holder coverage");
+    return json.data;
   },
 });
 
@@ -66,7 +67,7 @@ export const getHolders = createTool({
 export const getAccountPortfolio = createTool({
   name: "getAccountPortfolio",
   description:
-    "Given a wallet address, return all token balances the account holds, including coin metadata.",
+    "Read ZAMM/indexer-specific holdings for an address, including coin metadata. This is not the wallet's complete portfolio or total balance.",
   parameters: z.object({
     address: addressSchema,
   }),

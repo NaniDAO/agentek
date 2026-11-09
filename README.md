@@ -397,3 +397,44 @@ Interested in contributing? Check out our [CONTRIBUTING.md](CONTRIBUTING.md) gui
 ## License
 
 [AGPL-3.0](LICENSE)
+
+## Nani host catalogue
+
+The iPhone entry point resolves the shared client directly from committed source,
+never a workspace package's compiled dist. Its scoped catalogue retains WNS,
+NANI staking/governance, ZAMM, contract/yield research and read-only chain research.
+It excludes Tacit, paid HTTP/image publishing, the echo-only think tool, the
+superseded scraper/swap intent, legacy approval scans and protocol position
+management. The general SDK retains its separate collections.
+
+WNS registration returns `workflow: {schemaVersion:1, mode:"sequential", steps}`
+without top-level ops. Each stage contains `id`, `title`, `ops`,
+`minimumDelaySeconds`, and (after the first) `dependsOn` plus
+`waitFor:"confirmation"`. Hosts persist the stages independently, validate the
+prerequisite's canonical receipt and chain time, and freshly simulate/price/review
+and approve every stage. Never flatten delayed stages into a batch. Tools do not
+sign, submit, retry or grant later-stage approval. The existing secret parameter
+is a registration commitment secret, never a wallet key.
+
+`resolveToken` returns ambiguous same-symbol contracts as bounded candidates;
+ask the user to choose the exact contract/provider ID. Provider order is not
+identity. Resolved metadata never authorizes construction.
+
+Dexscreener ranks activity only among up to 60 latest-profile candidates, with
+30-address requests and explicit missing/truncated/failed evidence. The activity
+heuristic requires $10,000 liquidity, $5,000 daily volume, 20 daily trades and a
+one-hour pair age. Its capped momentum is not a safety or organic-trending score.
+
+Fee estimates return exact wei components and a nullable total. Supply exact
+transaction identity on OP/Base/Arbitrum; failed or absent extra-fee evidence
+leaves the total unknown. OP/Base use the existing GasPriceOracle's
+getL1FeeUpperBound and getOperatorFee with a conservative envelope and reserve.
+Arbitrum's RPC estimate already includes posting cost; no second L1 fee is added.
+Testnet assets receive no USD valuation. Quotes are estimates/reserves, not
+protocol-enforceable final-charge caps. Other networks stay explicitly unknown
+unless a fee model is configured. Native hosts independently recheck before signing.
+
+Protocol references: [OP fees](https://docs.optimism.io/op-stack/transactions/fees),
+[Base fees](https://docs.base.org/specifications/transactions/network-fees),
+[Arbitrum gas estimates](https://developer.arbitrum.io/arbitrum-essentials/how-to-estimate-gas).
+Offline source fixtures: `packages/shared/catalogue-readiness.test.ts`.

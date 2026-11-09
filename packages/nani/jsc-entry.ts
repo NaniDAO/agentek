@@ -18,39 +18,37 @@
 
 import { type Hex, http, isHex, zeroAddress } from "viem";
 import { mainnet, optimism, arbitrum, polygon, base, sepolia } from "viem/chains";
-import { createAgentekClient, type BaseTool } from "@agentek/tools/client";
+import { createAgentekClient, type BaseTool } from "../shared/client.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import { ensTools } from "../shared/ens/index.js";
 import { erc20Tools } from "../shared/erc20/index.js";
 import { rpcTools } from "../shared/rpc/index.js";
 import { transferTools } from "../shared/transfer/index.js";
-import { swapTools } from "../shared/swap/index.js";
 import { blockscoutTools } from "../shared/blockscout/index.js";
-import { aaveTools } from "../shared/aave/index.js";
+import { getAaveReserveData } from "../shared/aave/tools.js";
 import { acrossTools } from "../shared/across/index.js";
-import { uniV3Tools } from "../shared/uniV3/index.js";
+import { getUniV3Pool, getPoolFeeData } from "../shared/uniV3/tools.js";
 import { wethTools } from "../shared/weth/index.js";
 import { naniTools } from "../shared/nani/index.js";
 import { securityTools } from "../shared/security/index.js";
-import { webTools } from "../shared/web/index.js";
+import { webPageExtractor, webPageResult } from "../shared/web/page.js";
 import { fearGreedIndexTools } from "../shared/feargreed/index.js";
 import { nftTools } from "../shared/erc721/index.js";
 import { cryptoPriceTools } from "../shared/cryptoprices/index.js";
 import { gasEstimatorTools } from "../shared/gasestimator/index.js";
 import { defillamaTools } from "../shared/defillama/index.js";
 import { dexscreenerTools } from "../shared/dexscreener/index.js";
-import { thinkTools } from "../shared/think/index.js";
 import { zammTools } from "../shared/zamm/index.js";
-import { zrouterTools } from "../shared/zrouter/index.js";
+import { getQuote } from "../shared/zrouter/tools.js";
+import { getNativeSwapProposal } from "../shared/zrouter/proposal.js";
 import { wnsTools } from "../shared/wns/index.js";
 import { credentialTools, installCredentialTransport } from "../shared/credentialTools/index.js";
 import { resolveTokenTools } from "../shared/resolveToken/index.js";
-import { approvalTools } from "../shared/approvals/index.js";
+import { discoverTokenPermissionsTool } from "../shared/approvals/discovery.js";
+import { observeTokenPermissionTool, observeNFTOperatorTool, planSelectedRevocationsTool } from "../shared/approvals/observations.js";
 import { contractTools } from "../shared/contract/index.js";
 import { readOnlyChainTools } from "../shared/readonlyChains/index.js";
-// Not ../shared/x402/index.js: that path signs and pays inside JavaScript.
-import { x402NaniTools } from "../shared/x402/payments.js";
 import { researchCATools } from "../shared/researchCA/index.js";
 import { safeResearchError } from "../shared/blockscout/research.js";
 import { robinhood } from "../shared/chains/robinhood.js";
@@ -102,16 +100,15 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 
   const tools = [
     ...ensTools(), ...erc20Tools(), ...rpcTools(), ...transferTools(),
-    ...blockscoutTools(), ...aaveTools(), ...acrossTools(), ...uniV3Tools(),
-    ...wethTools(), ...naniTools(), ...securityTools(), ...webTools(),
+    ...blockscoutTools(), getAaveReserveData, ...acrossTools(), getUniV3Pool, getPoolFeeData,
+    ...wethTools(), ...naniTools(), ...securityTools(), webPageExtractor, webPageResult,
     ...fearGreedIndexTools(), ...nftTools(), ...cryptoPriceTools(),
     ...gasEstimatorTools(), ...defillamaTools(), ...dexscreenerTools(),
-    ...thinkTools(), ...zammTools(), ...zrouterTools(), ...wnsTools(),
-    ...resolveTokenTools(), ...approvalTools(), ...contractTools(),
+    ...zammTools(), getQuote, getNativeSwapProposal, ...wnsTools(),
+    ...resolveTokenTools(), discoverTokenPermissionsTool, observeTokenPermissionTool, observeNFTOperatorTool, planSelectedRevocationsTool, ...contractTools(),
     ...researchCATools(),
     ...readOnlyChainTools(),
     ...credentialTools(enabledCredentials),
-    ...x402NaniTools(),
   ];
 
   agentekClient = createAgentekClient({
