@@ -1,9 +1,9 @@
+import { parseExactUnits, byteHex } from "../utils/exact.js";
 import { z } from "zod";
 import { AgentekClient, createTool, Intent } from "../client.js";
 import {
   Address,
   encodeFunctionData,
-  parseEther,
   parseAbi,
   Hex,
 } from "viem";
@@ -57,7 +57,7 @@ const intentSendTransactionParameters = z.object({
     .describe(
       "Raw hex calldata. Use this only if abi/functionName/args are not provided."
     ),
-  chainId: z.number().describe("Chain ID to send the transaction on"),
+  chainId: z.number().int().positive().safe().describe("Chain ID to send the transaction on"),
 });
 
 export const intentSendTransaction = createTool({
@@ -85,10 +85,10 @@ export const intentSendTransaction = createTool({
       if (!data.startsWith("0x")) {
         throw new Error("Raw data must be a hex string starting with 0x");
       }
-      calldata = data as Hex;
+      calldata = byteHex(data);
     }
 
-    const weiValue = parseEther(value || "0").toString();
+    const weiValue = parseExactUnits(value || "0", 18).toString();
 
     const ops = [
       {

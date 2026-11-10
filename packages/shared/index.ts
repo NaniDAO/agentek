@@ -92,7 +92,6 @@ const allTools = async ({
     ...cryptoPriceTools(),
     ...gasEstimatorTools(),
     ...defillamaTools(),
-    ...thinkTools(),
     ...btcRpcTools(),
     ...erc6909Tools(),
     ...coinchanTools(),
@@ -111,9 +110,7 @@ const allTools = async ({
     tools.push(...searchTools({ perplexityApiKey }));
   }
 
-  if (zeroxApiKey) {
-    tools.push(...swapTools({ zeroxApiKey }));
-  }
+  tools.push(...swapTools({}));
 
   if (tallyApiKey) {
     tools.push(
@@ -138,10 +135,8 @@ const allTools = async ({
     }))
   }
 
-  if (xBearerToken) {
-    tools.push(...await twitterTools({ xBearerToken, xAccessToken, xAccessTokenSecret }));
-  } else if (xApiKey && xApiKeySecret) {
-    tools.push(...await twitterTools({ xApiKey, xApiKeySecret, xAccessToken, xAccessTokenSecret }));
+  if (xBearerToken || (xApiKey && xApiKeySecret)) {
+    tools.push(...await twitterTools({xBearerToken, xApiKey, xApiKeySecret, xAccessToken, xAccessTokenSecret}));
   }
 
   return tools;

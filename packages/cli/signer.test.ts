@@ -790,3 +790,11 @@ describe("CLI — signer command", () => {
     }
   });
 });
+
+describe("Signer — exact policy inputs", () => {
+  it("rejects fractional approval thresholds and rounded value limits", () => {
+    const policy = defaultPolicy();
+    expect(() => evaluatePolicy({...policy, approvalThresholdPct: 50.5}, {chainId: 1, to: `0x${"1".repeat(40)}`, value: 0n})).toThrow();
+    expect(() => evaluatePolicy({...policy, maxValuePerTx: "0.0000000000000000001"}, {chainId: 1, to: `0x${"1".repeat(40)}`, value: 0n})).toThrow();
+  });
+});

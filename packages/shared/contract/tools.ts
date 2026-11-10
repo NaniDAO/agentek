@@ -1,3 +1,4 @@
+import { identityAddress, quantitySchema } from "../utils/exact.js";
 import { z } from "zod";
 import type { Abi, Address } from "viem";
 import { encodeFunctionData } from "viem";
@@ -89,8 +90,7 @@ export const readContractTool = createTool({
     "Read data from any smart contract by calling a view/pure function. Supports any chain and any contract. If the ABI is not provided, it will be auto-fetched from Blockscout for verified contracts.",
   supportedChains,
   parameters: z.object({
-    address: z
-      .string()
+    address: z.string().refine(value => identityAddress.safeParse(value).success, "Invalid address")
       .describe("The contract address to read from (0x...)"),
     functionName: z
       .string()
@@ -124,16 +124,14 @@ export const intentWriteContractTool = createTool({
     "Write to any smart contract by calling a state-changing function. Builds a transaction intent that can be executed if a wallet is connected. If the ABI is not provided, it will be auto-fetched from Blockscout for verified contracts.",
   supportedChains,
   parameters: z.object({
-    address: z
-      .string()
+    address: z.string().refine(value => identityAddress.safeParse(value).success, "Invalid address")
       .describe("The contract address to write to (0x...)"),
     functionName: z
       .string()
       .describe("The name of the function to call (e.g. 'transfer', 'approve', 'mint')"),
     args: argsSchema,
     abi: abiSchema,
-    value: z
-      .string()
+    value: quantitySchema
       .optional()
       .describe("ETH value to send with the transaction in wei. Defaults to '0'."),
     chainId: z

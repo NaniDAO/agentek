@@ -1,13 +1,14 @@
 {
   "name": "@agentek/nani",
   "version": "0.1.0",
-  "description": "JavaScriptCore tool bundle for nani-macos",
+  "description": "Embedded tool bundle for Nani on iPhone and Mac",
   "license": "AGPL-3.0",
   "author": "NaniDAO",
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "bun build --minify --external @solana/web3.js --external @solana/spl-token jsc-entry.ts --outfile dist/nani-tools.js"
+    "build": "pnpm typecheck && bun build --minify --external @solana/web3.js --external @solana/spl-token jsc-entry.ts --outfile dist/nani-tools.js",
+    "typecheck": "tsc -p tsconfig.check.json"
   },
   "dependencies": {
     "@agentek/tools": "workspace:*",

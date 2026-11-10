@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync, renameSync, unlinkSync, openSync, closeSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -10,6 +10,7 @@ export interface KnownKey {
 }
 
 export const KNOWN_KEYS: KnownKey[] = [
+  { name: "AGENTEK_EXECUTION_MODE", description: "prepare (default) or execute: explicitly permit transaction submission" },
   { name: "PRIVATE_KEY", description: "Hex-encoded private key for signing transactions" },
   { name: "ACCOUNT", description: "Hex address to use as the sender (read-only)" },
   { name: "SOLANA_PRIVATE_KEY", description: "Base58 or JSON-array Solana secret key for signing Solana transactions" },
@@ -22,6 +23,7 @@ export const KNOWN_KEYS: KnownKey[] = [
   { name: "ARBITRUM_RPC_URL", description: "Arbitrum One JSON-RPC endpoint" },
   { name: "POLYGON_RPC_URL", description: "Polygon JSON-RPC endpoint" },
   { name: "BASE_RPC_URL", description: "Base JSON-RPC endpoint" },
+  { name: "ROBINHOOD_RPC_URL", description: "Robinhood Chain JSON-RPC endpoint" },
   { name: "MODE_RPC_URL", description: "Mode JSON-RPC endpoint" },
   { name: "SEPOLIA_RPC_URL", description: "Sepolia testnet JSON-RPC endpoint" },
   { name: "PERPLEXITY_API_KEY", description: "Perplexity AI search tools" },
@@ -48,7 +50,7 @@ export interface AgentekConfig {
 }
 
 function defaultConfig(): AgentekConfig {
-  return { version: 1, keys: {} };
+  return { version: 1, keys: Object.create(null) };
 }
 
 export function getConfigDir(): string {
@@ -63,15 +65,15 @@ export function readConfig(): AgentekConfig {
   const configPath = getConfigPath();
   if (!existsSync(configPath)) return defaultConfig();
   try {
-    const raw = readFileSync(configPath, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return defaultConfig();
-    return {
-      version: typeof parsed.version === "number" ? parsed.version : 1,
-      keys: typeof parsed.keys === "object" && parsed.keys !== null ? parsed.keys : {},
-    };
+    const parsed = JSON.parse(readFileSync(configPath, "utf-8"));
+    if (!parsed || Array.isArray(parsed) || parsed.version !== 1 ||
+        !parsed.keys || typeof parsed.keys !== "object" || Array.isArray(parsed.keys) ||
+        Object.values(parsed.keys).some(value => typeof value !== "string")) {
+      throw new Error("Expected version 1 and string credential values");
+    }
+    return { version: 1, keys: Object.assign(Object.create(null), parsed.keys) };
   } catch {
-    return defaultConfig();
+    throw new Error("Invalid Agentek configuration; repair config.json before reading or writing credentials");
   }
 }
 
@@ -81,8 +83,13 @@ export function writeConfig(config: AgentekConfig): void {
     mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
   const configPath = getConfigPath();
-  writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n", { mode: 0o600 });
-  chmodSync(configPath, 0o600);
+  if (config.version !== 1 || Object.values(config.keys).some(value => typeof value !== "string")) throw new Error("Invalid configuration");
+  const temporary = `${configPath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    writeFileSync(temporary, JSON.stringify(config, null, 2) + "\n", { mode: 0o600, flag: "wx" });
+    chmodSync(temporary, 0o600);
+    renameSync(temporary, configPath);
+  } finally { try { unlinkSync(temporary); } catch {} }
 }
 
 // ── Key resolution ──────────────────────────────────────────────────────────
@@ -96,7 +103,8 @@ export interface ResolvedKey {
 
 export function resolveAllKeys(): ResolvedKey[] {
   const config = readConfig();
-  return KNOWN_KEYS.map((k) => {
+  const generic = new Set([...Object.keys(config.keys), ...Object.keys(process.env)].filter(name => /^RPC_URL_[1-9][0-9]*$/.test(name)));
+  return [...KNOWN_KEYS, ...[...generic].sort().map(name => ({name, description: "Per-chain RPC endpoint"}))].map((k) => {
     const envVal = process.env[k.name];
     if (envVal !== undefined && envVal !== "") {
       return { name: k.name, description: k.description, value: envVal, source: "env" as const };
@@ -122,10 +130,21 @@ export function resolveKeys(): Record<string, string | undefined> {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 export function isKnownKey(name: string): boolean {
-  return KNOWN_KEY_NAMES.has(name);
+  return KNOWN_KEY_NAMES.has(name) || /^RPC_URL_[1-9][0-9]*$/.test(name);
 }
 
 export function redactValue(value: string): string {
   if (value.length <= 8) return "****";
   return value.slice(0, 4) + "..." + value.slice(-4);
+}
+
+export function updateConfig(update: (config: AgentekConfig) => void): void {
+  const directory = getConfigDir();
+  mkdirSync(directory, {recursive: true, mode: 0o700});
+  const path = join(directory, "config.lock");
+  let lock: number;
+  try { lock = openSync(path, "wx", 0o600); }
+  catch { throw new Error("Configuration is locked by another writer; retry after that command finishes"); }
+  try { const config = readConfig(); update(config); writeConfig(config); }
+  finally { closeSync(lock); unlinkSync(path); }
 }

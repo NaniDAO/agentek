@@ -1,8 +1,11 @@
+import { createExecutionJournal } from "@agentek/tools/journal";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { type Hex, isHex, zeroAddress } from "viem";
-import { createAgentekClient, type BaseTool } from "@agentek/tools/client";
+import { createAgentekClient, isNonCancellableTool, TransactionExecutionError, OperationExecutionError, failedResult, type BaseTool } from "@agentek/tools/client";
 import {
   allTools,
   DEFAULT_CHAINS,
@@ -16,10 +19,7 @@ const VERSION = __AGENTEK_VERSION__;
 
 /** Timeout for individual tool executions (2 minutes). */
 const TOOL_TIMEOUT_MS = 120_000;
-const NON_CANCELLABLE_TOOLS = new Set([
-  "intentTransferSol",
-  "intentTransferSplToken",
-]);
+
 
 /** stderr logging — safe for stdio transport (never touches stdout). */
 const log = (msg: string) => console.error(`[agentek-mcp] ${msg}`);
@@ -75,7 +75,11 @@ async function main() {
     : (ACCOUNT && isHex(ACCOUNT) ? ACCOUNT as Hex : zeroAddress);
 
   // ── Agentek client ───────────────────────────────────────────────────
+  const executionMode = process.env.AGENTEK_EXECUTION_MODE ?? "prepare";
+  if (executionMode !== "prepare" && executionMode !== "execute") throw new Error("AGENTEK_EXECUTION_MODE must be prepare or execute");
   const agentekClient = createAgentekClient({
+    executionMode,
+    onExecutionUpdated: createExecutionJournal(join(process.env.AGENTEK_CONFIG_DIR ?? join(homedir(), ".agentek"), "executions")),
     transports,
     chains,
     accountOrAddress: account,
@@ -120,20 +124,21 @@ async function main() {
   //   - Capability negotiation
   for (const [name, tool] of toolsMap) {
     // Extract the raw Zod shape from the tool's ZodObject for registerTool's inputSchema
-    const zodShape = tool.parameters.shape;
+
 
     server.registerTool(
       name,
       {
         description: tool.description,
-        inputSchema: zodShape,
+        inputSchema: tool.parameters,
       },
       async (args) => {
+        try {
         const execution = agentekClient.execute(name, args);
         // A Solana transfer may already be submitted when a wrapper timer
         // fires. Do not return a retryable-looking timeout for irreversible
         // operations; their result carries an explicit confirmationStatus.
-        const result = NON_CANCELLABLE_TOOLS.has(name)
+        const result = isNonCancellableTool(tool)
           ? await execution
           : await withTimeout(execution, TOOL_TIMEOUT_MS, name);
 
@@ -141,7 +146,12 @@ async function main() {
           ? JSON.stringify(result, null, 2)
           : String(result);
 
-        return { content: [{ type: "text" as const, text }] };
+        return { content: [{ type: "text" as const, text }], isError: failedResult(result) };
+        } catch (error) {
+          if (error instanceof OperationExecutionError) return {content: [{type: "text" as const, text: JSON.stringify({error: error.message, retryable: false, completed: error.completed, failedIndex: error.failedIndex, transaction: error.transaction})}], isError: true};
+          if (error instanceof TransactionExecutionError) return {content: [{type: "text" as const, text: JSON.stringify({error: error.message, retryable: false, execution: error.execution})}], isError: true};
+          throw error;
+        }
       },
     );
   }

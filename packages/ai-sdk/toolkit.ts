@@ -3,6 +3,7 @@ import {
   createAgentekClient,
   AgentekClient,
   type SolanaConfig,
+  type AgentekClientConfig,
 } from "@agentek/tools/client";
 import type { Tool } from "ai";
 import AgentekTool from "./tool.js";
@@ -18,6 +19,8 @@ class AgentekToolkit {
     transports,
     tools,
     solana,
+    executionMode = "prepare",
+    onExecutionUpdated,
   }: {
     accountOrAddress: Account | Address;
     chains: Chain[];
@@ -25,8 +28,12 @@ class AgentekToolkit {
     tools: BaseTool[];
     /** Solana settings. Without this the twelve Solana tools have no account. */
     solana?: SolanaConfig;
+    executionMode?: "prepare" | "execute";
+    onExecutionUpdated?: AgentekClientConfig["onExecutionUpdated"];
   }) {
     this._agent = createAgentekClient({
+      executionMode,
+      onExecutionUpdated,
       accountOrAddress,
       chains,
       transports,

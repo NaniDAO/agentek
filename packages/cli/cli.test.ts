@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { execFile } from "node:child_process";
 import { resolve } from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
@@ -63,7 +63,7 @@ describe("CLI — local input hardening", () => {
         "--json",
         '{"safe":"ok","__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}},"prototype":{"polluted":true}}',
       ],
-      z.object({}),
+      z.object({safe: z.string()}),
     );
 
     expect(result).toEqual({ safe: "ok" });
@@ -498,3 +498,23 @@ describe("CLI — structured errors", () => {
     expect(err.retryable).toBe(true);
   }, TEST_TIMEOUT);
 });
+
+describe("CLI — strict input and configuration", () => {
+  it("rejects unknown flags and nonfinite timeouts", async () => {
+    const unknown = await run(["exec", "getBlockNumber", "--unknown", "true"]);
+    expect(unknown.exitCode).toBe(1); expect(unknown.stderr).toContain("Unknown parameter");
+    const timeout = await run(["exec", "getBlockNumber", "--timeout", "Infinity"]);
+    expect(timeout.exitCode).toBe(1); expect(timeout.stderr).toContain("positive number");
+  }, TEST_TIMEOUT);
+});
+
+it("refuses to overwrite malformed credential configuration", async () => {
+  const root = mkdtempSync(join(tmpdir(), "agentek-invalid-config-"));
+  const path = join(root, "config.json"), malformed = '{"version":1,"keys":{"ACCOUNT":42}}';
+  writeFileSync(path, malformed);
+  try {
+    const result = await run(["config", "set", "ACCOUNT", "replacement"], {AGENTEK_CONFIG_DIR: root});
+    expect(result.exitCode).toBe(1); expect(result.stderr).toContain("Invalid Agentek configuration");
+    expect(readFileSync(path, "utf8")).toBe(malformed);
+  } finally { rmSync(root, {recursive: true, force: true}); }
+}, CONFIG_TEST_TIMEOUT);

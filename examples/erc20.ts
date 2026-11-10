@@ -1,13 +1,13 @@
 import { Hex, http } from "viem";
 import { base, mainnet, sepolia } from "viem/chains";
-import { ensTools } from "../packages/shared/ens";
-import AgentekToolkit from "../packages/ai-sdk/toolkit";
+import { ensTools } from "@agentek/tools";
+import AgentekToolkit from "@agentek/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { CoreMessage, CoreTool, generateText } from "ai";
-import { transferTools } from "../packages/shared/transfer";
-import { erc20Tools } from "../packages/shared/erc20";
-import { searchTools } from "../packages/shared/search";
+import { ModelMessage, Tool, stepCountIs, generateText } from "ai";
+import { transferTools } from "@agentek/tools";
+import { erc20Tools } from "@agentek/tools";
+import { searchTools } from "@agentek/tools";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -18,7 +18,6 @@ async function main() {
 
   if (!privateKey) {
     privateKey = generatePrivateKey();
-    console.log("PRIVATE_KEY:", privateKey);
   }
 
   const account = privateKeyToAccount(privateKey as Hex);
@@ -31,7 +30,7 @@ async function main() {
   );
 
   const toolkit = new AgentekToolkit({
-    transports: [http(), http(), http()],
+    transports: chains.map(() => http()),
     chains,
     accountOrAddress: account,
     tools: [
@@ -54,7 +53,7 @@ async function main() {
       // "Please revoke the approval for spender shivanshi.eth on the USDC contract (0x94a9d9ac8a22534e3faca9f4e7f2e2cf85d5e4c8) on the Sepolia network. I want to completely remove their spending allowance.",
       // "Check if vitalik.eth has approved 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D (uniswap v2 router) for 0x6b175474e89094c44da98b954eedeac495271d0f (dai) and also give me all the deets on DAI and if he has a balance or whatevs",
     },
-  ] as CoreMessage[];
+  ] as ModelMessage[];
 
   messages.forEach((message) => {
     console.log(`\n[${message.role.toUpperCase()}]`);
@@ -65,9 +64,9 @@ async function main() {
     model: openrouter("openai/gpt-4o-mini"),
     system: `YOUR ADDRESS: ${account.address}`,
     messages,
-    maxSteps: 5,
-    tools: tools as Record<string, CoreTool<any, any>>,
-    experimental_activeTools: Object.keys(tools),
+    stopWhen: stepCountIs(5),
+    tools,
+    activeTools: Object.keys(tools),
   });
 
   response.response.messages.forEach((message) => {
@@ -80,9 +79,9 @@ async function main() {
           console.log(`${content.text}`);
         } else if (content.type === "tool-call") {
           // console.log(`[Tool:${content.toolName}]`);
-          // console.log(`${JSON.stringify(content.args, null, 2)}`);
+          // console.log(`${JSON.stringify(content.input, null, 2)}`);
         } else if (content.type === "tool-result") {
-          // console.log(`\n---\n${JSON.stringify(content.result, null, 2)}`);
+          // console.log(`\n---\n${JSON.stringify(content.output, null, 2)}`);
         }
       });
     }

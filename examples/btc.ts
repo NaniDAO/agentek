@@ -1,12 +1,12 @@
 import { Hex, http } from "viem";
 import { base, mainnet, arbitrum, sepolia, mode } from "viem/chains";
-import { ensTools } from "../packages/shared/ens";
-import AgentekToolkit from "../packages/ai-sdk/toolkit";
+import { ensTools } from "@agentek/tools";
+import AgentekToolkit from "@agentek/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { CoreMessage, CoreTool, generateText } from "ai";
+import { ModelMessage, Tool, stepCountIs, generateText } from "ai";
 
-import { btcRpcTools } from "../packages/shared/btc-rpc";
+import { btcRpcTools } from "@agentek/tools";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -17,7 +17,6 @@ async function main() {
 
   if (!privateKey) {
     privateKey = generatePrivateKey();
-    console.log("PRIVATE_KEY:", privateKey);
   }
 
   const account = privateKeyToAccount(privateKey as Hex);
@@ -62,7 +61,7 @@ async function main() {
       role: "user",
       content: "What's the balance and tx count of Satoshi's genesis address?",
     },
-  ] as CoreMessage[];
+  ] as ModelMessage[];
 
   messages.forEach((message) => {
     console.log(`\n[${message.role.toUpperCase()}]`);
@@ -73,9 +72,9 @@ async function main() {
     model: openrouter("anthropic/claude-3.5-sonnet"),
     system: `You are an intelligent crypto analytics agent that employs Step-by-Step Reasoning.`,
     messages,
-    maxSteps: 5,
-    tools: tools as Record<string, CoreTool<any, any>>,
-    experimental_activeTools: Object.keys(tools),
+    stopWhen: stepCountIs(5),
+    tools,
+    activeTools: Object.keys(tools),
   });
 
   response.response.messages.forEach((message) => {
@@ -88,9 +87,9 @@ async function main() {
           console.log(`${content.text}`);
         } else if (content.type === "tool-call") {
           console.log(`[Tool:${content.toolName}]`);
-          console.log(`${JSON.stringify(content.args, null, 2)}`);
+          console.log(`${JSON.stringify(content.input, null, 2)}`);
         } else if (content.type === "tool-result") {
-          console.log(`\n---\n${JSON.stringify(content.result)}`);
+          console.log(`\n---\n${JSON.stringify(content.output)}`);
         }
       });
     }

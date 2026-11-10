@@ -69,34 +69,9 @@ async function findTokenListEntryBySymbol(symbol: string, chainId: number): Prom
   const candidates = list.filter(
     (t) => t.chainId === chainId && t.symbol?.toUpperCase() === symbol.toUpperCase()
   );
-  candidates.sort((a, b) => {
-    const aIs20 = a.extensions?.standard !== "ERC6909";
-    const bIs20 = b.extensions?.standard !== "ERC6909";
-    return Number(bIs20) - Number(aIs20); // prefer ERC20
-  });
-  return candidates[0];
-}
-
-export async function enrichFromListByAddress(address: Address, chainId: number, id?: bigint): Promise<({ address: Address; id?: bigint; standard: "ERC20" | "ERC6909"; decimals: number | null; symbol?: string; precisionSource: "indexed-display"; authorizesConstruction: false }) | null> {
-  const list = await loadTokenList();
-  const entry = list.find(
-    (t) => t.chainId === chainId && t.address.toLowerCase() === address.toLowerCase()
-  );
-  if (!entry) return null;
-
-  const standard = entry.extensions?.standard === "ERC6909" || id !== undefined ? "ERC6909" : "ERC20";
-  const decimals =
-    typeof entry.decimals === "number" && Number.isInteger(entry.decimals) && entry.decimals >= 0 && entry.decimals <= 255 ? entry.decimals : null;
-  const entryId = entry.extensions?.id !== undefined ? uint256(entry.extensions.id as string) : undefined;
-
-  return {
-    address,
-    id: id ?? entryId,
-    standard,
-    decimals,
-    symbol: entry.symbol,
-    precisionSource: "indexed-display", authorizesConstruction: false,
-  };
+  const identities = new Map(candidates.map(t => [`${t.address.toLowerCase()}:${t.extensions?.id ?? "0"}`, t]));
+  if (identities.size > 1) throw new Error("Ambiguous token symbol; provide the explicit token address");
+  return identities.values().next().value;
 }
 
 export function toBaseUnits(amountStr: string, token: ResolvedToken): bigint {

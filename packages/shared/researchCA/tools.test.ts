@@ -147,3 +147,16 @@ describe("researchCA", () => {
     expect(result.warnings.join(" ")).not.toContain("source is not verified");
   });
 });
+
+it("keeps malformed transfer pages incomplete and inspects capabilities beyond display truncation", async () => {
+  vi.stubGlobal("fetch", vi.fn(async input => {
+    const url = String(input);
+    if (url.includes("/smart-contracts/")) return jsonResponse({is_verified: true, abi: [...Array.from({length: 101}, (_, i) => ({type: "function", name: `a${i}`})), {type: "function", name: "mint"}]});
+    if (url.includes("/transfers")) return jsonResponse({});
+    return jsonResponse({items: []});
+  }));
+  const result = await researchCA.execute({getPublicClient: () => ({getCode: async () => "0x6000", readContract: async () => {throw new Error("unsupported");}})} as any, {chainId: 1, address: CONTRACT});
+  expect(result.mintAndTransferHistory.complete).toBe(false);
+  expect(result.contract.abi.functionsTruncated).toBe(true);
+  expect(result.contract.abi.capabilities.mintFunctionPresent).toBe(true);
+});

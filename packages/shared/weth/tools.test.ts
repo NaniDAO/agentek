@@ -266,7 +266,7 @@ describe("WETH Tools", () => {
     });
   });
 
-  describe("WETH Contract Read Operations", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("WETH Contract Read Operations", () => {
     const publicClient = createPublicClient({
       chain: mainnet,
       transport: resolveTransports([mainnet])[0],

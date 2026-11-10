@@ -98,7 +98,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     });
   });
 
-  describe("Address Endpoints", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Address Endpoints", () => {
     it("should get native coin holders", async () => {
       const result = await withRetry(() =>
         getNativeCoinHolders.execute(client, { chain: mainnet.id })
@@ -267,7 +267,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     }, API_TIMEOUT);
   });
 
-  describe("Block Endpoints", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Block Endpoints", () => {
     it("should get block info by number", async () => {
       const result = await withRetry(() =>
         getBlockInfo.execute(client, {
@@ -309,7 +309,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     }, API_TIMEOUT);
   });
 
-  describe("Stats Endpoints", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Stats Endpoints", () => {
     it("should get chain stats for mainnet", async () => {
       const result = await withRetry(() =>
         getStats.execute(client, { chain: mainnet.id })
@@ -338,7 +338,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     }, API_TIMEOUT);
   });
 
-  describe("Transaction Endpoints", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Transaction Endpoints", () => {
     it("should get transaction info", async () => {
       const result = await withRetry(() =>
         getTransactionInfo.execute(client, {
@@ -413,7 +413,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     }, API_TIMEOUT);
   });
 
-  describe("Smart Contract Endpoints", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Smart Contract Endpoints", () => {
     it("should search for smart contracts", async () => {
       const result = await withRetry(() =>
         getSmartContracts.execute(client, {
@@ -450,7 +450,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     }, API_TIMEOUT);
   });
 
-  describe("Token Endpoints", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Token Endpoints", () => {
     it("should get token info for USDC", async () => {
       const result = await withRetry(() =>
         getTokenInfo.execute(client, {
@@ -505,7 +505,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     }, API_TIMEOUT);
   });
 
-  describe("Search Endpoint", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Search Endpoint", () => {
     it("should search for Vitalik address", async () => {
       const result = await withRetry(() =>
         getBlockscoutSearch.execute(client, {
@@ -544,7 +544,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     }, API_TIMEOUT);
   });
 
-  describe("Multi-chain Support", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Multi-chain Support", () => {
     it("should get address info on Base", async () => {
       const result = await withRetry(() =>
         getAddressInfo.execute(client, {
@@ -602,7 +602,7 @@ describe("Blockscout Tools - Real API Tests", () => {
     }, API_TIMEOUT * 3);
   });
 
-  describe("Error Handling", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Error Handling", () => {
     it("should handle invalid address format", async () => {
       await expect(
         getAddressInfo.execute(client, {

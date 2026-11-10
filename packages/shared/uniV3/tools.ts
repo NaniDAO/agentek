@@ -63,6 +63,7 @@ const getPositionDetails = createTool({
       ],
     });
 
+    if (data.some(entry => entry.status !== "success")) throw new Error("Position observation unavailable: one or more contract reads failed");
     const [position, owner] = data;
     return clean({
       owner: owner.result,
@@ -84,9 +85,11 @@ const getUserPositions = createTool({
   supportedChains,
   parameters: z.object({
     chainId: z.number().describe("Chain ID to query (e.g. 1, 8453, 42161)"),
+    offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
+    limit: z.number().int().min(1).max(50).default(20),
     user: z.string().optional().describe("The wallet address to check. Omit to use the connected wallet."),
   }),
-  execute: async (client, { chainId, user }) => {
+  execute: async (client, { chainId, user, offset, limit }) => {
     const publicClient = client.getPublicClient(chainId);
     const owner = user || (await client.getAddress());
 
@@ -98,12 +101,12 @@ const getUserPositions = createTool({
     });
 
     const tokenIds = await Promise.all(
-      Array.from({ length: Number(balance) }).map((_, i) =>
+      Array.from({ length: Number(balance > BigInt(offset) ? (balance - BigInt(offset) > BigInt(limit) ? BigInt(limit) : balance - BigInt(offset)) : 0n) }).map((_, i) =>
         publicClient.readContract({
           address: getPositionManagerAddress(chainId),
           abi: nonfungiblePositionManagerAbi,
           functionName: "tokenOfOwnerByIndex",
-          args: [owner as Address, BigInt(i)],
+          args: [owner as Address, BigInt(offset + i)],
         }),
       ),
     );
@@ -120,6 +123,7 @@ const getUserPositions = createTool({
     );
 
     return clean({
+      total: balance.toString(), offset, nextOffset: BigInt(offset + tokenIds.length) < balance ? offset + tokenIds.length : null,
       positions: tokenIds.map((id, index) => ({
         tokenId: id.toString(),
         token0: positionDetails[index][2],
@@ -167,11 +171,12 @@ const getPoolFeeData = createTool({
         ],
       });
 
+    if ([feeGrowthGlobal0X128, feeGrowthGlobal1X128, protocolFees].some(entry => entry.status !== "success")) throw new Error("Pool fee observation unavailable: contract read failed");
     return clean({
-      feeGrowth0: feeGrowthGlobal0X128.result?.toString() || "0",
-      feeGrowth1: feeGrowthGlobal1X128.result?.toString() || "0",
-      protocolFeesToken0: protocolFees.result?.[0]?.toString() || "0",
-      protocolFeesToken1: protocolFees.result?.[1]?.toString() || "0",
+      feeGrowth0: feeGrowthGlobal0X128.result?.toString(),
+      feeGrowth1: feeGrowthGlobal1X128.result?.toString(),
+      protocolFeesToken0: protocolFees.result?.[0]?.toString(),
+      protocolFeesToken1: protocolFees.result?.[1]?.toString(),
     });
   },
 });

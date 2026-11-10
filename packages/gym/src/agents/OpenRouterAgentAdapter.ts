@@ -85,7 +85,7 @@ export async function lookupOpenRouterGeneration(
   url.searchParams.set("id", id);
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${apiKey}` },
-    signal,
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10000)]) : AbortSignal.timeout(10000),
   });
   if (!response.ok) throw new Error(`OpenRouter generation metadata HTTP ${response.status}`);
   const body = await response.json() as {
@@ -237,24 +237,7 @@ export class OpenRouterAgentAdapter implements AgentAdapter {
         let metadataError: string | undefined;
         let metadataCost: string | undefined;
         let resolvedModel = body.model;
-        if (body.id && this.options.fetchGenerationMetadata !== false) {
-          for (const delay of [0, 500, 1_000, 2_000, 4_000]) {
-            try {
-              if (delay) await pause(delay, context.signal);
-              const metadata = await lookupOpenRouterGeneration(
-                body.id, this.options.apiKey, this.options.generationEndpoint, context.signal,
-              );
-              servingProvider = metadata.providerName;
-              metadataCost = metadata.totalCostUsd;
-              resolvedModel = metadata.model ?? resolvedModel;
-              metadataError = undefined;
-              break;
-            } catch (error) {
-              metadataError = error instanceof Error ? error.message : String(error);
-              if (context.signal.aborted || !metadataError.includes("HTTP 404")) break;
-            }
-          }
-        }
+        if (body.id && this.options.fetchGenerationMetadata !== false) metadataError = "Deferred to metadata reconciliation";
         context.recordModelResponse?.({
           generationId: body.id,
           requestedModel: this.options.model,

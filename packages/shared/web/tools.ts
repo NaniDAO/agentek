@@ -1,3 +1,4 @@
+import { publicFetch } from "../utils/public-fetch.js";
 import { z } from "zod";
 import { createTool } from "../client.js";
 import * as cheerio from "cheerio";
@@ -14,7 +15,7 @@ export const scrapeWebContent = createTool({
     const { website } = args;
 
     try {
-      const response = await fetch(website);
+      const response = await publicFetch(website);
       await assertOkResponse(response, "Failed to fetch URL");
       const html = await response.text();
 

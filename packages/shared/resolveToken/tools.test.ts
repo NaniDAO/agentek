@@ -86,7 +86,7 @@ describe("resolveToken", () => {
     });
   });
 
-  describe("CoinGecko fallback", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("CoinGecko fallback", () => {
     it("should resolve a token not in the static registry", async () => {
       // PEPE is not in the registry but is on CoinGecko
       const result = await resolveTokenTool.execute(mockClient, {

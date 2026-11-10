@@ -3,6 +3,9 @@ import { createTool } from "../client.js";
 import { x402Client, wrapFetchWithPayment } from "@x402/fetch";
 import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
 import { X402_DISCOVERY_URL, USDC_DECIMALS } from "./constants.js";
+import { publicFetch } from "../utils/public-fetch.js";
+import { TOKEN_REGISTRY } from "../resolveToken/constants.js";
+import { uint256 } from "../utils/exact.js";
 import { assertOkResponse } from "../utils/fetch.js";
 
 export const x402FetchTool = createTool({
@@ -18,7 +21,7 @@ export const x402FetchTool = createTool({
       .describe("Additional request headers"),
     body: z.string().optional().describe("Request body for POST/PUT"),
     maxPaymentUsd: z
-      .number()
+      .number().finite().min(0).max(1000000)
       .optional()
       .describe("Maximum payment in USD to allow (default 1.00)"),
   }),
@@ -50,18 +53,29 @@ export const x402FetchTool = createTool({
     );
 
     const paymentClient = new x402Client();
-    paymentClient.register("eip155:*" as `${string}:${string}`, new ExactEvmScheme(signer));
+    const chainId = walletClient.chain?.id;
+    const network = `eip155:${chainId}` as `${string}:${string}`;
+    const usdc = chainId ? TOKEN_REGISTRY.USDC?.[chainId] : undefined;
+    if (!usdc || usdc.decimals !== USDC_DECIMALS) throw new Error("No pinned USDC payment asset for this chain");
+    paymentClient.register(network, new ExactEvmScheme(signer));
 
     paymentClient.registerPolicy((_version, requirements) =>
-      requirements.filter((r) => BigInt(r.amount) <= maxAmountBaseUnits),
+      requirements.filter((r) => {
+        try {
+          const amount = uint256(r.amount);
+          return Number.isSafeInteger(r.maxTimeoutSeconds) && r.maxTimeoutSeconds > 0 && r.maxTimeoutSeconds <= 300 && r.scheme === "exact" && r.network === network &&
+            r.asset.toLowerCase() === usdc.address.toLowerCase() && amount > 0n && amount <= maxAmountBaseUnits &&
+            (!r.extra?.assetTransferMethod || r.extra.assetTransferMethod === "eip3009");
+        } catch { return false; }
+      }),
     );
 
-    let paymentMade = false;
+    let authorizationCreated = false;
     paymentClient.onAfterPaymentCreation(async () => {
-      paymentMade = true;
+      authorizationCreated = true;
     });
 
-    const fetchWithPayment = wrapFetchWithPayment(fetch, paymentClient);
+    const fetchWithPayment = wrapFetchWithPayment(publicFetch as typeof fetch, paymentClient);
 
     const response = await fetchWithPayment(url, {
       method,
@@ -80,7 +94,8 @@ export const x402FetchTool = createTool({
       status: response.status,
       headers: responseHeaders,
       body: responseBody,
-      paymentMade,
+      authorizationCreated,
+      settlement: "unverified",
     };
   },
 });
@@ -95,7 +110,7 @@ export const getX402PaymentInfoTool = createTool({
   execute: async (_client, args) => {
     const { url } = args;
 
-    const response = await fetch(url);
+    const response = await publicFetch(url);
 
     if (response.status !== 402) {
       return {
@@ -112,9 +127,9 @@ export const getX402PaymentInfoTool = createTool({
           Buffer.from(paymentHeader, "base64").toString("utf-8"),
         );
         return {
+          ...decoded,
           paymentRequired: true,
           x402Version: 2,
-          ...decoded,
         };
       } catch {
         // Fall through to v1 body parsing
@@ -125,9 +140,9 @@ export const getX402PaymentInfoTool = createTool({
     try {
       const body = await response.json();
       return {
+        ...body,
         paymentRequired: true,
         x402Version: 1,
-        ...body,
       };
     } catch {
       return {
@@ -153,7 +168,7 @@ export const x402DiscoverResourcesTool = createTool({
       url.searchParams.set("q", query);
     }
 
-    const response = await fetch(url.toString());
+    const response = await publicFetch(url.toString());
 
     await assertOkResponse(response, "Failed to fetch x402 resources");
 

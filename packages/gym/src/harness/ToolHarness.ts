@@ -64,6 +64,11 @@ export class ToolHarness implements GymRpcObserver {
   private attemptedSteps = 0;
   private attemptedTransactions = 0;
   private reverts = 0;
+  private closed = false;
+  private readonly active = new Set<Promise<unknown>>();
+
+  close(): void { this.closed = true; }
+  async drain(): Promise<void> { await Promise.allSettled([...this.active]); }
 
   constructor(private readonly limits: MvpTask["limits"]) {}
 
@@ -88,7 +93,7 @@ export class ToolHarness implements GymRpcObserver {
 
   getTrace(): { calls: ToolCallTrace[]; transactions: TransactionTrace[] } {
     return {
-      calls: [...this.calls],
+      calls: structuredClone(this.calls),
       transactions: this.transactions.map((tx) => ({ ...tx })),
     };
   }
@@ -116,6 +121,7 @@ export class ToolHarness implements GymRpcObserver {
   }
 
   private assertActive(): void {
+    if (this.closed) throw new Error("Gym run is closed");
     if (this.termination) throw new GymLimitError(this.termination);
     if (Date.now() >= this.deadline) {
       this.setLimit({
@@ -127,6 +133,12 @@ export class ToolHarness implements GymRpcObserver {
   }
 
   async execute(tool: string, args: unknown): Promise<unknown> {
+    const operation = this.executeOne(tool, args);
+    this.active.add(operation);
+    try { return await operation; } finally { this.active.delete(operation); }
+  }
+
+  private async executeOne(tool: string, args: unknown): Promise<unknown> {
     this.assertActive();
     const client = this.client;
     if (!client || !client.getTools().has(tool)) {
@@ -171,8 +183,8 @@ export class ToolHarness implements GymRpcObserver {
   }
 
   async beforeRequest(method: string, _params?: unknown[], _chainId?: number): Promise<void> {
-    if (method !== "eth_sendRawTransaction" && method !== "eth_sendTransaction") return;
     this.assertActive();
+    if (method !== "eth_sendRawTransaction" && method !== "eth_sendTransaction") return;
     this.attemptedTransactions += 1;
     if (this.attemptedTransactions > this.limits.maxTransactions) {
       this.setLimit({
@@ -184,6 +196,7 @@ export class ToolHarness implements GymRpcObserver {
   }
 
   async afterResponse(method: string, result: unknown, chainId = 1): Promise<void> {
+    if (this.closed) return;
     if (method === "eth_sendRawTransaction" || method === "eth_sendTransaction") {
       if (typeof result === "string" && /^0x[0-9a-fA-F]{64}$/.test(result)) {
         this.transactions.push({ hash: result as Hex, chainId });

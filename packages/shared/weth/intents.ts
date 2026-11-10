@@ -1,15 +1,16 @@
+import { positiveEther } from "../utils/exact.js";
 import { z } from "zod";
 import { AgentekClient, createTool, Intent } from "../client.js";
-import { Address, encodeFunctionData, parseEther } from "viem";
+import { Address, encodeFunctionData, } from "viem";
 import { supportedChains, WETH_ADDRESS, wethAbi } from "./constants.js";
 
 const depositWETHParameters = z.object({
-  chainId: z.number().describe("Chain ID to deposit on (e.g. 1 for Ethereum, 8453 for Base, 42161 for Arbitrum)"),
+  chainId: z.number().int().positive().safe().describe("Chain ID to deposit on (e.g. 1 for Ethereum, 8453 for Base, 42161 for Arbitrum)"),
   amount: z.string().describe("Amount of ETH to wrap in human-readable units (e.g. '1.5' for 1.5 ETH)"),
 });
 
 const withdrawWETHParameters = z.object({
-  chainId: z.number().describe("Chain ID to withdraw on (e.g. 1 for Ethereum, 8453 for Base, 42161 for Arbitrum)"),
+  chainId: z.number().int().positive().safe().describe("Chain ID to withdraw on (e.g. 1 for Ethereum, 8453 for Base, 42161 for Arbitrum)"),
   amount: z.string().describe("Amount of WETH to unwrap in human-readable units (e.g. '1.5' for 1.5 WETH)"),
 });
 
@@ -32,7 +33,7 @@ export const intentDepositWETH = createTool({
     client.assertChainAvailable(chainId);
     const walletClient = client.getWalletClient(chainId);
 
-    const valueToDeposit = parseEther(amount.toString());
+    const valueToDeposit = positiveEther(amount.toString());
 
     const data = encodeFunctionData({
       abi: wethAbi,
@@ -81,7 +82,7 @@ export const intentWithdrawWETH = createTool({
 
     const walletClient = client.getWalletClient(chainId);
 
-    const valueToWithdraw = parseEther(amount.toString());
+    const valueToWithdraw = positiveEther(amount.toString());
 
     const data = encodeFunctionData({
       abi: wethAbi,

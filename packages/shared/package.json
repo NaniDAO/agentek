@@ -26,6 +26,16 @@
         "types": "./dist/cjs/client.d.ts",
         "default": "./dist/cjs/client.js"
       }
+    },
+    "./journal": {
+      "import": {
+        "types": "./dist/esm/execution/journal.d.ts",
+        "default": "./dist/esm/execution/journal.js"
+      },
+      "require": {
+        "types": "./dist/cjs/execution/journal.d.ts",
+        "default": "./dist/cjs/execution/journal.js"
+      }
     }
   },
   "files": [

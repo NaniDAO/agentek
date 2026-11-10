@@ -1,24 +1,6 @@
 import { z } from 'zod';
 import { createTool } from '../client.js';
 import { assertOkResponse } from '../utils/fetch.js';
-import {
-  SUPPORTED_YIELD_PROTOCOLS,
-  SUPPORTED_CHAINS,
-  PoolComparisonResult
-} from './constants.js';
-import {
-  formatUSD,
-  getChainName,
-  calculateProjectedEarnings,
-  fetchProtocolData,
-  fetchDefiLlamaPools,
-  fetchPoolHistoricalData,
-  assessRisk,
-  calculateApyStats,
-  calculateTvlStats,
-  extractTimeSeriesData,
-  calculateStabilityScore
-} from './utils/index.js';
 
 interface ChartDataPoint {
   timestamp: number

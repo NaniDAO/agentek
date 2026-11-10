@@ -170,7 +170,7 @@ describe("OpenRouterAgentAdapter", () => {
     });
   });
 
-  it("records the resolved model, serving provider, and billed cost from generation metadata", async () => {
+  it("records response usage and defers provider metadata to reconciliation", async () => {
     const seen: any[] = [];
     const fetches: string[] = [];
     vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
@@ -198,12 +198,12 @@ describe("OpenRouterAgentAdapter", () => {
     await adapter.run({ objective: "Do nothing", walletAddress: "0x0000000000000000000000000000000000000001",
       tools: [], execute: async () => null, signal: new AbortController().signal,
       recordModelResponse: (response) => seen.push(response) });
-    expect(fetches).toHaveLength(2);
-    expect(seen).toMatchObject([{ generationId: "gen-123", resolvedModel: "google/gemini-versioned",
-      servingProvider: "Google Vertex", costUsd: "0.00125", promptTokens: 12, completionTokens: 7 }]);
+    expect(fetches).toHaveLength(1);
+    expect(seen).toMatchObject([{ generationId: "gen-123", resolvedModel: "google/gemini-alias",
+      metadataError: "Deferred to metadata reconciliation", costUsd: "0.0009", promptTokens: 12, completionTokens: 7 }]);
   });
 
-  it("waits for delayed generation metadata without creating another model response", async () => {
+  it("does not block the agent on delayed generation metadata", async () => {
     let posts = 0;
     let lookups = 0;
     const recorded: any[] = [];
@@ -225,9 +225,8 @@ describe("OpenRouterAgentAdapter", () => {
       recordModelResponse: (response) => recorded.push(response),
     });
     expect(posts).toBe(1);
-    expect(lookups).toBe(2);
-    expect(recorded).toMatchObject([{ servingProvider: "Google",
-      resolvedModel: "google/gemini-versioned", costUsd: "0.001" }]);
+    expect(lookups).toBe(0);
+    expect(recorded).toMatchObject([{resolvedModel: "google/gemini-alias", metadataError: "Deferred to metadata reconciliation"}]);
   });
 
   it("reconciles an existing report using metadata requests only", async () => {

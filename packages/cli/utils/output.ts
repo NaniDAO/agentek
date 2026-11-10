@@ -18,7 +18,7 @@ export function bigintReplacer(_key: string, value: unknown): unknown {
 /** Remove configured credentials and local config paths from error output. */
 export function scrubSecrets(message: string): string {
   let scrubbed = message;
-  const secrets = Object.entries(resolveKeys())
+  const secrets = Object.entries((() => { try { return resolveKeys(); } catch { return {}; } })())
     .filter(
       (entry): entry is [string, string] =>
         Boolean(entry[1]?.length && entry[1].length >= 8),
@@ -41,12 +41,13 @@ export function outputJson(data: unknown): never {
 /** Write JSON error to stderr and exit 1. */
 export function outputError(
   msg: string,
-  opts?: { code?: ErrorCode; hint?: string; retryable?: boolean },
+  opts?: { code?: ErrorCode; hint?: string; retryable?: boolean; details?: unknown },
 ): never {
   const payload: Record<string, unknown> = { error: scrubSecrets(msg) };
+  if (opts?.details !== undefined) payload.details = JSON.parse(scrubSecrets(JSON.stringify(opts.details, bigintReplacer)));
   if (opts?.code) payload.code = opts.code;
   if (opts?.hint) payload.hint = scrubSecrets(opts.hint);
   if (opts?.retryable !== undefined) payload.retryable = opts.retryable;
-  process.stderr.write(JSON.stringify(payload) + "\n");
+  process.stderr.write(JSON.stringify(payload, bigintReplacer) + "\n");
   process.exit(1);
 }

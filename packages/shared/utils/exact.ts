@@ -43,3 +43,10 @@ export function dynamicBytes(value: unknown, offset: bigint, headBytes: number):
   if (!/^0*$/.test(hex.slice(end, start + 64 + Number((length + 31n) / 32n * 32n) * 2))) throw new Error("Noncanonical padding");
   return ("0x" + hex.slice(start + 64, end)) as Hex;
 }
+
+export function positiveUnits(value: string, decimals: number): bigint {
+  const amount = parseExactUnits(value, decimals);
+  if (amount === 0n) throw new Error("Amount must be positive");
+  return amount;
+}
+export const positiveEther = (value: string) => positiveUnits(value, 18);

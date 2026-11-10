@@ -1,21 +1,3 @@
-import { Chain } from 'viem/chains';
-import { RISK_THRESHOLDS, RiskLevel } from '../constants.js';
-
-// Helper function to format USD values
-export function formatUSD(value: number): string {
-  return `$${value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-// Risk assessment function
-export function assessRisk(apy: number): RiskLevel {
-  if (apy > RISK_THRESHOLDS.medium) return 'high';
-  if (apy > RISK_THRESHOLDS.low) return 'medium';
-  return 'low';
-}
-
 // Helper function to get chain name
 export function getChainName(chainId: number): string {
   const chainMap: Record<number, string> = {
@@ -35,14 +17,6 @@ export function getChainName(chainId: number): string {
   };
   
   return chainMap[chainId] || `Chain ${chainId}`;
-}
-
-// Helper function to calculate projected earnings
-export function calculateProjectedEarnings(amount: number, apy: number, days: number): number {
-  // Convert APY to daily rate
-  const dailyRate = (1 + apy / 100) ** (1 / 365) - 1;
-  // Compound interest formula
-  return amount * ((1 + dailyRate) ** days - 1);
 }
 
 // Chain ID mapping for DefiLlama

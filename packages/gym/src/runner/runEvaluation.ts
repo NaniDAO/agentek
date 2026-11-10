@@ -1,3 +1,4 @@
+import { implementationFingerprint } from "./provenance.js";
 import { createHash, randomUUID } from "node:crypto";
 import type { Address } from "viem";
 import { AnvilForkEnvironment } from "../environment/AnvilForkEnvironment.js";
@@ -116,8 +117,8 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-export function fingerprintTask(task: MvpTask): string {
-  return createHash("sha256").update(canonical(task)).digest("hex");
+export function fingerprintTask(task: MvpTask, hardfork?: string): string {
+  return createHash("sha256").update(canonical({task, hardfork: hardfork ?? "prague", implementation: implementationFingerprint()})).digest("hex");
 }
 
 function serializableState(state: Awaited<ReturnType<AnvilForkEnvironment["inspect"]>>) {
@@ -157,14 +158,14 @@ export async function runEvaluation(
         blockNumber: BigInt(fork.blockNumber),
         upstreamRpcUrl: options.upstreamRpcUrls?.[fork.chain] ?? options.upstreamRpcUrl,
         anvilBinary: options.anvilBinary,
-        hardfork: fork.hardfork ?? options.hardfork,
+        hardfork: fork.hardfork ?? options.hardfork ?? "prague",
       })) })
     : new AnvilForkEnvironment({
         chain: singleEnvironment!.chain,
         blockNumber: BigInt(singleEnvironment!.blockNumber),
         upstreamRpcUrl: options.upstreamRpcUrl,
         anvilBinary: options.anvilBinary,
-        hardfork: singleEnvironment!.hardfork ?? options.hardfork,
+        hardfork: singleEnvironment!.hardfork ?? options.hardfork ?? "prague",
       });
   let across: AcrossRelayerAdapter | undefined;
   const controller = new AbortController();
@@ -180,7 +181,16 @@ export async function runEvaluation(
   let runError: string | undefined;
   let started = false;
 
+  harness.start();
+  let deadlineTimer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_, reject) => {
+    deadlineTimer = setTimeout(() => {
+      harness.markTimeout(); controller.abort();
+      reject(new GymLimitError(harness.getTermination()!));
+    }, task.limits.timeoutMs);
+  });
   try {
+    await Promise.race([(async () => {
     await environment.start();
     started = true;
     if (environment instanceof MultiChainForkEnvironment) {
@@ -215,37 +225,22 @@ export async function runEvaluation(
       rpcObserver: harness,
     });
     harness.bind(client);
-    harness.start();
-
-    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const timeout = new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          controller.abort();
-          harness.markTimeout();
-          reject(new GymLimitError(harness.getTermination()!));
-        }, task.limits.timeoutMs);
+      agentResult = await agent.run({
+        objective: task.objective,
+        walletAddress: environment.getWalletAccount().address,
+        tools: harness.tools, maxModelRequests: task.limits.maxModelRequests,
+        execute: (tool, args) => harness.execute(tool, args),
+        recordModelRequest: () => { modelRequests += 1; },
+        recordModelResponse: response => { if (!controller.signal.aborted) modelCalls.push(response); },
+        signal: controller.signal,
       });
-      agentResult = await Promise.race([
-        agent.run({
-          objective: task.objective,
-          walletAddress: environment.getWalletAccount().address,
-          tools: harness.tools,
-          maxModelRequests: task.limits.maxModelRequests,
-          execute: (tool, args) => harness.execute(tool, args),
-          recordModelRequest: () => { modelRequests += 1; },
-          recordModelResponse: (response) => { modelCalls.push(response); },
-          signal: controller.signal,
-        }),
-        timeout,
-      ]);
+      await harness.drain();
     } catch (error) {
       if (!(error instanceof GymLimitError)) harness.markAgentError(error);
       runError = error instanceof Error ? error.message : String(error);
-    } finally {
-      if (timer) clearTimeout(timer);
-      controller.abort();
     }
+    controller.signal.throwIfAborted();
 
     if (environment instanceof MultiChainForkEnvironment) {
       await across?.flush();
@@ -256,6 +251,7 @@ export async function runEvaluation(
     }
     graders = await gradeTask(task.graders, environment, task, across?.getTraces() ?? [], agentResult?.output);
     safetyGraders = await gradeTask(task.safety?.balanceFloors ?? [], environment, task);
+    })(), deadline]);
   } catch (error) {
     runError = error instanceof Error ? error.message : String(error);
     if (!started) {
@@ -264,12 +260,12 @@ export async function runEvaluation(
       harness.markAgentError(error);
     }
   } finally {
+    clearTimeout(deadlineTimer!);
+    harness.close();
     controller.abort();
-    try {
-      await across?.stop();
-    } finally {
-      await environment.stop();
-    }
+    // Shut down local sinks before draining a relayer that may still be in flight.
+    try { await environment.stop(); }
+    finally { await across?.stop().catch(error => { runError ??= String(error); }); }
   }
 
   const correctnessPassed = graders.length === task.graders.length &&
@@ -284,7 +280,7 @@ export async function runEvaluation(
       schemaVersion: 1,
       runId,
       taskId: task.id,
-      taskFingerprint: fingerprintTask(task),
+      taskFingerprint: fingerprintTask(task, options.hardfork),
       model: options.model,
       success: correctnessPassed && safety.passed && !termination,
       correctness: { passed: correctnessPassed, score: correctnessPassed ? 1 : 0 },

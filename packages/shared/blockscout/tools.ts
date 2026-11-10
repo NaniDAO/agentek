@@ -1,3 +1,4 @@
+import { readBoundedJSON } from "../utils/fetch.js";
 import { z } from "zod";
 import { createTool } from "../client.js";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
@@ -93,11 +94,22 @@ export async function fetchFromBlockscoutV2(
   chain: SupportedChain,
   endpoint: string,
   query?: Record<string, string>,
-  options?: { limit?: number },
+  options?: { limit?: number; continuation?: string },
 ) {
   const baseUrl = BLOCKSCOUT_API_ENDPOINTS.get(chain);
   if (!baseUrl) {
     throw new Error(`Chain ${chain} is not supported.`);
+  }
+  let offset = 0;
+  const binding = JSON.stringify([chain, endpoint, query ?? {}]);
+  if (options?.continuation) {
+    try {
+      if (options.continuation.length > 8192) throw new Error();
+      const cursor = JSON.parse(Buffer.from(options.continuation, "base64url").toString("utf8"));
+      if (cursor.binding !== binding || !Number.isSafeInteger(cursor.offset) || cursor.offset < 0 || !cursor.query || Object.values(cursor.query).some(v => !["string", "number", "boolean"].includes(typeof v))) throw new Error();
+      query = Object.fromEntries(Object.entries(cursor.query).map(([k,v]) => [k, String(v)]));
+      offset = cursor.offset;
+    } catch { throw new Error("Invalid continuation for this request"); }
   }
   let url = `${baseUrl}${endpoint}`;
   if (query && Object.keys(query).length > 0) {
@@ -114,7 +126,7 @@ export async function fetchFromBlockscoutV2(
     if (!res.ok) {
       throw new ReadFailure("upstream_http", res.status === 429 || res.status >= 500);
     }
-    const json = await res.json();
+    const json: any = await readBoundedJSON(res, 4 * 1024 * 1024);
 
     // List endpoints return every item Blockscout has for the page — over half
     // a megabyte for an active address, which is more than the context window
@@ -122,20 +134,16 @@ export async function fetchFromBlockscoutV2(
     if (json && Array.isArray(json.items)) {
       const limit = options?.limit ?? DEFAULT_ITEM_LIMIT;
       const total = json.items.length;
-      const items = json.items.slice(0, limit).map((item: unknown) =>
-        trimLongStrings(item),
-      );
-      if (total > limit) {
-        return {
-          ...json,
-          items,
-          items_returned: limit,
-          items_available_on_page: total,
-          truncated: true,
-          truncation_note: `Showing ${limit} of ${total} items on this page, with long fields shortened. Pass a higher \`limit\` for more, use next_page_params to page, or call the per-transaction tools for a full record.`,
-        };
-      }
-      return { ...json, items, items_returned: total, truncated: false };
+      if (offset > total) throw new ReadFailure("malformed_response", false);
+      const end = Math.min(offset + limit, total);
+      const items = json.items.slice(offset, end).map((item: unknown) => trimLongStrings(item));
+      const remainingOnPage = end < total;
+      const nextQuery = remainingOnPage ? query ?? {} : json.next_page_params;
+      const continuation = nextQuery && typeof nextQuery === "object" ? Buffer.from(JSON.stringify({binding, query: nextQuery, offset: remainingOnPage ? end : 0})).toString("base64url") : null;
+      return {...json, items, items_returned: items.length, items_available_on_page: total,
+        next_page_params: remainingOnPage ? null : json.next_page_params,
+        continuation, complete: continuation === null, truncated: remainingOnPage,
+        ...(remainingOnPage ? {truncation_note: "Continue with continuation to read the remaining records without skipping items."} : {})};
     }
 
     return json;
@@ -181,6 +189,7 @@ export const getNativeCoinHolders = createTool({
   parameters: z.object({
     chain: chainSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, limit } = args;
@@ -188,7 +197,7 @@ export const getNativeCoinHolders = createTool({
       chain as SupportedChain,
       `/addresses`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -245,6 +254,7 @@ export const getAddressCounters = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -252,7 +262,7 @@ export const getAddressCounters = createTool({
       chain as SupportedChain,
       `/addresses/${address}/counters`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -270,6 +280,7 @@ export const getAddressTransactions = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -277,7 +288,7 @@ export const getAddressTransactions = createTool({
       chain as SupportedChain,
       `/addresses/${address}/transactions`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -315,6 +326,7 @@ export const getAddressInternalTransactions = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -322,7 +334,7 @@ export const getAddressInternalTransactions = createTool({
       chain as SupportedChain,
       `/addresses/${address}/internal-transactions`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -340,6 +352,7 @@ export const getAddressLogs = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -347,7 +360,7 @@ export const getAddressLogs = createTool({
       chain as SupportedChain,
       `/addresses/${address}/logs`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -365,6 +378,7 @@ export const getAddressBlocksValidated = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -372,7 +386,7 @@ export const getAddressBlocksValidated = createTool({
       chain as SupportedChain,
       `/addresses/${address}/blocks-validated`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -390,6 +404,7 @@ export const getAddressTokenBalances = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -397,7 +412,7 @@ export const getAddressTokenBalances = createTool({
       chain as SupportedChain,
       `/addresses/${address}/token-balances`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -415,6 +430,7 @@ export const getAddressTokens = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -422,7 +438,7 @@ export const getAddressTokens = createTool({
       chain as SupportedChain,
       `/addresses/${address}/tokens`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -440,6 +456,7 @@ export const getAddressCoinBalanceHistory = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -447,7 +464,7 @@ export const getAddressCoinBalanceHistory = createTool({
       chain as SupportedChain,
       `/addresses/${address}/coin-balance-history`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -465,6 +482,7 @@ export const getAddressCoinBalanceHistoryByDay = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -472,7 +490,7 @@ export const getAddressCoinBalanceHistoryByDay = createTool({
       chain as SupportedChain,
       `/addresses/${address}/coin-balance-history-by-day`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -490,6 +508,7 @@ export const getAddressWithdrawals = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -497,7 +516,7 @@ export const getAddressWithdrawals = createTool({
       chain as SupportedChain,
       `/addresses/${address}/withdrawals`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -515,6 +534,7 @@ export const getAddressNFTs = createTool({
     chain: chainSchema,
     address: addressSchema,
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -522,7 +542,7 @@ export const getAddressNFTs = createTool({
       chain as SupportedChain,
       `/addresses/${address}/nft`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -566,6 +586,7 @@ export const getBlockInfo = createTool({
     chain: chainSchema,
     blockNumberOrHash: z.union([z.string(), z.number()]).describe("Block number or block hash to query"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash, limit } = args;
@@ -573,7 +594,7 @@ export const getBlockInfo = createTool({
       chain as SupportedChain,
       `/blocks/${blockNumberOrHash}`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -591,6 +612,7 @@ export const getBlockTransactions = createTool({
     chain: chainSchema,
     blockNumberOrHash: z.union([z.string(), z.number()]).describe("Block number or block hash to query"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash, limit } = args;
@@ -598,7 +620,7 @@ export const getBlockTransactions = createTool({
       chain as SupportedChain,
       `/blocks/${blockNumberOrHash}/transactions`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -616,6 +638,7 @@ export const getBlockWithdrawals = createTool({
     chain: chainSchema,
     blockNumberOrHash: z.union([z.string(), z.number()]).describe("Block number or block hash to query"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, blockNumberOrHash, limit } = args;
@@ -623,7 +646,7 @@ export const getBlockWithdrawals = createTool({
       chain as SupportedChain,
       `/blocks/${blockNumberOrHash}/withdrawals`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -748,6 +771,7 @@ export const getTransactionInternalTransactions = createTool({
     chain: chainSchema,
     txhash: z.string().describe("The transaction hash (0x...)"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, txhash, limit } = args;
@@ -755,7 +779,7 @@ export const getTransactionInternalTransactions = createTool({
       chain as SupportedChain,
       `/transactions/${txhash}/internal-transactions`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -773,6 +797,7 @@ export const getTransactionLogs = createTool({
     chain: chainSchema,
     txhash: z.string().describe("The transaction hash (0x...)"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, txhash, limit } = args;
@@ -780,7 +805,7 @@ export const getTransactionLogs = createTool({
       chain as SupportedChain,
       `/transactions/${txhash}/logs`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -798,6 +823,7 @@ export const getTransactionRawTrace = createTool({
     chain: chainSchema,
     txhash: z.string().describe("The transaction hash (0x...)"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, txhash, limit } = args;
@@ -805,7 +831,7 @@ export const getTransactionRawTrace = createTool({
       chain as SupportedChain,
       `/transactions/${txhash}/raw-trace`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -823,6 +849,7 @@ export const getTransactionStateChanges = createTool({
     chain: chainSchema,
     txhash: z.string().describe("The transaction hash (0x...)"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, txhash, limit } = args;
@@ -830,7 +857,7 @@ export const getTransactionStateChanges = createTool({
       chain as SupportedChain,
       `/transactions/${txhash}/state-changes`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -848,6 +875,7 @@ export const getTransactionSummary = createTool({
     chain: chainSchema,
     txhash: z.string().describe("The transaction hash (0x...)"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, txhash, limit } = args;
@@ -855,7 +883,7 @@ export const getTransactionSummary = createTool({
       chain as SupportedChain,
       `/transactions/${txhash}/summary`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -915,6 +943,7 @@ export const getSmartContract = createTool({
       .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid contract address")
       .describe("The smart contract address to look up (0x...)"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, address, limit } = args;
@@ -922,7 +951,7 @@ export const getSmartContract = createTool({
       chain as SupportedChain,
       `/smart-contracts/${address}`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });
@@ -950,6 +979,7 @@ export const getTokenInfo = createTool({
       .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid token contract address")
       .describe("The token contract address (0x...)"),
     limit: limitSchema,
+    continuation: z.string().max(8192).optional().describe("Opaque continuation from the previous response for the same request"),
   }),
   execute: async (_, args) => {
     const { chain, tokenContract, limit } = args;
@@ -957,7 +987,7 @@ export const getTokenInfo = createTool({
       chain as SupportedChain,
       `/tokens/${tokenContract}`,
       undefined,
-      { limit },
+      { limit, continuation: args.continuation },
     );
   },
 });

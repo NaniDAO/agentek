@@ -4,6 +4,10 @@ import {getYieldPoolEvidence,getYieldTool,compareYieldTool,getYieldHistoryTool,c
 import {getAcrossRoutes,getAcrossFeeQuote,intentDepositAcross} from '../packages/shared/across/bridge';
 import {decodeFunctionData,erc20Abi} from 'viem';
 import {acrossSpokePoolAbi,ACROSS_SPOKE_POOL_ADDRESS} from '../packages/shared/across/constants';
+// Advance the cache clock between source scenarios without real sleeps.
+const realNow = Date.now;
+let clockOffset = 0;
+Date.now = () => realNow() + clockOffset;
 let activeFixture:any=null, quoteMutation:any={};
 let requests:string[]=[];
 let pools:any[]=[{pool:'rh-pool',chain:'Robinhood Chain',project:'ekubo',symbol:'ETH-USDG',apy:4000,apyBase:null,apyReward:4000,tvlUsd:11000,apyPct1D:null,predictions:{predictedClass:null,predictedProbability:null}}, {pool:'eth-pool',chain:'Ethereum',project:'aave-v3',symbol:'USDC',apy:3,tvlUsd:10000000,stablecoin:true}];
@@ -34,7 +38,11 @@ assert.equal((await call(compareYieldTool,{chainId:4663,assets:['ETH']})).compar
 assert.equal((await call(getYieldHistoryTool,{chainId:4663,poolId:'rh-pool'})).missingApyPoints,1);
 await assert.rejects(()=>call(getYieldHistoryTool,{chainId:1,poolId:'rh-pool'}),/network/);
 const partial=await call(compareYieldHistoryTool,{chainId:4663,poolIds:['rh-pool','missing']});assert.equal(partial.complete,false);assert.equal(partial.errors.length,1);
-responseStatus=503;await assert.rejects(()=>call(getYieldTool,{chainId:4663}));await assert.rejects(()=>call(getAcrossRoutes,{originChainId:1,destinationChainId:8453}),/unknown/);responseStatus=200;
+responseStatus=503;
+// A fresh snapshot is reused; an expired snapshot must not hide a failed refresh.
+assert.equal((await call(getYieldTool,{chainId:4663})).yields.length,1);
+clockOffset += 60_001;
+await assert.rejects(()=>call(getYieldTool,{chainId:4663}));await assert.rejects(()=>call(getAcrossRoutes,{originChainId:1,destinationChainId:8453}),/unknown/);responseStatus=200;
 const args={originChainId:1,destinationChainId:8453,inputToken:token,outputToken:other,recipient:owner,amount:'1',isNative:false};
 let proposal=await call(intentDepositAcross,args);assert.equal(proposal.ops.length,2);assert.equal(proposal.hash,undefined);
 let approval=decodeFunctionData({abi:erc20Abi,data:proposal.ops[0].data});assert.equal(approval.args![1],10n**18n);
@@ -47,6 +55,7 @@ await assert.rejects(()=>call(intentDepositAcross,{...args,recipient:other}),/sa
 await assert.rejects(()=>call(getAcrossFeeQuote,{...args,isNative:true,amount:'0.0000000000000000001'}),/precision/);
 assert.equal((await call(getAcrossFeeQuote,{...args,originChainId:4663,isNative:true})).spokePool,ACROSS_SPOKE_POOL_ADDRESS[4663]);
 pools[0].underlyingTokens=[token,'invalid'];
+clockOffset += 60_001;
 const evidence=await call(getYieldPoolEvidence,{chainId:4663,poolId:'rh-pool'});assert.equal(evidence.project,'ekubo');assert.equal(evidence.complete,false);assert.equal(evidence.tokenChecks[0].codePresent,true);assert.equal(evidence.poolContractVerified,false);
 console.log('Yield and Across shared-source offline fixtures passed; no network or signing.');
 

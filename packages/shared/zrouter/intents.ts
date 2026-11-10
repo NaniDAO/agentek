@@ -6,7 +6,7 @@ import { resolveInputToToken, toBaseUnits } from "./utils.js";
 import { zRouterAddress, zQuoterAddress, buildBestSwap } from "./zquoter.js";
 import { buildNativeSwapProposal, unavailableSwap } from "./proposal.js";
 const swapParameters = z.object({
-  chainId: z.number().int().positive().safe().default(1).describe("Chain ID (1 for Mainnet, 8453 for Base). Default: 1"),
+  chainId: z.number().int().positive().safe().safe().default(1).describe("Chain ID (1 for Mainnet, 8453 for Base). Default: 1"),
   tokenIn: SymbolOrTokenSchema.describe('Input token — either a symbol string (e.g. "USDT", "ETH") or an object { address, id? } for ERC6909 tokens'),
   tokenOut: SymbolOrTokenSchema.describe('Output token — either a symbol string (e.g. "IZO", "WETH") or an object { address, id? } for ERC6909 tokens'),
   amount: AmountSchema.describe("Amount in human-readable units (e.g. 1.5 or '1.5'). Refers to tokenIn for EXACT_IN, tokenOut for EXACT_OUT."),

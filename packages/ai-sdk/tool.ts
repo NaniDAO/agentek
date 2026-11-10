@@ -1,17 +1,7 @@
 import type { Tool } from "ai";
 import { tool } from "ai";
 import { z } from "zod";
-import type { BaseTool, AgentekClient } from "@agentek/tools/client";
-
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  parameters: z.ZodObject<any>;
-}
-
-export interface ToolResult {
-  result: any;
-}
+import { failedResult, type BaseTool, type AgentekClient } from "@agentek/tools/client";
 
 export default function AgentekTool(
   agentekClient: AgentekClient,
@@ -26,7 +16,14 @@ export default function AgentekTool(
       // a successful call whose value happened to be an error sentence, so the
       // model had no signal to retry and nothing downstream could tell that
       // the tool had failed at all.
-      return await agentekClient.execute(baseTool.name, args);
+      const result = await agentekClient.execute(baseTool.name, args);
+      if (failedResult(result)) throw new Error("Tool returned no successful result: " + JSON.stringify(result));
+      return result;
     },
   });
 }
+
+/** @deprecated Use BaseTool. */
+export type ToolDefinition = Pick<BaseTool, "name" | "description" | "parameters">;
+/** @deprecated Tool execution returns the value directly, without a result envelope. */
+export interface ToolResult<T = unknown> { result: T }

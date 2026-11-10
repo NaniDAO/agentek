@@ -77,6 +77,7 @@ function validateAnvilBinary(binary: string): void {
 
 export class AnvilForkEnvironment implements GymEnvironment {
   private child?: ChildProcess;
+  private lifecycle = 0;
   private rpcUrl?: string;
   private resetSnapshotId?: string;
   private parentExitHandler?: () => void;
@@ -92,9 +93,11 @@ export class AnvilForkEnvironment implements GymEnvironment {
   async start(): Promise<void> {
     if (this.child) throw new Error("Anvil environment is already started");
 
+    const lifecycle = this.lifecycle;
     const binary = this.options.anvilBinary ?? (process.env.ANVIL_BINARY?.trim() || "anvil");
     validateAnvilBinary(binary);
     const port = this.options.port ?? (await reserveLoopbackPort());
+    if (lifecycle !== this.lifecycle) throw new Error("Environment startup cancelled");
     this.rpcUrl = `http://127.0.0.1:${port}`;
 
     const args = [
@@ -200,6 +203,7 @@ export class AnvilForkEnvironment implements GymEnvironment {
   }
 
   async stop(): Promise<void> {
+    this.lifecycle += 1;
     const child = this.child;
     this.child = undefined;
     this.resetSnapshotId = undefined;

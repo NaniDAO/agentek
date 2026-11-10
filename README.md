@@ -2,7 +2,7 @@
 
 ![agentek-logo-1](https://github.com/user-attachments/assets/c73ccd7b-4c4e-4c90-8ccc-1ed101fa1b0b)
 
-An extensible TypeScript toolkit for EVM and Solana blockchain interactions. Up to 205 composable tools (191 without optional API credentials) covering on-chain actions, DeFi protocols, market data, and off-chain services — designed for AI agents, MCP clients, and developers.
+An extensible TypeScript toolkit for EVM and Solana blockchain interactions. Up to 209 registered tools (195 without optional API credentials) covering on-chain actions, DeFi protocols, market data, and off-chain services — designed for AI agents, MCP clients, and developers.
 
 ## Quick Start
 
@@ -10,7 +10,7 @@ Requires Node.js 20.18.1 or newer.
 
 **CLI** (fastest way to try it):
 ```bash
-npx @agentek/cli list          # browse up to 205 tools
+npx @agentek/cli list          # browse up to 209 tools
 npx @agentek/cli info getBalance  # inspect a specific tool
 npx @agentek/cli exec getBalance --json '{"chainId":1,"address":"0x0000000000000000000000000000000000000000"}'
 ```
@@ -29,7 +29,7 @@ pnpm add @agentek/tools
 
 | Package | Description | Version |
 |---------|-------------|---------|
-| [`@agentek/tools`](packages/shared) | Core toolkit — up to 205 tools | 0.1.26 |
+| [`@agentek/tools`](packages/shared) | Core toolkit — up to 209 tools | 0.1.26 |
 | [`@agentek/ai-sdk`](packages/ai-sdk) | Vercel AI SDK integration | 0.1.26 |
 | [`@agentek/mcp-server`](packages/mcp) | Model Context Protocol server | 0.1.26 |
 | [`@agentek/cli`](packages/cli) | Command-line interface | 0.0.2 |
@@ -125,7 +125,7 @@ Add to your `claude_desktop_config.json`:
 ```
 
 Use `ACCOUNT` for address context and unsigned EVM intents. Configure a signer
-or `PRIVATE_KEY` to submit EVM transactions; Solana signing is configured separately.
+or `PRIVATE_KEY` and set `AGENTEK_EXECUTION_MODE=execute` to submit EVM transactions; Solana signing is configured separately. CLI and MCP default to `prepare`, which returns unsigned operations even when a signer is configured.
 
 See the [MCP Server README](packages/mcp/README.md) for full configuration details.
 
@@ -149,7 +149,7 @@ See the [CLI Guide](packages/cli/GUIDE.md) for complete documentation.
 
 ### Composing a custom tool set
 
-You don't have to use all 205 tools. Import only what you need:
+You don't have to use all 209 tools. Import only what you need:
 
 ```typescript
 import { rpcTools, erc20Tools, defillamaTools } from '@agentek/tools';
@@ -161,10 +161,61 @@ const tools = [
 ];
 ```
 
-## Tools (up to 205)
+### Transaction execution and recovery
 
-`allTools({})` returns 191 tools. Optional service credentials add up to 14
-more; availability depends on configuration. Host-integrated Nani tool sets
+CLI, MCP and `AgentekToolkit` default to preparation. Set `AGENTEK_EXECUTION_MODE=execute`
+for CLI/MCP, or `executionMode: "execute"` for the toolkit, when submission is intended.
+The low-level client retains its existing `execute` default; set its mode explicitly.
+Transfer and approval tools require `chainId` when multiple supported chains are configured.
+Amounts reject excess precision instead of rounding. Zero allowances remain valid for revocation.
+
+CLI/MCP atomically persist EVM operations, their hashes and confirmation states under
+`AGENTEK_CONFIG_DIR/executions` (default `~/.agentek/executions`) before broadcasting.
+An ambiguous or partially completed execution locks the chain across processes.
+`agentek executions` lists the records. Reconcile every recorded hash and completed operation
+on-chain before stopping any long-running MCP client and using `agentek executions acknowledge <id>` to release its lock; acknowledgment
+never resubmits a transaction. Restart a long-running client after acknowledgement. Library consumers can persist the same state using
+`createExecutionJournal` from `@agentek/tools/journal` and `onExecutionUpdated`.
+Do not apply wrapper timeouts to irreversible operations; inspect their recorded outcomes.
+
+x402 authorizes only the configured chain's pinned USDC asset, with an exact amount under
+the requested cap and EIP-3009 signing. `authorizationCreated` reports a signature;
+`settlement: "unverified"` does not assert that a payment settled.
+
+### Untrusted URLs and optional native integration
+
+The core library, CLI, MCP server and AI SDK integration run independently on Node.js/Bun.
+They do not require macOS or a native application. The host-specific requirements below
+apply only when using the optional `packages/nani` WKWebView adapter.
+
+Untrusted NFT metadata, scraped pages and x402 URLs use a bounded public HTTP transport.
+It rejects private/reserved destinations and redirects, pins validated DNS answers to the
+connection, and limits streamed bodies and request duration. NFT on-chain fields remain
+available when off-chain metadata cannot be fetched; inspect `metadataError`.
+
+In the optional Nani bundle, WKWebView cannot pin DNS through ordinary browser fetch.
+The app injects `__agentekHostCapabilities = {schemaVersion:1, platform:"iphone"|"macos",
+publicFetch:1, credentials:0|1}` before loading it. The bundle installs
+`__agentekPublicFetch` over the `agentekPublicFetch` message handler only when advertised.
+Requests use `{type:"request", requestId, url, method:"GET", timeoutMs,
+maximumResponseBytes}`; cancellation uses `{type:"cancel", requestId}`. Native apps
+independently enforce existing approved HTTPS origins, public DNS, connection pinning,
+no redirects, a 15-second deadline and a 1,000,000-byte response cap. Without a native
+transport, HTTP metadata fails closed; on-chain fields remain available.
+
+The iPhone credential bridge negotiates the same request/cancel envelope, with
+`headers` and base64 `body`, a 30-second deadline and an 8 MiB JS response cap.
+The native handler retains provider-specific limits, endpoint validation, approvals,
+credential attachment and redaction. Hosts without the versioned credential capability
+receive the legacy `{url, method, headers, body}` shape. The Mac profile registers no
+credential-backed tools. `__naniCapabilities()` reports the selected profile and protocol
+for app validation. Native enforcement requires app tests as well as bundle tests;
+neither native app is a dependency of the standalone library.
+
+## Tools (up to 209)
+
+`allTools({})` returns 195 tools. Optional service credentials add up to 14
+more; availability depends on configuration. The registered `intent0xSwap` is explicitly unavailable and requires no API key. The optional `thinkTools()` echo is excluded from the default catalogue. Host-integrated Nani tool sets
 may expose a different selection. Tool support also varies by chain.
 
 ### Blockchain Core
@@ -188,7 +239,7 @@ may expose a different selection. Tool support also varies by chain.
 |--------|-------|-------------|
 | **aave** | 7 | Account observations and lending/borrowing: `getAaveUserData`, `getAaveReserveData`, deposit, withdraw, borrow, repay intents |
 | **uniV3** | 11 | Position discovery/observations and liquidity: `getUniV3Pool`, `getUserPositions`, `getPoolFeeData`, mint/increase/decrease/collect/transfer intents |
-| **swap** | 1 | `intent0xSwap` — token swaps via 0x aggregator |
+| **swap** | 1 | `intent0xSwap` — unavailable until local execution proof is supported |
 | **weth** | 2 | `depositWETH`, `withdrawWETH` |
 | **zamm** | 5 | `getCoin`, `getHolders`, `getAccountPortfolio`, `getPool`, `getSwaps` |
 | **zrouter** | 2 | `getQuote`, `intentSwap` — cross-DEX routing |
@@ -334,6 +385,7 @@ beyond casual use.
 
 | Variable | Required for |
 |----------|-------------|
+| `AGENTEK_EXECUTION_MODE` | CLI/MCP: `prepare` (default) or `execute` |
 | `PRIVATE_KEY` | Local EVM transaction signing (unsigned intents work with an address; the CLI can also use its signer daemon) |
 | `ACCOUNT` | EVM address context and unsigned intents (alternative to PRIVATE_KEY) |
 | `SOLANA_PRIVATE_KEY` | Signing Solana transactions (base58 or JSON byte array) |
@@ -346,7 +398,7 @@ beyond casual use.
 | `OPENROUTER_API_KEY` | Model-powered examples and Gym OpenRouter evaluations |
 | `ANVIL_BINARY` | Optional Anvil executable path for Gym (defaults to `anvil` on PATH) |
 | `PERPLEXITY_API_KEY` | AI-powered search |
-| `ZEROX_API_KEY` | Token swaps via 0x |
+| `ZEROX_API_KEY` | Deprecated; 0x execution is unavailable |
 | `TALLY_API_KEY` | Governance data |
 | `COINDESK_API_KEY` | Crypto news |
 | `COINMARKETCAL_API_KEY` | Market events calendar |
@@ -405,7 +457,8 @@ never a workspace package's compiled dist. Its scoped catalogue retains WNS,
 NANI staking/governance, ZAMM, contract/yield research and read-only chain research.
 It excludes Tacit, paid HTTP/image publishing, the echo-only think tool, the
 superseded scraper/swap intent, legacy approval scans and protocol position
-management. The general SDK retains its separate collections.
+management. The Mac profile retains its existing broader catalogue; the injected platform selects
+the profile explicitly. The general SDK retains its separate collections.
 
 WNS registration returns `workflow: {schemaVersion:1, mode:"sequential", steps}`
 without top-level ops. Each stage contains `id`, `title`, `ops`,

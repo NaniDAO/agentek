@@ -30,7 +30,7 @@ const AZUKI_CONTRACT = "0xED5AF388653567Af2F388E6224dC7C4b3241C544" as Address;
 const AZUKI_TOKEN_ID = "1";
 
 describe("ERC721 Tools", () => {
-  describe("getNFTMetadataTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getNFTMetadataTool", () => {
     it("should get metadata for BAYC NFT", async () => {
       // Fetch onchain data for comparison
       const [onchainName, onchainSymbol, onchainOwner, onchainTokenURI] = await Promise.all([

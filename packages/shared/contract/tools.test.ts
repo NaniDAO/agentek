@@ -19,7 +19,7 @@ const mockClient = createAgentekClient({
 });
 
 describe("Contract Tools", () => {
-  describe("readContract", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("readContract", () => {
     it("should read with an explicit ABI", async () => {
       const result = await readContractTool.execute(mockClient, {
         address: USDC_BASE,
@@ -127,7 +127,7 @@ describe("Contract Tools", () => {
       expect(result.ops[0].value).toBe("1000000000000000000");
     });
 
-    it("should auto-fetch ABI for write intents", async () => {
+    it.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("should auto-fetch ABI for write intents", async () => {
       const readOnlyClient = createAgentekClient({
         transports: resolveTransports([base]),
         chains: [base],

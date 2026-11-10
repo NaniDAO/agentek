@@ -1,5 +1,5 @@
+import { positiveUnits } from "../utils/exact.js";
 import { z } from "zod";
-import { parseUnits } from "viem";
 import type { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { AgentekClient, createTool, SolanaIntent } from "../client.js";
 import {
@@ -43,7 +43,7 @@ const settle = async (
   const { transaction, blockhash, lastValidBlockHeight } =
     await client.buildSolanaTransaction(instructions);
 
-  const keypair = await client.getSolanaKeypair();
+  const keypair = client.getExecutionMode() === "prepare" ? undefined : await client.getSolanaKeypair();
   if (!keypair) {
     return {
       intent,
@@ -87,7 +87,7 @@ export const intentTransferSolTool = createTool({
     const { PublicKey, SystemProgram } = await import("@solana/web3.js");
 
     const from = await client.getSolanaAddress();
-    const lamports = parseUnits(args.amount, SOL_DECIMALS);
+    const lamports = positiveUnits(args.amount, SOL_DECIMALS);
 
     const connection = await client.getSolanaConnection();
     const balance = await client.awaitSolanaPreSubmission(
@@ -177,7 +177,7 @@ export const intentTransferSplTokenTool = createTool({
       getMint(connection, mint, undefined, programId),
       "getMint",
     );
-    const amount = parseUnits(args.amount, decimals);
+    const amount = positiveUnits(args.amount, decimals);
 
     const owner = new PublicKey(from);
     const recipient = new PublicKey(args.to);
@@ -212,8 +212,7 @@ export const intentTransferSplTokenTool = createTool({
       .awaitSolanaPreSubmission(
         connection.getTokenAccountBalance(source),
         "getTokenAccountBalance",
-      )
-      .catch(() => null);
+      );
     if (!sourceBalance) {
       throw new Error(
         `${from} has no token account for ${mint.toBase58()}, so it holds none of this token`,

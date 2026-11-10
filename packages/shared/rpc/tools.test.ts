@@ -43,7 +43,7 @@ const BASE_TX_HASH = "0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfb
 const MAINNET_TX_HASH = "0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060";
 
 describe("RPC Tools - Real Chain Calls", () => {
-  describe("getBalance", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getBalance", () => {
     it("should get ETH balance for a known address on Base", async () => {
       const result = await withRetry(() =>
         getBalance.execute(testClient, {
@@ -106,7 +106,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("getCode", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getCode", () => {
     it("should get bytecode for a contract address on Base", async () => {
       const result = await withRetry(() =>
         getCode.execute(testClient, {
@@ -148,7 +148,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("getTransactionCount", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getTransactionCount", () => {
     it("should get transaction count for vitalik on mainnet", async () => {
       const result = await withRetry(() =>
         getTransactionCount.execute(testClient, {
@@ -192,7 +192,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("getBlock", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getBlock", () => {
     it("should get block info for a specific block number on Base", async () => {
       const result = await withRetry(() =>
         getBlock.execute(testClient, {
@@ -266,7 +266,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("getBlockNumber", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getBlockNumber", () => {
     it("should get current block number on Base", async () => {
       const result = await withRetry(() =>
         getBlockNumber.execute(testClient, {
@@ -324,7 +324,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("getGasPrice", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getGasPrice", () => {
     it("should get gas price on Base", async () => {
       const result = await withRetry(() =>
         getGasPrice.execute(testClient, {
@@ -384,7 +384,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("estimateGas", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("estimateGas", () => {
     it("should estimate gas for a simple ETH transfer on Base", async () => {
       const result = await withRetry(() =>
         estimateGas.execute(testClient, {
@@ -432,7 +432,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("getFeeHistory", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getFeeHistory", () => {
     it("should get fee history on Base", async () => {
       const result = await withRetry(() =>
         getFeeHistory.execute(testClient, {
@@ -476,7 +476,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("getTransaction", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getTransaction", () => {
     // Use a well-known mainnet transaction (genesis block coinbase tx won't work, use a real one)
     // First ever Ethereum transaction: 0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060
     const KNOWN_TX_HASH = "0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060";
@@ -515,7 +515,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("getTransactionReceipt", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getTransactionReceipt", () => {
     const KNOWN_TX_HASH = "0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060";
 
     it("should get transaction receipt on mainnet", async () => {
@@ -632,7 +632,7 @@ describe("RPC Tools - Real Chain Calls", () => {
     });
   });
 
-  describe("Error handling", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Error handling", () => {
     it("should throw error for invalid chain", async () => {
       await expect(
         getBalance.execute(testClient, {

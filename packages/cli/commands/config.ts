@@ -1,7 +1,7 @@
 import { outputJson, outputError } from "../utils/output.js";
 import {
   readConfig,
-  writeConfig,
+  updateConfig,
   resolveAllKeys,
   redactValue,
   isKnownKey,
@@ -17,9 +17,7 @@ export function handleConfig(rest: string[]): void {
     if (!isKnownKey(key)) {
       process.stderr.write(JSON.stringify({ warning: `${key} is not a known key` }) + "\n");
     }
-    const config = readConfig();
-    config.keys[key] = value;
-    writeConfig(config);
+    updateConfig(config => { config.keys[key] = value; });
     outputJson({ ok: true, key });
   } else if (sub === "get") {
     const key = rest[1];
@@ -43,10 +41,8 @@ export function handleConfig(rest: string[]): void {
   } else if (sub === "delete") {
     const key = rest[1];
     if (!key) outputError("Usage: agentek config delete <KEY>");
-    const config = readConfig();
-    const existed = key in config.keys;
-    delete config.keys[key];
-    writeConfig(config);
+    let existed = false;
+    updateConfig(config => { existed = key in config.keys; delete config.keys[key]; });
     outputJson({ ok: true, key, deleted: existed });
   } else {
     outputError("Usage: agentek config <set|get|list|delete>");

@@ -34,9 +34,13 @@ describe("retained fixes from PR 64", () => {
     vi.spyOn(client, "getPublicClient").mockReturnValue({
       getBalance: async () => 2_000_000_000_000_000_000n,
       getGasPrice: async () => 1n,
+      estimateGas: async () => 21000n,
+      estimateFeesPerGas: async () => ({gasPrice: 1n}),
+      getChainId: async () => 10,
+      readContract: async () => 1n,
     } as any);
     const result = await client.execute("intentTransfer", { token: ETH_ADDRESS, to: normalized, amount: "1", chainId: 10 });
-    expect(result).toMatchObject({ chain: 10, ops: [{ target: normalized, value: "1000000000000000000", data: "0x" }] });
+    expect(result).toMatchObject({ chain: 10, ops: [{ target: normalized.toLowerCase(), value: "1000000000000000000", data: "0x" }] });
     expect(intentTransferFromTool.supportedChains.some(chain => chain.id === 10)).toBe(true);
   });
 });

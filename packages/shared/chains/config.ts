@@ -1,3 +1,4 @@
+import { robinhood } from "./robinhood.js";
 import { http, type Chain, type Transport } from "viem";
 import {
   arbitrum,
@@ -26,6 +27,7 @@ export const DEFAULT_CHAINS: Chain[] = [
   base,
   mode,
   sepolia,
+  robinhood,
 ];
 
 /**
@@ -44,6 +46,7 @@ const FALLBACK_RPC_URLS: Record<number, string> = {
   [polygon.id]: "https://polygon-bor-rpc.publicnode.com",
   [base.id]: "https://base-rpc.publicnode.com",
   [mode.id]: "https://mainnet.mode.network",
+  [robinhood.id]: robinhood.rpcUrls.default.http[0],
   [sepolia.id]: "https://ethereum-sepolia-rpc.publicnode.com",
 };
 
@@ -55,6 +58,7 @@ const ENV_ALIASES: Record<number, string> = {
   [polygon.id]: "POLYGON_RPC_URL",
   [base.id]: "BASE_RPC_URL",
   [mode.id]: "MODE_RPC_URL",
+  [robinhood.id]: "ROBINHOOD_RPC_URL",
   [sepolia.id]: "SEPOLIA_RPC_URL",
 };
 
@@ -109,7 +113,10 @@ export function parseRpcUrlsEnv(
     const [id, ...rest] = entry.split("=");
     const url = rest.join("=").trim();
     const chainId = Number(id?.trim());
-    if (Number.isFinite(chainId) && url) out[chainId] = url;
+    if (!Number.isSafeInteger(chainId) || chainId <= 0 || !url) throw new Error("Malformed RPC_URLS entry");
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("RPC URL must use HTTP(S)");
+    out[chainId] = url;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }

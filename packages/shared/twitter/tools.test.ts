@@ -221,7 +221,7 @@ describe("Twitter Tools", () => {
     });
   });
 
-  describe("Real API Calls", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Real API Calls", () => {
     it.skipIf(!HAS_TOKEN)(
       "searchRecentTweets should search for tweets",
       async () => {

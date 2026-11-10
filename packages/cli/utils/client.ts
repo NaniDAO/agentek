@@ -1,3 +1,6 @@
+import { createExecutionJournal } from "@agentek/tools/journal";
+import { join } from "node:path";
+import { getConfigDir } from "../config.js";
 import { type Hex, type Account, isHex, zeroAddress } from "viem";
 import { createAgentekClient, type BaseTool } from "@agentek/tools/client";
 import {
@@ -55,11 +58,11 @@ export async function createClientFromEnv() {
     POLYGON_RPC_URL: 137,
     BASE_RPC_URL: 8453,
     MODE_RPC_URL: 34443,
+    ROBINHOOD_RPC_URL: 4663,
     SEPOLIA_RPC_URL: 11155111,
   };
   for (const [name, chainId] of Object.entries(RPC_ALIASES)) {
-    const url = keys[name];
-    if (url) rpcOverrides[chainId] = url;
+    if (!rpcOverrides[chainId]) rpcOverrides[chainId] = keys[`RPC_URL_${chainId}`] || keys[name];
   }
   const transports = resolveTransports(chains, rpcOverrides);
 
@@ -76,7 +79,11 @@ export async function createClientFromEnv() {
   }
 
   // ── Agentek client ───────────────────────────────────────────────────
+  const executionMode = keys.AGENTEK_EXECUTION_MODE ?? "prepare";
+  if (executionMode !== "prepare" && executionMode !== "execute") throw new Error("AGENTEK_EXECUTION_MODE must be prepare or execute");
   const agentekClient = createAgentekClient({
+    executionMode,
+    onExecutionUpdated: createExecutionJournal(join(getConfigDir(), "executions")),
     transports,
     chains,
     accountOrAddress: account,

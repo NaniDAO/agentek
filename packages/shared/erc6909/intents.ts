@@ -1,11 +1,12 @@
+import { positiveEther } from "../utils/exact.js";
 import { createTool, AgentekClient } from "../client.js";
 import { z } from "zod";
-import { encodeFunctionData, parseEther } from "viem";
+import { encodeFunctionData, } from "viem";
 import { coinsAbi, COINS_ADDRESS } from "./constants.js";
 import { addressSchema } from "../utils.js";
 
 const intentCreateCoinTokenParameters = z.object({
-  chainId: z.number().describe("The chainId to deploy on e.g. 1 (mainnet), 8453 (base)"),
+  chainId: z.number().int().positive().safe().describe("The chainId to deploy on e.g. 1 (mainnet), 8453 (base)"),
   name: z.string().describe("Token name"),
   symbol: z.string().describe("Token symbol"),
   tokenURI: z.string().describe("Metadata URI"),
@@ -25,7 +26,7 @@ export const intentCreateCoinToken = createTool({
     const data = encodeFunctionData({
       abi: coinsAbi,
       functionName: "create",
-      args: [name, symbol, tokenURI, owner, parseEther(supply)],
+      args: [name, symbol, tokenURI, owner, positiveEther(supply)],
     });
 
     const ops = [

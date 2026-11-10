@@ -1,5 +1,6 @@
+import { implementationFingerprint } from "../runner/provenance.js";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, stat, writeFile, open, unlink } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile, open, unlink, rename } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
 import { formatUnits, parseUnits } from "viem";
@@ -55,6 +56,8 @@ export interface SuiteReport {
   provider: string;
   modelVersion?: string;
   inferenceSettings: Record<string, unknown>;
+  hardfork?: string;
+  implementation?: string;
   runConfigurationFingerprint: string;
   servingProviders: string[];
   resolvedModels: string[];
@@ -107,12 +110,14 @@ function canonical(value: unknown): string {
 }
 
 export function fingerprintRunConfiguration(options: Pick<RunSuiteOptions,
-  "model" | "provider" | "modelVersion" | "inferenceSettings">): string {
+  "model" | "provider" | "modelVersion" | "inferenceSettings" | "hardfork">): string {
   return createHash("sha256").update(canonical({
     model: options.model,
     provider: options.provider ?? "custom",
     modelVersion: options.modelVersion ?? null,
     inferenceSettings: options.inferenceSettings ?? {},
+    hardfork: options.hardfork ?? "prague",
+    implementation: implementationFingerprint(),
   })).digest("hex");
 }
 
@@ -138,8 +143,14 @@ function redact(value: unknown, secrets: readonly string[]): unknown {
   return value;
 }
 
+async function atomicText(path: string, text: string): Promise<void> {
+  const temp = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  try { await writeFile(temp, text, {encoding: "utf8", flag: "wx"}); await rename(temp, path); }
+  finally { await unlink(temp).catch(() => undefined); }
+}
+
 async function writeJson(path: string, value: unknown, secrets: readonly string[]): Promise<void> {
-  await writeFile(path, `${JSON.stringify(redact(value, secrets), null, 2)}\n`, "utf8");
+  await atomicText(path, `${JSON.stringify(redact(value, secrets), null, 2)}\n`);
 }
 
 function escapeCell(value: string): string {
@@ -228,7 +239,7 @@ export async function runSuite(options: RunSuiteOptions): Promise<SuiteReport> {
   }
 
   const suiteFingerprint = createHash("sha256")
-    .update(JSON.stringify(taskEntries.map(({ task }) => [task.id, fingerprintTask(task)])))
+    .update(JSON.stringify(taskEntries.map(({ task }) => [task.id, fingerprintTask(task, options.hardfork)])))
     .digest("hex");
   const runConfigurationFingerprint = fingerprintRunConfiguration(options);
   const secrets = [
@@ -304,6 +315,8 @@ export async function runSuite(options: RunSuiteOptions): Promise<SuiteReport> {
       provider: options.provider ?? "custom",
       modelVersion: options.modelVersion,
       inferenceSettings: options.inferenceSettings ?? {},
+      hardfork: options.hardfork ?? "prague",
+      implementation: implementationFingerprint(),
       runId,
       createdAt,
     }, secrets);
@@ -333,6 +346,8 @@ export async function runSuite(options: RunSuiteOptions): Promise<SuiteReport> {
       provider: options.provider ?? "custom",
       modelVersion: options.modelVersion,
       inferenceSettings: options.inferenceSettings ?? {},
+      hardfork: options.hardfork ?? "prague",
+      implementation: implementationFingerprint(),
       runConfigurationFingerprint,
       servingProviders: [...new Set(summaries.flatMap((task) => task.servingProviders))].sort(),
       resolvedModels: [...new Set(summaries.flatMap((task) => task.resolvedModels))].sort(),
@@ -365,7 +380,7 @@ export async function runSuite(options: RunSuiteOptions): Promise<SuiteReport> {
     const report = makeReport();
     await Promise.all([
       writeJson(join(outputDir, "report.json"), report, secrets),
-      writeFile(join(outputDir, "report.md"), String(redact(renderSuiteMarkdown(report), secrets)), "utf8"),
+      atomicText(join(outputDir, "report.md"), String(redact(renderSuiteMarkdown(report), secrets))),
     ]);
   };
   if (!options.resume) await saveProgress();
@@ -384,7 +399,7 @@ export async function runSuite(options: RunSuiteOptions): Promise<SuiteReport> {
         const result = JSON.parse(savedResult) as EvaluationResult;
         const trace = JSON.parse(savedTrace) as EvaluationTrace;
         if (result.taskId === task.id &&
-            result.taskFingerprint === fingerprintTask(task) &&
+            result.taskFingerprint === fingerprintTask(task, options.hardfork) &&
             result.model === options.model &&
             trace.taskId === task.id && trace.runId === result.runId) {
           summaries.push(summarizeTask(result, resultPath, tracePath, trace.calls, task.category));
@@ -565,7 +580,7 @@ export async function compareSavedReports(
   await mkdir(absolute, { recursive: true });
   await Promise.all([
     writeJson(join(absolute, "comparison.json"), comparison, []),
-    writeFile(join(absolute, "comparison.md"), renderComparisonMarkdown(comparison), "utf8"),
+    atomicText(join(absolute, "comparison.md"), renderComparisonMarkdown(comparison)),
   ]);
   return comparison;
 }

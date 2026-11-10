@@ -1,301 +1,65 @@
+import { additionalFeeReserve, opFeeChains } from "../gasestimator/network-fees.js";
 import { z } from "zod";
-import { AgentekClient, createTool, Intent } from "../client.js";
+import { AgentekClient, createTool, type Intent, type Op } from "../client.js";
 import { arbitrum, base, mainnet, optimism, sepolia } from "viem/chains";
-import {
-  Address,
-  encodeFunctionData,
-  erc20Abi,
-  Hex,
-  parseUnits,
-  PublicClient,
-} from "viem";
-import { addressSchema } from "../utils.js";
+import { type Address, encodeFunctionData, erc20Abi } from "viem";
+import { identityAddress, positiveUnits } from "../utils/exact.js";
 import { resolveENSTool } from "../ens/tools.js";
 
-const intentTransferChains = [mainnet, arbitrum, base, optimism, sepolia];
-const intentTransferParameters = z.object({
-  token: addressSchema.describe("The token contract address (0x...), or 0x0000000000000000000000000000000000000000 for native ETH"),
-  amount: z.string().describe("Amount to transfer in human-readable units (e.g. '1.5' for 1.5 tokens). Decimals are resolved automatically."),
-  to: z.string().describe("Recipient address (0x...) or ENS name (e.g. 'vitalik.eth'). ENS names are resolved automatically."),
-  chainId: z.number().optional().describe("Chain ID to transfer on (e.g. 1, 42161, 8453). If omitted, automatically selects the cheapest chain where you have sufficient balance."),
-});
-
-export const ETH_ADDRESS =
-  "0x0000000000000000000000000000000000000000" as Address;
-
-const getTokenDecimals = async (
-  publicClient: PublicClient,
-  token: Address,
-): Promise<number> => {
-  if (token == ETH_ADDRESS) {
-    return 18;
-  } else {
-    return await publicClient.readContract({
-      abi: erc20Abi,
-      functionName: "decimals",
-      address: token,
-    });
-  }
+export const ETH_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
+const supportedChains = [mainnet, arbitrum, base, optimism, sepolia];
+const common = {
+  token: identityAddress.describe("Token contract, or the zero address for native ETH"),
+  amount: z.string().describe("Exact positive amount in human units; excess precision is rejected"),
+  to: z.string().describe("Recipient address or ENS name"),
+  chainId: z.number().int().positive().safe().optional().describe("Required when more than one supported chain is configured"),
 };
 
-const getTokenBalance = async (
-  publicClient: PublicClient,
-  token: Address,
-  from: Address,
-): Promise<bigint> => {
-  if (token == ETH_ADDRESS) {
-    return publicClient.getBalance({
-      address: from,
-    });
-  } else {
-    return await publicClient.readContract({
-      abi: erc20Abi,
-      functionName: "balanceOf",
-      address: token,
-      args: [from],
-    });
+async function transfer(client: AgentekClient, args: z.infer<z.ZodObject<typeof common>> & {from?: string}): Promise<Intent> {
+  const chains = client.filterSupportedChains(supportedChains, args.chainId);
+  if (chains.length !== 1) throw new Error("Specify chainId explicitly when multiple chains are configured; token addresses and gas prices cannot establish the intended chain");
+  const chainId = chains[0].id;
+  const rpc = client.getPublicClient(chainId);
+  const sender = await client.getAddress();
+  const from = identityAddress.parse(args.from ?? sender) as Address;
+  const to = identityAddress.parse(args.to.includes(".") ? await resolveENSTool.execute(client, {name: args.to}) : args.to) as Address;
+  const token = args.token as Address;
+  const native = token === ETH_ADDRESS;
+  if (native && args.from) throw new Error("ETH transferFrom not supported");
+  const decimals = native ? 18 : await rpc.readContract({address: token, abi: erc20Abi, functionName: "decimals"});
+  const amount = positiveUnits(args.amount, decimals);
+  const balance = native ? await rpc.getBalance({address: from}) : await rpc.readContract({address: token, abi: erc20Abi, functionName: "balanceOf", args: [from]});
+  if (balance < amount) throw new Error("Insufficient token balance on the selected chain");
+  if (args.from) {
+    const allowance = await rpc.readContract({address: token, abi: erc20Abi, functionName: "allowance", args: [from, sender]});
+    if (allowance < amount) throw new Error("Insufficient transferFrom allowance for the connected sender");
   }
-};
+  const op: Op = native ? {target: to, value: amount.toString(), data: "0x"} : {
+    target: token, value: "0", data: args.from
+      ? encodeFunctionData({abi: erc20Abi, functionName: "transferFrom", args: [from, to, amount]})
+      : encodeFunctionData({abi: erc20Abi, functionName: "transfer", args: [to, amount]}),
+  };
+  const gas = await rpc.estimateGas({account: sender, to: op.target, value: BigInt(op.value), data: op.data});
+  const fees = await rpc.estimateFeesPerGas();
+  const price = fees.maxFeePerGas ?? fees.gasPrice;
+  if (price === undefined) throw new Error("Gas fee estimate unavailable");
+  let additional = 0n;
+  if (opFeeChains.has(chainId)) {
+    if (await rpc.getChainId() !== chainId) throw new Error("RPC network mismatch");
+    additional = BigInt((await additionalFeeReserve(rpc, chainId, op.data, BigInt(gas))).additionalReserveWei);
+  }
+  const nativeBalance = native ? balance : await rpc.getBalance({address: sender});
+  if (nativeBalance < BigInt(op.value) + BigInt(gas) * BigInt(price) + additional) throw new Error("Insufficient native balance including estimated gas reserve");
+  const ops = [op];
+  return {intent: `Send ${args.amount} ${token} from ${from} to ${to}`, ops, chain: chainId,
+    ...(client.getWalletClient(chainId) ? {hash: await client.executeOps(ops, chainId)} : {})};
+}
 
 export const intentTransferTool = createTool({
-  name: "intentTransfer",
-  description: "Transfer ERC20 tokens or native ETH to an address or ENS name. Supports ENS resolution, automatic decimal handling, and auto-selects the cheapest chain if chainId is omitted.",
-  supportedChains: intentTransferChains,
-  parameters: intentTransferParameters,
-  execute: async (
-    client: AgentekClient,
-    args: z.infer<typeof intentTransferParameters>,
-  ): Promise<Intent> => {
-    let { token, amount, to, chainId } = args;
-    const chains = client.filterSupportedChains(intentTransferChains, chainId);
-    const from = await client.getAddress();
-
-    // if `to` is an ENS name, resolve it to an address
-    if (to.includes('.')) {
-      to = await resolveENSTool.execute(client, {
-        name: to,
-      }).catch(() => {
-        throw new Error(`Failed to resolve ENS name ${to}`);
-      });
-    }
-
-    const chainsWithBalance = (
-      await Promise.all(
-        chains.map(async (chain) => {
-          const publicClient = client.getPublicClient(chain.id);
-          const decimals = await getTokenDecimals(
-            publicClient,
-            token as Address,
-          );
-
-          const balance = await getTokenBalance(
-            publicClient,
-            token as Address,
-            from,
-          );
-
-          const amountBigInt = parseUnits(amount, decimals);
-
-          if (balance >= amountBigInt) {
-            return {
-              chain,
-              balance,
-              amount: amountBigInt,
-              decimals,
-            };
-          }
-
-          return null;
-        }),
-      )
-    ).filter((chain): chain is NonNullable<typeof chain> => chain !== null);
-
-    if (chainsWithBalance.length === 0) {
-      throw new Error(
-        `${from} doesn't have enough ${token} balance on any of the supported chains - ${chains.map((chain) => chain.name)}`,
-      );
-    }
-
-    const cheapestChain = await Promise.all(
-      chainsWithBalance.map(async (chainInfo) => {
-        const publicClient = client.getPublicClient(chainInfo.chain.id);
-        const gasPrice = await publicClient.getGasPrice();
-        return {
-          ...chainInfo,
-          gasPrice,
-        };
-      }),
-    ).then((chains) =>
-      chains.reduce((cheapest, current) =>
-        current.gasPrice < cheapest.gasPrice ? current : cheapest,
-      ),
-    );
-
-    const walletClient = client.getWalletClient(cheapestChain.chain.id);
-
-    let ops = [];
-    let tokenSymbol = "";
-    if (token === ETH_ADDRESS) {
-      tokenSymbol = "ETH";
-      ops.push({
-        target: to as Address,
-        value: cheapestChain.amount.toString(),
-        data: "0x" as Hex,
-      });
-    } else {
-      tokenSymbol = await client.getPublicClient(cheapestChain.chain.id).readContract({
-        address: token as Address,
-        abi: erc20Abi,
-        functionName: "symbol",
-      });
-
-      ops.push({
-        target: token as Address,
-        value: "0",
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: "transfer",
-          args: [to as Address, cheapestChain.amount],
-        }),
-      });
-    }
-
-    if (!walletClient) {
-      return {
-        intent: `send ${amount.toString()} ${tokenSymbol} to ${to}`,
-        ops,
-        chain: cheapestChain.chain.id,
-      };
-    } else {
-      const hash = await client.executeOps(ops, cheapestChain.chain.id);
-
-      return {
-        intent: `send ${amount.toString()} ${tokenSymbol} to ${to}`,
-        ops,
-        chain: cheapestChain.chain.id,
-        hash: hash,
-      };
-    }
-  },
+  name: "intentTransfer", description: "Transfer tokens on an explicit chain with exact amounts, ENS resolution, balance and gas checks.",
+  supportedChains, parameters: z.object(common), execute: transfer,
 });
-
-const intentTransferFromParameters = z.object({
-  token: z.string().describe("The ERC20 token contract address (0x...). Does not support native ETH."),
-  amount: z.string().describe("Amount to transfer in human-readable units (e.g. '1.5' for 1.5 tokens). Decimals are resolved automatically."),
-  from: z.string().describe("The address to transfer tokens from (0x...). Must have approved your address via ERC20 approve first."),
-  to: z.string().describe("Recipient address (0x...) or ENS name (e.g. 'vitalik.eth'). ENS names are resolved automatically."),
-  chainId: z.number().optional().describe("Chain ID to transfer on (e.g. 1, 42161, 8453). If omitted, automatically selects the cheapest chain where the 'from' address has sufficient balance."),
-});
-
-const intentTransferFromChains = [mainnet, arbitrum, base, optimism, sepolia];
-
 export const intentTransferFromTool = createTool({
-  name: "intentTransferFrom",
-  description: "Transfer ERC20 tokens from another address using transferFrom. Requires prior ERC20 approval from the 'from' address. Does not support native ETH. Supports ENS resolution and auto-selects the cheapest chain if chainId is omitted.",
-  supportedChains: intentTransferFromChains,
-  parameters: intentTransferFromParameters,
-  execute: async (
-    client: AgentekClient,
-    args: z.infer<typeof intentTransferFromParameters>,
-  ): Promise<Intent> => {
-    let { token, amount, to, from, chainId } = args;
-    const chains = client.filterSupportedChains(intentTransferChains, chainId);
-
-    // if `to` is an ENS name, resolve it to an address
-    if (to.includes('.')) {
-      to = await resolveENSTool.execute(client, {
-        name: to,
-      }).catch(() => {
-        throw new Error(`Failed to resolve ENS name ${to}`);
-      });
-    }
-
-    const chainsWithBalance = (
-      await Promise.all(
-        chains.map(async (chain) => {
-          const publicClient = client.getPublicClient(chain.id);
-          const decimals = await getTokenDecimals(
-            publicClient,
-            token as Address,
-          );
-
-          const balance = await getTokenBalance(
-            publicClient,
-            token as Address,
-            from as Address,
-          );
-
-          const amountBigInt = parseUnits(amount, decimals);
-
-          if (balance >= amountBigInt) {
-            return {
-              chain,
-              balance,
-              amount: amountBigInt,
-              decimals,
-            };
-          }
-
-          return null;
-        }),
-      )
-    ).filter((chain): chain is NonNullable<typeof chain> => chain !== null);
-
-    if (chainsWithBalance.length === 0) {
-      throw new Error(
-        `${from} doesn't have enough ${token} balance on any of the supported chains - ${chains.map((chain) => chain.name)}`,
-      );
-    }
-
-    const cheapestChain = await Promise.all(
-      chainsWithBalance.map(async (chainInfo) => {
-        const publicClient = client.getPublicClient(chainInfo.chain.id);
-        const gasPrice = await publicClient.getGasPrice();
-        return {
-          ...chainInfo,
-          gasPrice,
-        };
-      }),
-    ).then((chains) =>
-      chains.reduce((cheapest, current) =>
-        current.gasPrice < cheapest.gasPrice ? current : cheapest,
-      ),
-    );
-
-    const publicClient = client.getPublicClient(cheapestChain.chain.id);
-    const walletClient = client.getWalletClient(cheapestChain.chain.id);
-
-    let ops = [];
-    if (token === ETH_ADDRESS) {
-      // @TODO gracefully fallback to weth if eth mentioned
-      throw new Error("ETH transferFrom not supported");
-    } else {
-      ops.push({
-        target: token as Address,
-        value: "0",
-        data: encodeFunctionData({
-          abi: erc20Abi,
-          functionName: "transferFrom",
-          args: [from as Address, to as Address, cheapestChain.amount],
-        }),
-      });
-    }
-
-    if (!walletClient) {
-      return {
-        intent: `send ${amount.toString()} ${token} from ${from} to ${to}`,
-        ops,
-        chain: cheapestChain.chain.id,
-      };
-    } else {
-      const hash = await client.executeOps(ops, cheapestChain.chain.id);
-
-      return {
-        intent: `send ${amount.toString()} ${token} from ${from} to ${to}`,
-        ops,
-        chain: cheapestChain.chain.id,
-        hash: hash,
-      };
-    }
-  },
+  name: "intentTransferFrom", description: "Transfer ERC20 tokens using the connected sender's allowance on an explicit chain.",
+  supportedChains, parameters: z.object({...common, from: identityAddress}), execute: transfer,
 });

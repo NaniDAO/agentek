@@ -30,37 +30,26 @@ Add this to your `claude_desktop_config.json`:
   "mcpServers": {
     "agentek": {
       "command": "pnpx",
-      "args": [
-        "@agentek/mcp-server"
-      ],
+      "args": ["@agentek/mcp-server"],
       "env": {
         "ACCOUNT": "YOUR_ETHEREUM_ADDRESS",
-        // or PRIVATE_KEY if you need transactions
-
-        // Optional for added these features
-        "PERPLEXITY_API_KEY": "YOUR_PERPLEXITY_KEY",
-        "ZEROX_API": "YOUR_ZEROX_API_KEY",
-        "BLOCKSCOUT_API_KEY": "BLOCKSCOUT_API_KEY",
-        "TALLY_API_KEY": "TALLY_API_KEY",
-        "COINDESK_API_KEY": "COINDESK_API_KEY",
-        "COINMARKETCAL_API_KEY": "COINMARKETCAL_API_KEY",
+        "AGENTEK_EXECUTION_MODE": "prepare"
       }
     }
   }
 }
 ```
 
-Just use ACCOUNT for read-only if you're trying things out. Only add a PRIVATE_KEY if you actually need to make transactions and if you understand the risks.
+Just use ACCOUNT for read-only if you're trying things out. To submit transactions, configure a signer and set `AGENTEK_EXECUTION_MODE=execute`. The default `prepare` mode returns unsigned operations. EVM outcomes are persisted under `AGENTEK_CONFIG_DIR/executions` (default `~/.agentek/executions`); reconcile ambiguous or partial executions before acknowledging their chain lock with the CLI.
 
 ### Networks
 
-You get these networks out of the box:
-- Ethereum Mainnet
-- Optimism
-- Arbitrum
-- Polygon
-
-We'll make this customizable later.
+The shared registry configures Ethereum, Optimism, Arbitrum, Polygon, Base,
+Mode, Sepolia and Robinhood Chain. Individual tools declare their supported subset.
+Override endpoints with `RPC_URLS` (`chainId=url` pairs), `RPC_URL_<chainId>`, or
+friendly aliases such as `ETHEREUM_RPC_URL` and `BASE_RPC_URL`, in that precedence order.
+Requests use bounded transports. Solana uses `SOLANA_RPC_URL`; omitting a tool's
+cluster parameter preserves the configured endpoint.
 
 
 ### Coming Soon

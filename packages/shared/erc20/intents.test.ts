@@ -62,7 +62,7 @@ describe("intentApproveTool", () => {
     });
   });
 
-  describe("max approval", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("max approval", () => {
     it("should encode max approval with maxUint256", async () => {
       const result = await intentApproveTool.execute(testClient, {
         token: TOKEN,
@@ -120,7 +120,7 @@ describe("intentApproveTool", () => {
     });
   });
 
-  describe("normal approval", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("normal approval", () => {
     it("should encode a specific amount correctly", async () => {
       const result = await intentApproveTool.execute(testClient, {
         token: TOKEN,

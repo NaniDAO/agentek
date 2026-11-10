@@ -13,6 +13,7 @@ export function handleInfo(toolsMap: Map<string, BaseTool>, rest: string[]): nev
   outputJson({
     name: tool!.name,
     description: tool!.description,
+    capabilities: tool!.capabilities,
     parameters: zodToJsonSchema(tool!.parameters),
     supportedChains: tool!.supportedChains?.map((c) => ({ id: c.id, name: c.name })),
   });

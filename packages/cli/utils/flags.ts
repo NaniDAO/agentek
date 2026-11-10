@@ -14,8 +14,7 @@ export function parseFlags(argv: string[], schema: z.ZodObject<any>): Record<str
     const arg = argv[i];
 
     if (!arg.startsWith("--")) {
-      i++;
-      continue;
+      outputError(`Unexpected argument: ${arg}`);
     }
 
     // Support both --key value and --key=value
@@ -46,6 +45,7 @@ export function parseFlags(argv: string[], schema: z.ZodObject<any>): Record<str
           ) {
             continue;
           }
+          if (!Object.hasOwn(shape, parsedKey)) outputError(`Unknown parameter: ${parsedKey}`);
           result[parsedKey] = parsed[parsedKey];
         }
       } catch (error) {
@@ -59,6 +59,7 @@ export function parseFlags(argv: string[], schema: z.ZodObject<any>): Record<str
     }
 
     const fieldSchema = shape[key];
+    if (!Object.hasOwn(shape, key)) outputError(`Unknown parameter: ${key}`);
 
     // Determine the value: inline (=) takes priority, then next arg
     let rawValue: string | undefined = inlineValue;

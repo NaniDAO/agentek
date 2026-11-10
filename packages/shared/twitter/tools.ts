@@ -11,10 +11,10 @@ const DEFAULT_USER_FIELDS =
   "created_at,description,public_metrics,profile_image_url,verified,location,url";
 const DEFAULT_EXPANSIONS = "author_id";
 
-async function xFetch(url: string, bearerToken: string): Promise<any> {
+async function xFetch(url: string, bearerToken: string | (() => Promise<string>)): Promise<any> {
   const response = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${bearerToken}`,
+      Authorization: `Bearer ${typeof bearerToken === "function" ? await bearerToken() : bearerToken}`,
     },
   });
 
@@ -27,7 +27,7 @@ async function xFetch(url: string, bearerToken: string): Promise<any> {
 }
 
 export function createSearchRecentTweetsTool(
-  bearerToken: string,
+  bearerToken: string | (() => Promise<string>),
 ): BaseTool {
   return createTool({
     name: "searchRecentTweets",
@@ -72,7 +72,7 @@ export function createSearchRecentTweetsTool(
   });
 }
 
-export function createGetTweetByIdTool(bearerToken: string): BaseTool {
+export function createGetTweetByIdTool(bearerToken: string | (() => Promise<string>)): BaseTool {
   return createTool({
     name: "getTweetById",
     description:
@@ -99,7 +99,7 @@ export function createGetTweetByIdTool(bearerToken: string): BaseTool {
 }
 
 export function createGetUserByUsernameTool(
-  bearerToken: string,
+  bearerToken: string | (() => Promise<string>),
 ): BaseTool {
   return createTool({
     name: "getXUserByUsername",
@@ -129,7 +129,7 @@ export function createGetUserByUsernameTool(
 }
 
 export function createGetUserTweetsTool(
-  bearerToken: string,
+  bearerToken: string | (() => Promise<string>),
 ): BaseTool {
   return createTool({
     name: "getXUserTweets",

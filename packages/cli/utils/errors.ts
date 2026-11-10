@@ -9,7 +9,6 @@ import { levenshtein } from "./levenshtein.js";
  */
 export const KEY_GATED_TOOLS: Record<string, string[]> = {
   askPerplexitySearch: ["PERPLEXITY_API_KEY"],
-  intent0xSwap: ["ZEROX_API_KEY"],
   tallyProposals: ["TALLY_API_KEY"],
   tallyChains: ["TALLY_API_KEY"],
   tallyUserDaos: ["TALLY_API_KEY"],

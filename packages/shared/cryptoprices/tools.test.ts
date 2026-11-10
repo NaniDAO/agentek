@@ -36,7 +36,7 @@ describe("Crypto Price Tools", () => {
     });
   });
 
-  describe("getCryptoPriceTool - Real API Calls", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getCryptoPriceTool - Real API Calls", () => {
     it("should fetch Bitcoin (BTC) price from CoinGecko", async () => {
       const result = await withRetry(() =>
         getCryptoPriceTool.execute(client, { symbol: "BTC" })
@@ -151,7 +151,7 @@ describe("Crypto Price Tools", () => {
     }, 15000);
   });
 
-  describe("getCryptoPriceTool - Error Handling", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getCryptoPriceTool - Error Handling", () => {
     it("should throw error for non-existent cryptocurrency", async () => {
       await expect(
         getCryptoPriceTool.execute(client, {
@@ -167,7 +167,7 @@ describe("Crypto Price Tools", () => {
     }, 15000);
   });
 
-  describe("Price Consistency", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Price Consistency", () => {
     it("BTC and bitcoin should return similar prices", async () => {
       const btcResult = await withRetry(() =>
         getCryptoPriceTool.execute(client, { symbol: "BTC" })
@@ -202,7 +202,7 @@ describe("Crypto Price Tools", () => {
     }, 30000);
   });
 
-  describe("Multiple Cryptocurrencies", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Multiple Cryptocurrencies", () => {
     it("should fetch prices for multiple major cryptocurrencies", async () => {
       const symbols = ["BTC", "ETH", "SOL", "DOGE", "LINK"];
       const results = await Promise.all(

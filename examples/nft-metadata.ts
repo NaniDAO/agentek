@@ -1,7 +1,7 @@
-import { createAgentekClient } from "../packages/shared/client";
+import { createAgentekClient } from "@agentek/tools/client";
 import { http } from "viem";
 import { mainnet } from "viem/chains";
-import { nftTools } from "../packages/shared/erc721";
+import { nftTools } from "@agentek/tools";
 
 async function main() {
   // Example NFT: CryptoPunk #7804

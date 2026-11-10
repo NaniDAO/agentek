@@ -1,9 +1,26 @@
+import { publicFetch } from "../utils/public-fetch.js";
 import { quantitySchema } from "../utils/exact.js";
 import { z } from "zod";
 import { createTool } from "../client.js";
 import { clean, addressSchema } from "../utils.js";
 import { supportedChains } from "./constants.js";
 import { erc721Abi } from "viem";
+
+const MAX_METADATA_BYTES = 2 * 1024 * 1024;
+function inlineMetadata(uri: string): unknown {
+  const match = /^data:application\/json(?:;charset=utf-8)?(;base64)?,/i.exec(uri);
+  if (!match || uri.length > MAX_METADATA_BYTES * 3) throw new Error("Unsupported or oversized inline metadata");
+  const encoded = uri.slice(match[0].length);
+  let text: string;
+  if (match[1]) {
+    if (encoded.length > Math.ceil(MAX_METADATA_BYTES / 3) * 4) throw new Error("Inline metadata too large");
+    const decoded = atob(encoded);
+    if (decoded.length > MAX_METADATA_BYTES) throw new Error("Inline metadata too large");
+    text = new TextDecoder("utf-8", {fatal: true}).decode(Uint8Array.from(decoded, char => char.charCodeAt(0)));
+  } else text = decodeURIComponent(encoded);
+  if (new TextEncoder().encode(text).byteLength > MAX_METADATA_BYTES) throw new Error("Inline metadata too large");
+  return JSON.parse(text);
+}
 
 export const getNFTMetadataTool = createTool({
   name: "getNFTMetadata",
@@ -65,6 +82,7 @@ export const getNFTMetadataTool = createTool({
       
       // Fetch metadata from tokenURI if it exists
       let metadata = null;
+      let metadataError: string | undefined;
       if (tokenURI) {
         try {
           // Handle both HTTP and IPFS URIs
@@ -72,12 +90,14 @@ export const getNFTMetadataTool = createTool({
             ? `https://ipfs.io/ipfs/${tokenURI.slice(7)}`
             : tokenURI;
             
-          const response = await fetch(url);
-          if (response.ok) {
-            metadata = await response.json();
+          if (url.startsWith("data:")) metadata = inlineMetadata(url);
+          else {
+          const response = await publicFetch(url);
+          if (!response.ok) throw new Error(`Metadata HTTP ${response.status}`);
+          metadata = await response.json();
           }
         } catch (error) {
-          // Silently handle error but continue with other data
+          metadataError = error instanceof Error ? error.message : "Metadata unavailable";
         }
       }
       
@@ -90,6 +110,7 @@ export const getNFTMetadataTool = createTool({
         owner,
         tokenURI,
         metadata,
+        metadataError,
       });
     } catch (error) {
       return {

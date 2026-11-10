@@ -24,7 +24,6 @@ export const MVP_AGENTEK_TOOL_NAMES = [
   "readContract",
   "intentTransfer",
   "intentApprove",
-  "intent0xSwap",
   "intentWriteContract",
 ] as const;
 
@@ -92,15 +91,6 @@ export function selectMvpAgentekTools(
     ...transferTools(),
   ]);
 
-  if (requestedNames.includes("intent0xSwap")) {
-    const zeroxApiKey = options.zeroxApiKey?.trim();
-    if (!zeroxApiKey) {
-      throw new GymToolSelectionError(
-        "intent0xSwap requires zeroxApiKey in Gym process configuration",
-      );
-    }
-    for (const tool of swapTools({ zeroxApiKey })) available.set(tool.name, tool);
-  }
 
   return requestedNames.map((name) => {
     const tool = available.get(name);
@@ -230,6 +220,7 @@ export async function createGymAgentekClient(
 
   return new GuardedGymAgentekClient(
     {
+      executionMode: "execute",
       accountOrAddress: options.environment.getWalletAccount(),
       chains,
       transports,

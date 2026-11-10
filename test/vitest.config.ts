@@ -4,6 +4,9 @@ export default defineConfig({
   test: {
     exclude: [...configDefaults.exclude, "scripts/*.test.mjs"],
     environment: "node",
+    maxWorkers: 1,
+    fileParallelism: false,
+    maxConcurrency: 1,
     setupFiles: ["./test/setup.ts"],
     benchmark: {
       outputFile: "./bench/report.json",

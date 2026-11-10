@@ -53,7 +53,7 @@ const createSolanaTestClient = (solana: SolanaConfig = {}) =>
 
 const client = createSolanaTestClient();
 
-describe("Solana read tools", () => {
+describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Solana read tools", () => {
   it("getSolanaNetworkStatus reports a live slot and epoch", async () => {
     const status = await withRetry(() =>
       getSolanaNetworkStatusTool.execute(client, {}),
@@ -165,7 +165,7 @@ describe("Solana read tools", () => {
   });
 });
 
-describe("Solana intents", () => {
+describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Solana intents", () => {
   it("rejects an RPC-selected program outside Token and Token-2022", async () => {
     const { PublicKey } = await import("@solana/web3.js");
     const unsupportedProgram = new PublicKey(unusedAddress());

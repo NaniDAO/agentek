@@ -1,13 +1,13 @@
 import { Hex, http } from "viem";
 import { base, mainnet } from "viem/chains";
-import { webTools } from "../packages/shared/web";
-import AgentekToolkit from "../packages/ai-sdk/toolkit";
+import { webTools } from "@agentek/tools";
+import AgentekToolkit from "@agentek/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { CoreMessage, generateText } from "ai";
-import { coindeskTools } from "../packages/shared/coindesk";
-import { fearGreedIndexTools } from "../packages/shared/feargreed";
-import { createCoinMarketCalTools } from "../packages/shared/coinmarketcal";
+import { ModelMessage, stepCountIs, generateText } from "ai";
+import { coindeskTools } from "@agentek/tools";
+import { fearGreedIndexTools } from "@agentek/tools";
+import { createCoinMarketCalTools } from "@agentek/tools";
 
 async function main() {
   // Get command line arguments
@@ -30,7 +30,6 @@ async function main() {
 
   if (!privateKey) {
     privateKey = generatePrivateKey();
-    console.log("PRIVATE_KEY:", privateKey);
   }
 
   const account = privateKeyToAccount(privateKey as Hex);
@@ -66,7 +65,7 @@ async function main() {
       role: "user",
       content: userPrompt,
     },
-  ] as CoreMessage[];
+  ] as ModelMessage[];
 
   messages.forEach((message) => {
     console.log(`\n[${message.role.toUpperCase()}]`);
@@ -77,9 +76,9 @@ async function main() {
     model: openrouter("anthropic/claude-3.5-sonnet"),
     system: "RISK TOLERANCE: HIGH",
     messages,
-    maxSteps: 5,
-    tools: tools as Record<string, CoreTool<any, any>>,
-    experimental_activeTools: Object.keys(tools),
+    stopWhen: stepCountIs(5),
+    tools,
+    activeTools: Object.keys(tools),
   });
 
   response.response.messages.forEach((message) => {
@@ -92,9 +91,9 @@ async function main() {
           console.log(`${content.text}`);
         } else if (content.type === "tool-call") {
           console.log(`[Tool:${content.toolName}]`);
-          console.log(`${JSON.stringify(content.args, null, 2)}`);
+          console.log(`${JSON.stringify(content.input, null, 2)}`);
         } else if (content.type === "tool-result") {
-          console.log(`\n---\n${JSON.stringify(content.result, null, 2)}`);
+          console.log(`\n---\n${JSON.stringify(content.output, null, 2)}`);
         }
       });
     }

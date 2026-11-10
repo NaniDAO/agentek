@@ -79,13 +79,9 @@ describe("MVP Agentek tool selection", () => {
     );
   });
 
-  it("requires process configuration before exposing the swap tool", () => {
-    expect(() => selectMvpAgentekTools(["intent0xSwap"])).toThrow(/zeroxApiKey/);
-    expect(
-      selectMvpAgentekTools(["intent0xSwap"], { zeroxApiKey: "test-key" }).map(
-        (tool) => tool.name,
-      ),
-    ).toEqual(["intent0xSwap"]);
+  it("rejects the unavailable 0x execution tool with or without credentials", () => {
+    expect(() => selectMvpAgentekTools(["intent0xSwap"])).toThrow(/Unsupported/);
+    expect(() => selectMvpAgentekTools(["intent0xSwap"], {zeroxApiKey: "test-key"})).toThrow(/Unsupported/);
   });
 
   it("rejects environments not owned by the Gym", async () => {

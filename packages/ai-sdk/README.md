@@ -38,10 +38,10 @@ import { http } from "viem";
 import { mainnet } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { CoreMessage, generateText } from "ai";
+import { ModelMessage, stepCountIs, generateText } from "ai";
 import AgentekToolkit from "@agentek/ai-sdk/toolkit";
-import { erc20Tools } from "@agentek/tools/erc20";
-import { ensTools } from "@agentek/tools/ens";
+import { erc20Tools, rpcTools, swapTools } from "@agentek/tools";
+import { ensTools } from "@agentek/tools";
 
 // Set up account
 const account = privateKeyToAccount(process.env.PRIVATE_KEY);
@@ -58,6 +58,7 @@ const toolkit = new AgentekToolkit({
   accountOrAddress: account,
   tools: [
     ...erc20Tools(),
+    ...rpcTools(),
     ...ensTools(),
     // Add more tools as needed
   ],
@@ -72,16 +73,16 @@ const messages = [
     role: "user",
     content: "What's the ETH balance of vitalik.eth?",
   },
-] as CoreMessage[];
+] as ModelMessage[];
 
 // Generate response with AI using tools
 const response = await generateText({
   model: openrouter("anthropic/claude-3-opus"),
   system: `Address: ${account.address}`,
   messages,
-  maxSteps: 5, // Maximum number of tool calls
+  stopWhen: stepCountIs(5), // Maximum number of model steps
   tools: tools,
-  experimental_activeTools: Object.keys(tools),
+  activeTools: Object.keys(tools),
 });
 
 // Process response
@@ -94,10 +95,10 @@ console.log(response.response.messages);
 import { http } from "viem";
 import { mainnet, base } from "viem/chains";
 import AgentekToolkit from "@agentek/ai-sdk/toolkit";
-import { erc20Tools } from "@agentek/tools/erc20";
-import { webTools } from "@agentek/tools/web";
-import { naniTools } from "@agentek/tools/nani";
-import { fearGreedIndexTools } from "@agentek/tools/feargreed";
+import { erc20Tools, rpcTools, swapTools } from "@agentek/tools";
+import { webTools } from "@agentek/tools";
+import { naniTools } from "@agentek/tools";
+import { fearGreedIndexTools } from "@agentek/tools";
 
 // Create toolkit with multiple transports for different chains
 const toolkit = new AgentekToolkit({
@@ -106,11 +107,12 @@ const toolkit = new AgentekToolkit({
   accountOrAddress: account,
   tools: [
     ...erc20Tools(),
+    ...rpcTools(),
     ...webTools(),
     ...naniTools(),
     ...fearGreedIndexTools(),
     // Add API key dependent tools conditionally
-    ...(process.env.ZEROX_API_KEY ? swapTools({ zeroxApiKey: process.env.ZEROX_API_KEY }) : []),
+    ...swapTools({}), // explicitly unavailable; no credential is required
   ],
 });
 ```
@@ -128,3 +130,4 @@ For more detailed documentation and examples, see the [examples directory](https
 ## 📄 License
 
 [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.en.html)
+The examples require AI SDK 6 and `@openrouter/ai-sdk-provider` 2.x. The toolkit defaults to `executionMode: "prepare"`; use `"execute"` explicitly when it should submit transactions. Tool failures throw, and successful values are returned directly.

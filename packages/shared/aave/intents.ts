@@ -1,10 +1,10 @@
+import { identityAddress } from "../utils/exact.js";
+import { positiveUnits } from "../utils/exact.js";
 import { createTool } from "../client.js";
 import { z } from "zod";
 import {
   erc20Abi,
   Address,
-  parseUnits,
-  maxUint256,
   encodeFunctionData,
 } from "viem";
 import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants.js";
@@ -16,8 +16,8 @@ export const intentAaveDeposit = createTool({
     "Deposits tokens into the Aave protocol to supply liquidity and earn interest.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number().describe("Chain ID for the deposit."),
-    asset: z.string().describe("Token contract address to deposit."),
+    chainId: z.number().int().positive().safe().describe("Chain ID for the deposit."),
+    asset: identityAddress.describe("Token contract address to deposit."),
     amount: z
       .string()
       .describe("Amount of tokens to deposit (in human-readable format)."),
@@ -32,7 +32,7 @@ export const intentAaveDeposit = createTool({
       abi: erc20Abi,
       functionName: "decimals",
     });
-    const amountBigInt = parseUnits(args.amount, decimals);
+    const amountBigInt = positiveUnits(args.amount, decimals);
 
     const poolAddress = getAavePoolAddress(args.chainId);
     const currentAllowance = await publicClient.readContract({
@@ -44,10 +44,11 @@ export const intentAaveDeposit = createTool({
 
     let ops = [];
     if (currentAllowance < amountBigInt) {
+      if (currentAllowance > 0n) ops.push({target: args.asset as Address, value: "0", data: encodeFunctionData({abi: erc20Abi, functionName: "approve", args: [poolAddress, 0n]})});
       const approvalData = encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
-        args: [poolAddress, maxUint256],
+        args: [poolAddress, amountBigInt],
       });
       ops.push({
         target: args.asset as Address,
@@ -93,8 +94,8 @@ export const intentAaveWithdraw = createTool({
     "Withdraws tokens from Aave, redeeming your supplied assets (aTokens).",
   supportedChains,
   parameters: z.object({
-    chainId: z.number().describe("Chain ID for the withdrawal."),
-    asset: z.string().describe("Token contract address to withdraw."),
+    chainId: z.number().int().positive().safe().describe("Chain ID for the withdrawal."),
+    asset: identityAddress.describe("Token contract address to withdraw."),
     amount: z
       .string()
       .describe("Amount of tokens to withdraw (in human-readable format)."),
@@ -109,7 +110,7 @@ export const intentAaveWithdraw = createTool({
       abi: erc20Abi,
       functionName: "decimals",
     });
-    const amountBigInt = parseUnits(args.amount, decimals);
+    const amountBigInt = positiveUnits(args.amount, decimals);
     const poolAddress = getAavePoolAddress(args.chainId);
 
     const withdrawData = encodeFunctionData({
@@ -149,13 +150,12 @@ export const intentAaveBorrow = createTool({
     "Borrows tokens from Aave using your supplied collateral. By default, the variable rate mode (2) is used.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number().describe("Chain ID for borrowing."),
-    asset: z.string().describe("Token contract address to borrow."),
+    chainId: z.number().int().positive().safe().describe("Chain ID for borrowing."),
+    asset: identityAddress.describe("Token contract address to borrow."),
     amount: z
       .string()
       .describe("Amount of tokens to borrow (in human-readable format)."),
-    interestRateMode: z
-      .number()
+    interestRateMode: z.union([z.literal(1), z.literal(2)])
       .optional()
       .describe("1 for stable, 2 for variable (default is variable)."),
   }),
@@ -169,7 +169,7 @@ export const intentAaveBorrow = createTool({
       abi: erc20Abi,
       functionName: "decimals",
     });
-    const amountBigInt = parseUnits(args.amount, decimals);
+    const amountBigInt = positiveUnits(args.amount, decimals);
     const interestRateMode = args.interestRateMode ?? 2;
     const poolAddress = getAavePoolAddress(args.chainId);
 
@@ -213,13 +213,12 @@ export const intentAaveRepay = createTool({
     "Repays your Aave debt. By default, the variable rate mode (2) is used for repayment.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number().describe("Chain ID for repayment."),
-    asset: z.string().describe("Token contract address of the asset to repay."),
+    chainId: z.number().int().positive().safe().describe("Chain ID for repayment."),
+    asset: identityAddress.describe("Token contract address of the asset to repay."),
     amount: z
       .string()
       .describe("Amount of tokens to repay (in human-readable format)."),
-    rateMode: z
-      .number()
+    rateMode: z.union([z.literal(1), z.literal(2)])
       .optional()
       .describe("1 for stable, 2 for variable (default is variable)."),
   }),
@@ -233,7 +232,7 @@ export const intentAaveRepay = createTool({
       abi: erc20Abi,
       functionName: "decimals",
     });
-    const amountBigInt = parseUnits(args.amount, decimals);
+    const amountBigInt = positiveUnits(args.amount, decimals);
     const rateMode = args.rateMode ?? 2;
     const poolAddress = getAavePoolAddress(args.chainId);
 
@@ -245,10 +244,11 @@ export const intentAaveRepay = createTool({
       args: [userAddress, poolAddress],
     });
     if (currentAllowance < amountBigInt) {
+      if (currentAllowance > 0n) ops.push({target: args.asset as Address, value: "0", data: encodeFunctionData({abi: erc20Abi, functionName: "approve", args: [poolAddress, 0n]})});
       const approvalData = encodeFunctionData({
         abi: erc20Abi,
         functionName: "approve",
-        args: [poolAddress, maxUint256],
+        args: [poolAddress, amountBigInt],
       });
       ops.push({
         target: args.asset as Address,

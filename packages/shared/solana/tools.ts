@@ -183,7 +183,8 @@ export const getSolanaTokenBalanceTool = createTool({
       [args.owner, { mint }, { encoding: "jsonParsed" }],
     );
 
-    const accounts = (result?.value ?? []).map(toTokenBalance);
+    if (!Array.isArray(result?.value)) throw new Error("Malformed token-account RPC response");
+    const accounts = result.value.map(toTokenBalance);
     if (accounts.length === 0) {
       return clean({
         owner: args.owner,
@@ -285,7 +286,7 @@ export const getSolanaTransactionTool = createTool({
       info: instruction.parsed?.info ?? null,
     }));
 
-    const fee = transaction.meta?.fee ?? 0;
+    const fee = transaction.meta?.fee ?? null;
     return clean({
       signature: args.signature,
       slot: transaction.slot,
@@ -293,10 +294,11 @@ export const getSolanaTransactionTool = createTool({
       timestamp: transaction.blockTime
         ? new Date(transaction.blockTime * 1000).toISOString()
         : null,
-      success: transaction.meta?.err == null,
+      success: transaction.meta ? transaction.meta.err == null : null,
+      availability: transaction.meta ? "available" : "partial",
       err: transaction.meta?.err ?? null,
-      fee: String(fee),
-      feeSol: formatLamports(fee),
+      fee: fee === null ? null : String(fee),
+      feeSol: fee === null ? null : formatLamports(fee),
       computeUnitsConsumed: transaction.meta?.computeUnitsConsumed ?? null,
       instructions,
     });

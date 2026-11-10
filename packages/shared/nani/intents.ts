@@ -1,6 +1,7 @@
+import { positiveEther } from "../utils/exact.js";
 import z from "zod";
 import { Intent } from "../client.js";
-import { encodeFunctionData, erc20Abi, maxUint256, parseEther } from "viem";
+import { encodeFunctionData, erc20Abi, maxUint256, } from "viem";
 import { mainnet, base } from "viem/chains";
 
 import { XNaniAbi, SignalsAbi } from "./abis.js";
@@ -13,7 +14,7 @@ export const intentStakeNani = createTool({
     "Stake NANI tokens to receive xNANI tokens, which can be used for governance",
   parameters: z.object({
     amount: z.string().describe("The amount of NANI tokens to stake"),
-    chainId: z.number().describe("The chain to stake on"),
+    chainId: z.number().int().positive().safe().describe("The chain to stake on"),
   }),
   supportedChains: [mainnet, base],
   execute: async (client, args): Promise<Intent> => {
@@ -33,7 +34,7 @@ export const intentStakeNani = createTool({
       args: [user, XNANI_TOKEN],
     });
 
-    const amountBigInt = parseEther(amount);
+    const amountBigInt = positiveEther(amount);
 
     let ops = [];
 
@@ -83,7 +84,7 @@ export const intentUnstakeNani = createTool({
   description: "Unstake xNANI tokens back to NANI tokens",
   parameters: z.object({
     amount: z.string().describe("The amount of xNANI tokens to unstake"),
-    chainId: z.number().describe("The chain to unstake on"),
+    chainId: z.number().int().positive().safe().describe("The chain to unstake on"),
   }),
   supportedChains: [mainnet, base],
   execute: async (client, args): Promise<Intent> => {
@@ -96,7 +97,7 @@ export const intentUnstakeNani = createTool({
     const user = await client.getAddress();
     const intent = `unstake ${amount} xNANI`;
 
-    const amountBigInt = parseEther(amount);
+    const amountBigInt = positiveEther(amount);
 
     const xNaniBalance = await publicClient.readContract({
       address: XNANI_TOKEN,
@@ -116,7 +117,7 @@ export const intentUnstakeNani = createTool({
         data: encodeFunctionData({
           abi: XNaniAbi,
           functionName: "unstake",
-          args: [parseEther(amount)],
+          args: [positiveEther(amount)],
         }),
       },
     ];
@@ -145,7 +146,7 @@ export const intentProposeNani = createTool({
   description: "Create a new governance proposal for NANIDAO",
   parameters: z.object({
     content: z.string().describe("The proposal content/description"),
-    chainId: z.number().describe("The chain ID to propose on"),
+    chainId: z.number().int().positive().safe().describe("The chain ID to propose on"),
   }),
   supportedChains: [mainnet, base],
   execute: async (client, args): Promise<Intent> => {
@@ -191,9 +192,9 @@ export const intentVoteNaniProposal = createTool({
   name: "intentVoteNaniProposal",
   description: "Vote on an existing NANIDAO governance proposal",
   parameters: z.object({
-    proposalId: z.number().describe("The ID of the proposal to vote on"),
+    proposalId: z.number().int().min(0).safe().describe("The ID of the proposal to vote on"),
     approve: z.boolean().describe("True to vote yes, false to vote no"),
-    chainId: z.number().describe("The chain ID to vote on"),
+    chainId: z.number().int().positive().safe().describe("The chain ID to vote on"),
   }),
   supportedChains: [mainnet, base],
   execute: async (client, args): Promise<Intent> => {

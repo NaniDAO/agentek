@@ -2,7 +2,7 @@ import { parseEther, isHex } from "viem";
 import { outputJson, outputError } from "../utils/output.js";
 import { readLine } from "../utils/readline.js";
 import { keyfileExists, readKeyfile, writeKeyfile, encrypt, decrypt } from "../signer/crypto.js";
-import { defaultPolicy } from "../signer/policy.js";
+import { defaultPolicy, validatePolicy } from "../signer/policy.js";
 import { startDaemon, stopDaemon, getDaemonStatus } from "../signer/daemon.js";
 import { isDaemonReachable, getDaemonAddress, shutdownDaemon } from "../signer/client.js";
 import { getKeyfilePath } from "../signer/protocol.js";
@@ -139,7 +139,7 @@ export async function handleSigner(args: string[]): Promise<void> {
         policy.requireApproval = value as PolicyConfig["requireApproval"];
       } else if (field === "approvalThresholdPct") {
         const n = Number(value);
-        if (isNaN(n) || n < 0 || n > 100) outputError("approvalThresholdPct must be 0-100");
+        if (!Number.isInteger(n) || n < 0 || n > 100) outputError("approvalThresholdPct must be 0-100");
         policy.approvalThresholdPct = n;
       } else if (field === "allowedChains") {
         const chains = value.split(",").map((s) => Number(s.trim()));
@@ -157,6 +157,8 @@ export async function handleSigner(args: string[]): Promise<void> {
         outputError(`Unknown policy field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains, allowContractCreation`);
       }
 
+      payload.policy = validatePolicy(policy);
+      if (await isDaemonReachable()) outputError("Stop the signer daemon before changing policy; restart it to activate the new policy");
       const keyfile = encrypt(payload, passphrase);
       writeKeyfile(keyfile);
       process.stderr.write(`Policy updated: ${field} = ${value}\n`);

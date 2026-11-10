@@ -12,6 +12,10 @@ const client = createTestClient(dexscreenerTools());
 
 describe("DexScreener Tools", () => {
   describe("Tool Structure", () => {
+    it("rejects unknown chains without substituting Ethereum", async () => {
+      await expect(getLatestTokens.execute(client, {chainId: 999})).rejects.toThrow(/Chain/);
+    });
+
     it("getLatestTokens should have valid tool structure", () => {
       const result = validateToolStructure(getLatestTokens);
       expect(result.valid).toBe(true);
@@ -26,9 +30,8 @@ describe("DexScreener Tools", () => {
 
     it("getLatestTokens should have correct name and description", () => {
       expect(getLatestTokens.name).toBe("getLatestTokens");
-      expect(getLatestTokens.description).toBe(
-        "Get trending tokens from Dexscreener with market data including USD price, 24h volume, and 24h price change. Filters by the specified chain."
-      );
+      expect(getLatestTokens.description).toContain("missing evidence");
+      expect(getLatestTokens.description).toContain("promotional");
     });
 
     it("getLatestTokens should support mainnet and base chains", () => {
@@ -39,7 +42,7 @@ describe("DexScreener Tools", () => {
     });
   });
 
-  describe("getLatestTokens - Real API Calls", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getLatestTokens - Real API Calls", () => {
     it(
       "should fetch trending tokens for Ethereum mainnet (chainId: 1)",
       async () => {
@@ -101,21 +104,6 @@ describe("DexScreener Tools", () => {
       30000
     );
 
-    it(
-      "should default to ethereum for unknown chainId",
-      async () => {
-        // Using a chainId that isn't explicitly mapped (e.g., 999)
-        // should fall back to "ethereum"
-        const result = await withRetry(() =>
-          getLatestTokens.execute(client, { chainId: 999 })
-        );
-
-        // Should still return valid data (from ethereum fallback)
-        expect(result).toHaveProperty("trending");
-        expect(Array.isArray(result.trending)).toBe(true);
-      },
-      30000
-    );
 
     it(
       "should return tokens with description when available",
@@ -167,7 +155,7 @@ describe("DexScreener Tools", () => {
     );
   });
 
-  describe("DexScreener API Endpoints", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("DexScreener API Endpoints", () => {
     it(
       "should successfully reach the token-profiles endpoint",
       async () => {
@@ -228,7 +216,7 @@ describe("DexScreener Tools", () => {
     );
   });
 
-  describe("Chain ID Resolution", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Chain ID Resolution", () => {
     it("should resolve chainId 1 to ethereum", async () => {
       // This is implicitly tested by the API call succeeding
       // If the resolution is wrong, the API will return different data

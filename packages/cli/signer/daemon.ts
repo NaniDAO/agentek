@@ -12,7 +12,7 @@ import {
   type JsonRpcResponse,
   type DecryptedPayload,
 } from "./protocol.js";
-import { evaluatePolicy, type TxRequest } from "./policy.js";
+import { evaluatePolicy, validatePolicy, type TxRequest } from "./policy.js";
 
 let server: Server | null = null;
 const MAX_RPC_MESSAGE_BYTES = 256 * 1024;
@@ -58,7 +58,8 @@ export function startDaemon(payload: DecryptedPayload): Promise<void> {
     const socketPath = getSocketPath();
     const pidfilePath = getPidfilePath();
     const account = privateKeyToAccount(payload.privateKey as Hex);
-    const policy = payload.policy;
+    const policy = validatePolicy(payload.policy);
+    let requests: Promise<unknown> = Promise.resolve();
 
     // Clean up stale socket
     if (existsSync(socketPath)) {
@@ -105,7 +106,11 @@ export function startDaemon(payload: DecryptedPayload): Promise<void> {
             return;
           }
 
-          handleMessage(line, account, policy).then((response) => {
+          let immediate = false;
+          try { immediate = [RPC_METHODS.PING, RPC_METHODS.GET_ADDRESS, RPC_METHODS.SHUTDOWN].includes(JSON.parse(line)?.method); } catch {}
+          const work = immediate ? handleMessage(line, account, policy) : requests.catch(() => undefined).then(() => handleMessage(line, account, policy));
+          if (!immediate) requests = work;
+          work.then((response) => {
             if (!conn.destroyed) conn.write(JSON.stringify(response) + "\n");
           }).catch((err) => {
             if (!conn.destroyed) {
@@ -156,7 +161,7 @@ async function handleMessage(
     return makeError(0, RPC_ERRORS.PARSE_ERROR, "Invalid JSON");
   }
 
-  if (!request.jsonrpc || !request.method || request.id === undefined) {
+  if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string" || request.id === undefined) {
     return makeError(request?.id ?? 0, RPC_ERRORS.INVALID_REQUEST, "Invalid JSON-RPC request");
   }
 

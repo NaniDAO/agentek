@@ -53,12 +53,13 @@ describe("DeFiLlama Tools", () => {
 
     it("defillamaTools() should return all tools", () => {
       const tools = defillamaTools();
-      expect(tools).toHaveLength(5);
+      expect(tools).toHaveLength(6);
       expect(tools.map((t) => t.name)).toContain("getTokenChart");
       expect(tools.map((t) => t.name)).toContain("getYieldTool");
       expect(tools.map((t) => t.name)).toContain("compareYieldTool");
       expect(tools.map((t) => t.name)).toContain("getYieldHistoryTool");
       expect(tools.map((t) => t.name)).toContain("compareYieldHistoryTool");
+      expect(tools.map((t) => t.name)).toContain("getYieldPoolEvidence");
     });
 
     it("should have unique tool names", () => {
@@ -69,7 +70,7 @@ describe("DeFiLlama Tools", () => {
     });
   });
 
-  describe("getTokenChartTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getTokenChartTool", () => {
     it("should fetch price chart data for ETH", async () => {
       const result = await withRetry(() =>
         getTokenChartTool.execute(client, {
@@ -133,7 +134,7 @@ describe("DeFiLlama Tools", () => {
     }, LONG_TIMEOUT);
   });
 
-  describe("getYieldTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getYieldTool", () => {
     it("should fetch yield data without filters", async () => {
       const result = await withRetry(() =>
         getYieldTool.execute(client, { limit: 10 })
@@ -287,7 +288,7 @@ describe("DeFiLlama Tools", () => {
     }, LONG_TIMEOUT);
   });
 
-  describe("compareYieldTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("compareYieldTool", () => {
     it("should compare yields for a single asset", async () => {
       const result = await withRetry(() =>
         compareYieldTool.execute(client, {
@@ -360,7 +361,7 @@ describe("DeFiLlama Tools", () => {
     }, LONG_TIMEOUT);
   });
 
-  describe("getYieldHistoryTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getYieldHistoryTool", () => {
     // We need a known pool ID for testing. Let's first get one from the yield tool.
     let testPoolId: string;
 
@@ -458,7 +459,7 @@ describe("DeFiLlama Tools", () => {
     }, LONG_TIMEOUT);
   });
 
-  describe("compareYieldHistoryTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("compareYieldHistoryTool", () => {
     let testPoolIds: string[] = [];
 
     it("should fetch pool IDs for subsequent tests", async () => {
@@ -591,7 +592,7 @@ describe("DeFiLlama Tools", () => {
     }, LONG_TIMEOUT);
   });
 
-  describe("API Error Handling", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("API Error Handling", () => {
     it("should handle invalid token format gracefully in getTokenChartTool", async () => {
       // Invalid format should still attempt to fetch but may fail
       await expect(
@@ -612,7 +613,7 @@ describe("DeFiLlama Tools", () => {
     });
   });
 
-  describe("Data Validation", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Data Validation", () => {
     it("should return valid APY percentages", async () => {
       const result = await withRetry(() =>
         getYieldTool.execute(client, { limit: 10 })

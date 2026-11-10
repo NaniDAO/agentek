@@ -4,7 +4,7 @@ import { z } from "zod";
 import { type AgentekClient, createTool } from "../client.js";
 import { robinhood } from "../chains/robinhood.js";
 import { addressSchema } from "../utils.js";
-import { assertOkResponse } from "../utils/fetch.js";
+import { assertOkResponse, readBoundedJSON } from "../utils/fetch.js";
 
 const supportedChains = [mainnet, optimism, arbitrum, polygon, base, robinhood];
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -47,13 +47,9 @@ const boolAbi = (name: string) => [{
 
 async function fetchJson(url: string): Promise<SourceResult> {
   try {
-    const response = await fetch(url, { headers: { accept: "application/json" } });
+    const response = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(15000) });
     await assertOkResponse(response, `Research source ${url}`);
-    const declaredLength = Number(response.headers.get("content-length") ?? 0);
-    if (declaredLength > MAX_RESPONSE_BYTES) throw new Error(`Response exceeds ${MAX_RESPONSE_BYTES} bytes`);
-    const body = await response.text();
-    if (body.length > MAX_RESPONSE_BYTES) throw new Error(`Response exceeds ${MAX_RESPONSE_BYTES} characters`);
-    return { ok: true, url, data: JSON.parse(body) };
+    return { ok: true, url, data: await readBoundedJSON(response, MAX_RESPONSE_BYTES) };
   } catch (error) {
     return { ok: false, url, error: error instanceof Error ? error.message : String(error) };
   }
@@ -102,7 +98,7 @@ function inspectAbi(abi: any): { functions: string[]; functionsTruncated: boolea
     ? [...new Set(abi.filter((item) => item?.type === "function" && /^[A-Za-z_$][A-Za-z0-9_$]{0,99}$/.test(item.name)).map((item) => item.name as string))].sort()
     : [];
   const functions = allFunctions.slice(0, 100);
-  const lower = new Set(functions.map((name) => name.toLowerCase()));
+  const lower = new Set(allFunctions.map((name) => name.toLowerCase()));
   const has = (...names: string[]) => names.some((name) => lower.has(name.toLowerCase()));
   return {
     functions,
@@ -113,7 +109,7 @@ function inspectAbi(abi: any): { functions: string[]; functionsTruncated: boolea
       mintFunctionPresent: has("mint", "mintTo", "safeMint", "ownerMint"),
       pauseFunctionPresent: has("pause", "unpause", "paused"),
       blacklistFunctionPresent: has("blacklist", "setBlacklist", "setBlacklisted", "isBlacklisted"),
-      feeOrTaxSetterPresent: functions.some((name) => /^(set|update).*(fee|tax)/i.test(name)),
+      feeOrTaxSetterPresent: allFunctions.some((name) => /^(set|update).*(fee|tax)/i.test(name)),
       tradingControlPresent: has("enableTrading", "setTradingEnabled", "openTrading"),
       upgradeFunctionPresent: has("upgradeTo", "upgradeToAndCall", "changeAdmin"),
     },
@@ -166,7 +162,8 @@ async function scanTransfers(base: string, address: Address): Promise<{ source: 
   for (let page = 0; page < MAX_TRANSFER_PAGES; page += 1) {
     lastSource = await fetchJson(queryUrl(base, `/tokens/${address}/transfers`, query));
     if (!lastSource.ok) return { source: lastSource, items, complete: false };
-    items.push(...(Array.isArray(lastSource.data?.items) ? lastSource.data.items : []));
+    if (!Array.isArray(lastSource.data?.items)) return {source: {...lastSource, ok: false, error: "Malformed transfer page"}, items, complete: false};
+    items.push(...lastSource.data.items);
     const next = lastSource.data?.next_page_params;
     if (!next || typeof next !== "object") return { source: lastSource, items, complete: true };
     query = next;
@@ -248,7 +245,10 @@ export const researchCA = createTool({
     const mintItems = transferScan.items.filter((item) => addressHash(item?.from) === ZERO_ADDRESS);
     let mintedUnits = 0n;
     for (const item of mintItems) {
-      if (Array.isArray(item?.token_ids)) mintedUnits += BigInt(item.token_ids.length);
+      if (standard === "ERC721") mintedUnits += BigInt(Array.isArray(item?.token_ids) ? item.token_ids.length : 1);
+      else if (standard === "ERC1155" && Array.isArray(item?.total)) {
+        for (const entry of item.total) if (/^[0-9]+$/.test(entry?.value)) mintedUnits += BigInt(entry.value);
+      }
       else {
         const raw = decimalString(item?.total?.value) ?? decimalString(item?.value);
         if (raw && /^\d+$/.test(raw)) mintedUnits += BigInt(raw);

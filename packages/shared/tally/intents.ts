@@ -21,13 +21,13 @@ const voteSupportToNumber = (vote: VoteSupport): number => {
 const createTallyVoteIntentParams = z.object({
   space: z.string().describe("The Tally governance space slug (e.g. 'uniswap', 'compound', 'aave')"),
   vote: VoteSupport.describe("Vote direction: 'for', 'against', or 'abstain'"),
-  proposalId: z.number().describe("The numeric proposal ID to vote on"),
+  proposalId: z.number().int().min(0).safe().describe("The numeric proposal ID to vote on"),
 });
 
 const createTallyVoteWithReasonIntentParams = z.object({
   space: z.string().describe("The Tally governance space slug (e.g. 'uniswap', 'compound', 'aave')"),
   vote: VoteSupport.describe("Vote direction: 'for', 'against', or 'abstain'"),
-  proposalId: z.number().describe("The numeric proposal ID to vote on"),
+  proposalId: z.number().int().min(0).safe().describe("The numeric proposal ID to vote on"),
   reason: z.string().describe("A text explanation for your vote that will be recorded on-chain"),
 });
 

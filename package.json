@@ -13,17 +13,18 @@
     "packages/gym"
   ],
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm -r --workspace-concurrency=1 build",
     "dev": "pnpm -r dev",
     "clean": "rm -rf dist packages/*/dist",
     "test": "vitest -c ./test/vitest.config.ts",
     "test:offline": "vitest run -c ./test/vitest.offline.config.ts",
     "test:live": "vitest run -c ./test/vitest.live.config.ts",
-    "test:release": "node --test scripts/release.test.mjs",
+    "test:release": "node --test --test-concurrency=1 scripts/release.test.mjs",
     "check:packages": "node scripts/check-packages.mjs",
-    "release:check": "pnpm build && pnpm test:offline && pnpm test:release && pnpm check:packages",
+    "release:check": "pnpm build && pnpm typecheck:examples && pnpm test:offline && pnpm test:release && pnpm check:packages",
     "list": "bun run scripts/tool-count.ts",
-    "release": "bash scripts/release.sh"
+    "release": "bash scripts/release.sh",
+    "typecheck:examples": "tsc -p examples/tsconfig.json"
   },
   "keywords": [
     "ai",
@@ -40,15 +41,17 @@
   },
   "homepage": "https://nani.ooo",
   "devDependencies": {
-    "@agentek/tools": "workspace:*",
     "@agentek/ai-sdk": "workspace:*",
-    "@openrouter/ai-sdk-provider": "^0.7.3",
+    "@agentek/tools": "workspace:*",
+    "@openrouter/ai-sdk-provider": "^2.10.0",
     "@types/node": "^24.1.0",
+    "ai": "6.0.67",
     "dotenv": "^17.2.1",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "viem": "^2.33.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod": "3.25.76"
   },
   "engines": {
     "node": ">=20.18.1"

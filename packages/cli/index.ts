@@ -1,12 +1,6 @@
 import { outputError } from "./utils/output.js";
-import { createClientFromEnv } from "./utils/client.js";
-import { handleList } from "./commands/list.js";
-import { handleSearch } from "./commands/search.js";
-import { handleInfo } from "./commands/info.js";
-import { handleExec } from "./commands/exec.js";
 import { handleConfig } from "./commands/config.js";
 import { handleSetup } from "./commands/setup.js";
-import { handleSigner } from "./commands/signer.js";
 
 declare const __AGENTEK_VERSION__: string;
 const VERSION = __AGENTEK_VERSION__;
@@ -31,6 +25,9 @@ Usage:
   agentek search <keyword>                  Search tools by name or description
   agentek info <tool-name>                  Show tool description and parameter schema
   agentek exec <tool-name> [--key value]    Execute a tool with the given parameters
+
+  agentek executions                       Review persisted transaction outcomes
+  agentek executions acknowledge <id>      Unlock a chain after reconciling an execution
 
 Signer:
   agentek signer init                       Encrypt private key + policy into keyfile
@@ -69,25 +66,40 @@ async function main() {
     printVersion();
   }
 
-  if (!["list", "info", "exec", "search", "setup", "config", "signer"].includes(command)) {
+  if (!["list", "info", "exec", "search", "setup", "config", "signer", "executions"].includes(command)) {
     printUsage();
   }
 
   // ── Fast-path commands (no client init) ────────────────────────────────
   if (command === "setup") handleSetup(VERSION);
   if (command === "config") handleConfig(rest);
+  if (command === "executions") {
+    const { readExecutions, acknowledgeExecution } = await import("@agentek/tools/journal");
+    const { getConfigDir } = await import("./config.js");
+    const { join } = await import("node:path");
+    const { outputJson } = await import("./utils/output.js");
+    const directory = join(getConfigDir(), "executions");
+    if (!rest.length) outputJson(await readExecutions(directory));
+    if (rest.length === 2 && rest[0] === "acknowledge") {
+      await acknowledgeExecution(directory, rest[1]);
+      outputJson({acknowledged: rest[1]});
+    }
+    outputError("Usage: agentek executions [acknowledge <id>]. Acknowledge only after reconciling every recorded operation on-chain.");
+  }
   if (command === "signer") {
+    const { handleSigner } = await import("./commands/signer.js");
     await handleSigner(rest);
-    process.exit(0);
+    return;
   }
 
   // ── Client-dependent commands ──────────────────────────────────────────
+  const { createClientFromEnv } = await import("./utils/client.js");
   const ctx = await createClientFromEnv();
 
-  if (command === "list") handleList(ctx.toolsMap);
-  if (command === "search") handleSearch(ctx.toolsMap, rest);
-  if (command === "info") handleInfo(ctx.toolsMap, rest);
-  if (command === "exec") await handleExec(ctx, rest);
+  if (command === "list") { const { handleList } = await import("./commands/list.js"); await handleList(ctx.toolsMap); }
+  if (command === "search") { const { handleSearch } = await import("./commands/search.js"); await handleSearch(ctx.toolsMap, rest); }
+  if (command === "info") { const { handleInfo } = await import("./commands/info.js"); await handleInfo(ctx.toolsMap, rest); }
+  if (command === "exec") { const { handleExec } = await import("./commands/exec.js"); await handleExec(ctx, rest); }
 }
 
 main().catch((err) => {

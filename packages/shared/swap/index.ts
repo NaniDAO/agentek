@@ -10,7 +10,7 @@ export function swapTools({
   swapFeeBps,
   swapFeeToken,
 }: {
-  zeroxApiKey: string;
+  zeroxApiKey?: string;
   /** Address to receive integrator/affiliate fees. */
   swapFeeRecipient?: string;
   /** Fee in basis points (e.g. 10 = 0.1%). */
@@ -19,7 +19,7 @@ export function swapTools({
   swapFeeToken?: "sellToken" | "buyToken";
 }): BaseTool[] {
   const tools = [];
-  if (zeroxApiKey) {
+  {
     tools.push(
       createMatchSwapTool({
         zeroxApiKey,

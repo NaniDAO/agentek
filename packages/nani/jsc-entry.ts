@@ -1,23 +1,37 @@
+import { aaveTools } from "../shared/aave/index.js";
+import { uniV3Tools } from "../shared/uniV3/index.js";
+import { webTools } from "../shared/web/index.js";
+import { thinkTools } from "../shared/think/index.js";
+import { zrouterTools } from "../shared/zrouter/index.js";
+import { approvalTools } from "../shared/approvals/index.js";
+import { solanaMarketTools } from "../shared/solana/market-tools.js";
+import { hostCapabilities, installPublicTransport } from "./native-transport.js";
 /**
- * WKWebView entry point for nani-macos.
+ * WKWebView entry point shared by the iPhone and Mac apps.
  *
  * Loaded into a hidden WKWebView. Swift calls these globals via callAsyncJavaScript().
  * No IPC, no child process, no MCP SDK.
+ *
+ * Native integration: optional __agentekPublicFetch must pin validated public
+ * DNS answers, deny redirects/private ranges, and enforce decoded body/deadline
+ * bounds. Without it off-chain NFT metadata is unavailable. agentekCredentials
+ * negotiates requestId cancellation and timeoutMs/maximumResponseBytes
+ * before returning base64 data; see the root README for the protocol.
  *
  * Exports:
  *   __naniInit(account?, rpcUrlsByChainId?, solana?) -> number (tool count)
  *     - account: 0x address; defaults to zeroAddress
  *     - rpcUrlsByChainId: e.g. { "1": "https://...", "11155111": "https://..." }
  *       Per-chain RPC URLs the user configured in Settings. Falls back to the
- *       chain's viem default when a chain is not present in the map.
+ *       shared bounded public RPC fallback when a chain is not present in the map.
  *     - solana: optional public address, RPC URL and Jupiter API key. The key
  *       remains client configuration and never appears in a tool schema.
  *   __naniList() -> string (JSON array of {name, description, schema})
  *   __naniCall(name, argsJSON) -> Promise<string> (JSON {result} or {error})
  */
 
-import { type Hex, http, isHex, zeroAddress } from "viem";
-import { mainnet, optimism, arbitrum, polygon, base, sepolia } from "viem/chains";
+import { type Hex, isHex, zeroAddress } from "viem";
+import { DEFAULT_CHAINS, resolveTransports } from "../shared/chains/config.js";
 import { createAgentekClient, type BaseTool } from "../shared/client.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
@@ -51,7 +65,6 @@ import { contractTools } from "../shared/contract/index.js";
 import { readOnlyChainTools } from "../shared/readonlyChains/index.js";
 import { researchCATools } from "../shared/researchCA/index.js";
 import { safeResearchError } from "../shared/blockscout/research.js";
-import { robinhood } from "../shared/chains/robinhood.js";
 
 interface NaniSolanaConfig {
   address?: string;
@@ -60,8 +73,12 @@ interface NaniSolanaConfig {
 }
 
 if ((globalThis as any).webkit?.messageHandlers?.agentekCredentials) {
-  installCredentialTransport(request => (globalThis as any).webkit.messageHandlers.agentekCredentials.postMessage(request));
+  installCredentialTransport(request => (globalThis as any).webkit.messageHandlers.agentekCredentials.postMessage(request), hostCapabilities().credentials === 1 ? 1 : 0);
 }
+
+installPublicTransport();
+(globalThis as any).__naniCapabilities = () => ({schemaVersion: 1, publicFetch: hostCapabilities().publicFetch === 1,
+  credentialProtocol: hostCapabilities().credentials === 1 ? 1 : 0, profile: hostCapabilities().platform === "macos" ? "macos" : "iphone"});
 
 const TOOL_TIMEOUT_MS = 120_000;
 
@@ -88,17 +105,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   solana?: NaniSolanaConfig,
   enabledCredentials: string[] = [],
 ): number => {
-  const chains = [mainnet, optimism, arbitrum, polygon, base, robinhood, sepolia];
-  const transports = chains.map((chain) => {
-    const customUrl = rpcUrlsByChainId?.[String(chain.id)];
-    return customUrl ? http(customUrl) : http();
-  });
+  const chains = DEFAULT_CHAINS;
+  const transports = resolveTransports(chains, rpcUrlsByChainId);
 
   const account = accountAddress && isHex(accountAddress)
     ? accountAddress as Hex
     : zeroAddress;
 
-  const tools = [
+  const tools = hostCapabilities().platform === "macos" ? [
+    ...ensTools(), ...erc20Tools(), ...rpcTools(), ...transferTools(),
+    ...blockscoutTools(), ...aaveTools(), ...acrossTools(), ...uniV3Tools(),
+    ...wethTools(), ...naniTools(), ...securityTools(), ...webTools(),
+    ...fearGreedIndexTools(), ...nftTools(), ...cryptoPriceTools(),
+    ...gasEstimatorTools(), ...defillamaTools(), ...dexscreenerTools(),
+    ...thinkTools(), ...zammTools(), ...zrouterTools(), ...wnsTools(),
+    ...resolveTokenTools(), ...approvalTools(), ...contractTools(), ...researchCATools(),
+    ...solanaMarketTools({includeJupiter: true, includeIntents: false}),
+  ] : [
     ...ensTools(), ...erc20Tools(), ...rpcTools(), ...transferTools(),
     ...blockscoutTools(), getAaveReserveData, ...acrossTools(), getUniV3Pool, getPoolFeeData,
     ...wethTools(), ...naniTools(), ...securityTools(), webPageExtractor, webPageResult,
@@ -112,6 +135,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   ];
 
   agentekClient = createAgentekClient({
+    executionMode: "prepare",
     transports,
     chains,
     accountOrAddress: account,

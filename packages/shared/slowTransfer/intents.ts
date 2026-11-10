@@ -1,7 +1,9 @@
+import { uint256, quantitySchema } from "../utils/exact.js";
+import { positiveUnits, positiveEther } from "../utils/exact.js";
 import { z } from "zod";
 import { createTool, Intent } from "../client.js";
 import { SLOW_ADDRESS, slowAbi, slowTransferChains } from "./constants.js";
-import { parseEther, encodeFunctionData, erc20Abi, parseUnits } from "viem";
+import { encodeFunctionData, erc20Abi, } from "viem";
 import { addressSchema } from "../utils.js";
 
 export const intentDepositToSlow = createTool({
@@ -9,7 +11,7 @@ export const intentDepositToSlow = createTool({
   description: "Deposit tokens or ETH into SLOW contract with a timelock",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    chainId: z.number().describe("The chainId to execute the intent on."),
+    chainId: z.number().int().positive().safe().describe("The chainId to execute the intent on."),
     token: addressSchema.describe(
       "The token address to deposit (use 0x0000000000000000000000000000000000000000 for ETH)",
     ),
@@ -19,12 +21,12 @@ export const intentDepositToSlow = createTool({
       .describe(
         "The amount to deposit in human readable format (e.g. for 0.01 ETH use 0.01)",
       ),
-    delay: z.number().describe("The timelock delay in seconds"),
+    delay: z.number().int().min(0).safe().describe("The timelock delay in seconds"),
   }),
   execute: async (client, args): Promise<Intent> => {
     const { chainId, token, to, amount, delay } = args;
     const isEth = token === "0x0000000000000000000000000000000000000000";
-    const value = isEth ? parseEther(amount).toString() : "0";
+    const value = isEth ? positiveEther(amount).toString() : "0";
 
     const intent = `Deposit ${amount} ${isEth ? "ETH" : token} to ${to} with a ${delay} seconds delay`;
 
@@ -47,7 +49,7 @@ export const intentDepositToSlow = createTool({
         functionName: "decimals",
       });
 
-      const tokenAmount = parseUnits(amount, decimals);
+      const tokenAmount = positiveUnits(amount, decimals);
 
       ops.push({
         target: token,
@@ -94,7 +96,7 @@ export const intentSetSlowGuardian = createTool({
   description: "Set a guardian for a user in the SLOW contract",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    chainId: z.number().describe("The chainId to execute the intent on."),
+    chainId: z.number().int().positive().safe().describe("The chainId to execute the intent on."),
     guardian: addressSchema.describe(
       "The guardian address to set (use zero address to remove guardian)",
     ),
@@ -140,10 +142,10 @@ export const intentWithdrawFromSlow = createTool({
   description: "Withdraw unlocked tokens from SLOW contract",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    chainId: z.number().describe("The chainId to execute the intent on."),
+    chainId: z.number().int().positive().safe().describe("The chainId to execute the intent on."),
     from: addressSchema.describe("The address to withdraw from"),
     to: addressSchema.describe("The recipient address"),
-    id: z.string().describe("The token ID to withdraw"),
+    id: quantitySchema.describe("The token ID to withdraw"),
     amount: z.string().describe("The amount to withdraw"),
   }),
   execute: async (client, args): Promise<Intent> => {
@@ -157,7 +159,7 @@ export const intentWithdrawFromSlow = createTool({
         data: encodeFunctionData({
           abi: slowAbi,
           functionName: "withdrawFrom",
-          args: [from, to, BigInt(id), BigInt(amount)],
+          args: [from, to, uint256(id), uint256(amount)],
         }),
         value: "0",
       },
@@ -187,11 +189,11 @@ export const intentApproveSlowTransfer = createTool({
   description: "Guardian approves a transfer in SLOW contract",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    chainId: z.number().describe("The chainId to execute the intent on."),
+    chainId: z.number().int().positive().safe().describe("The chainId to execute the intent on."),
     from: addressSchema.describe(
       "The user address that initiated the transfer",
     ),
-    transferId: z.string().describe("The transfer ID to approve"),
+    transferId: quantitySchema.describe("The transfer ID to approve"),
   }),
   execute: async (client, args): Promise<Intent> => {
     const { chainId, from, transferId } = args;
@@ -204,7 +206,7 @@ export const intentApproveSlowTransfer = createTool({
         data: encodeFunctionData({
           abi: slowAbi,
           functionName: "approveTransfer",
-          args: [from, BigInt(transferId)],
+          args: [from, uint256(transferId)],
         }),
         value: "0",
       },
@@ -234,8 +236,8 @@ export const intentUnlockSlow = createTool({
   description: "Unlock a time-locked transfer in SLOW contract",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    chainId: z.number().describe("The chainId to execute the intent on."),
-    transferId: z.string().describe("The transfer ID to unlock"),
+    chainId: z.number().int().positive().safe().describe("The chainId to execute the intent on."),
+    transferId: quantitySchema.describe("The transfer ID to unlock"),
   }),
   execute: async (client, args): Promise<Intent> => {
     const { chainId, transferId } = args;
@@ -248,7 +250,7 @@ export const intentUnlockSlow = createTool({
         data: encodeFunctionData({
           abi: slowAbi,
           functionName: "unlock",
-          args: [BigInt(transferId)],
+          args: [uint256(transferId)],
         }),
         value: "0",
       },
@@ -278,8 +280,8 @@ export const intentReverseSlowTransfer = createTool({
   description: "Reverse a pending transfer in SLOW contract",
   supportedChains: slowTransferChains,
   parameters: z.object({
-    chainId: z.number().describe("The chainId to execute the intent on."),
-    transferId: z.string().describe("The transfer ID to reverse"),
+    chainId: z.number().int().positive().safe().describe("The chainId to execute the intent on."),
+    transferId: quantitySchema.describe("The transfer ID to reverse"),
   }),
   execute: async (client, args): Promise<Intent> => {
     const { chainId, transferId } = args;
@@ -292,7 +294,7 @@ export const intentReverseSlowTransfer = createTool({
         data: encodeFunctionData({
           abi: slowAbi,
           functionName: "reverse",
-          args: [BigInt(transferId)],
+          args: [uint256(transferId)],
         }),
         value: "0",
       },

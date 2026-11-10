@@ -36,7 +36,7 @@ describe("ENS Tools", () => {
     });
   });
 
-  describe("resolveENSTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("resolveENSTool", () => {
     it("should resolve vitalik.eth to correct address", async () => {
       const address = await withRetry(() =>
         resolveENSTool.execute(client, { name: "vitalik.eth" })
@@ -90,7 +90,7 @@ describe("ENS Tools", () => {
     });
   });
 
-  describe("lookupENSTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("lookupENSTool", () => {
     it("should lookup vitalik's address to vitalik.eth", async () => {
       const name = await withRetry(() =>
         lookupENSTool.execute(client, { address: TEST_ADDRESSES.vitalik })
@@ -122,7 +122,7 @@ describe("ENS Tools", () => {
     });
   });
 
-  describe("Round-trip Resolution", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Round-trip Resolution", () => {
     it("should resolve and lookup back to same name for vitalik.eth", async () => {
       // First resolve the name to address
       const address = await withRetry(() =>

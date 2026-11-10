@@ -31,7 +31,7 @@ const mockClient: AgentekClient = createAgentekClient({
 const TOKEN = "0x00000000000007C8612bA63Df8DdEfD9E6077c97";
 
 describe("ERC20 Tools", () => {
-  describe("getAllowanceTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getAllowanceTool", () => {
     it("should get allowance for specified chain", async () => {
       // Fetch onchain allowance
       const onchainAllowance = await publicClient.readContract({
@@ -60,7 +60,7 @@ describe("ERC20 Tools", () => {
     });
   });
 
-  describe("getBalanceOfTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getBalanceOfTool", () => {
     it("should get balance for specified chain", async () => {
       // Fetch onchain balance
       const onchainBalance = await publicClient.readContract({
@@ -85,7 +85,7 @@ describe("ERC20 Tools", () => {
     });
   });
 
-  describe("getTotalSupplyTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getTotalSupplyTool", () => {
     it("should get total supply for specified chain", async () => {
       const onchainTotalSupply = await publicClient.readContract({
         address: TOKEN,
@@ -107,7 +107,7 @@ describe("ERC20 Tools", () => {
     });
   });
 
-  describe("getDecimalsTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getDecimalsTool", () => {
     it("should get decimals for specified chain", async () => {
       const onchainDecimals = await publicClient.readContract({
         address: TOKEN,
@@ -129,7 +129,7 @@ describe("ERC20 Tools", () => {
     });
   });
 
-  describe("getNameTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getNameTool", () => {
     it("should get name for specified chain", async () => {
       const onchainName = await publicClient.readContract({
         address: TOKEN,
@@ -151,7 +151,7 @@ describe("ERC20 Tools", () => {
     });
   });
 
-  describe("getSymbolTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getSymbolTool", () => {
     it("should get symbol for specified chain", async () => {
       const onchainSymbol = await publicClient.readContract({
         address: TOKEN,
@@ -173,7 +173,7 @@ describe("ERC20 Tools", () => {
     });
   });
 
-  describe("getTokenMetadataTool", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getTokenMetadataTool", () => {
     it("should get all metadata for specified chain", async () => {
       const onchainName = await publicClient.readContract({
         address: TOKEN,

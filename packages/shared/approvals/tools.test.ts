@@ -20,7 +20,7 @@ const mockClient = createAgentekClient({
 });
 
 describe("Approvals Tools", () => {
-  describe("getActiveApprovals", () => {
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getActiveApprovals", () => {
     it("should scan approvals on Base", async () => {
       const result = await getActiveApprovalsTool.execute(mockClient, {
         owner: TEST_ADDRESS,

@@ -34,10 +34,10 @@ export function readOnlyChainTools(): BaseTool[] {
           !/^(?:[13][1-9A-HJ-NP-Za-km-z]{25,34}|bc1[ac-hj-np-z02-9]{11,71})$/.test(request.address)) {
         throw new Error("Supply a Bitcoin mainnet address. Testnet and EVM addresses are not supported here.");
       }
-      if (solana.includes(tool)) request.cluster ??= "mainnet-beta";
+
       const result = await tool.execute(client, request);
       return { schemaVersion: 1, tool: tool.name, network,
-        cluster: network === "bitcoin" ? "mainnet" : market.includes(tool) ? "mainnet-beta" : request.cluster ?? "mainnet-beta",
+        cluster: network === "bitcoin" ? "mainnet" : market.includes(tool) ? "mainnet-beta" : request.cluster ?? "configured",
         request, observedAt: new Date().toISOString(), result };
     },
   }));

@@ -21,6 +21,7 @@ async function fetchBearerToken(
       "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
     },
     body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(15000),
   });
 
   if (!response.ok) {
@@ -34,33 +35,22 @@ async function fetchBearerToken(
   return data.access_token;
 }
 
-export type TwitterToolsConfig = (
-  | { xBearerToken: string }
-  | { xApiKey: string; xApiKeySecret: string }
-) & {
-  xAccessToken?: string;
-  xAccessTokenSecret?: string;
+export type TwitterToolsConfig = {
+  xBearerToken?: string; xApiKey?: string; xApiKeySecret?: string;
+  xAccessToken?: string; xAccessTokenSecret?: string;
 };
 
 export async function twitterTools(
   config: TwitterToolsConfig,
 ): Promise<BaseTool[]> {
-  let bearerToken: string;
-
-  if ("xBearerToken" in config && config.xBearerToken) {
-    bearerToken = config.xBearerToken;
-  } else if (
-    "xApiKey" in config &&
-    config.xApiKey &&
-    "xApiKeySecret" in config &&
-    config.xApiKeySecret
-  ) {
-    bearerToken = await fetchBearerToken(config.xApiKey, config.xApiKeySecret);
-  } else {
-    throw new Error(
-      "X (Twitter) credentials required: provide either xBearerToken, or xApiKey + xApiKeySecret.",
-    );
-  }
+  if (!config.xBearerToken && !(config.xApiKey && config.xApiKeySecret)) throw new Error("X (Twitter) credentials required");
+  let pending: Promise<string> | undefined;
+  const bearerToken = async () => {
+    if (config.xBearerToken) return config.xBearerToken;
+    if (!config.xApiKey || !config.xApiKeySecret) throw new Error("X credentials required");
+    pending ??= fetchBearerToken(config.xApiKey, config.xApiKeySecret).catch(error => { pending = undefined; throw error; });
+    return pending;
+  };
 
   const tools: BaseTool[] = [
     createSearchRecentTweetsTool(bearerToken),

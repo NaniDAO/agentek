@@ -65,6 +65,7 @@ function sendRpcRequest(method: string, params?: unknown): Promise<JsonRpcRespon
       }
     });
 
+    socket.on("end", () => { clearTimeout(timeout); reject(new Error("Signer connection closed before a response")); });
     socket.on("error", (err) => {
       clearTimeout(timeout);
       reject(err);

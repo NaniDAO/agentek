@@ -1,10 +1,10 @@
 import { Hex, http } from "viem";
 import { base, optimism } from "viem/chains";
-import { acrossTools } from "../packages/shared/across";
-import AgentekToolkit from "../packages/ai-sdk/toolkit";
+import { acrossTools } from "@agentek/tools";
+import AgentekToolkit from "@agentek/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { CoreMessage, CoreTool, generateText } from "ai";
+import { ModelMessage, Tool, stepCountIs, generateText } from "ai";
 
 async function main() {
   const openrouter = createOpenRouter({
@@ -15,7 +15,6 @@ async function main() {
 
   if (!privateKey) {
     privateKey = generatePrivateKey();
-    console.log("PRIVATE_KEY:", privateKey);
   }
 
   const account = privateKeyToAccount(privateKey as Hex);
@@ -51,7 +50,7 @@ async function main() {
       content:
         "Bridge 2 USDC from base (0x833589fcd6edb6e08f4c7c32d4f71b54bda02913) to optimism (0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85)", // need an address book
     },
-  ] as CoreMessage[];
+  ] as ModelMessage[];
 
   messages.forEach((message) => {
     console.log(`\n[${message.role.toUpperCase()}]`);
@@ -62,9 +61,9 @@ async function main() {
     model: openrouter("anthropic/claude-3.5-sonnet"),
     system: `YOUR ADDRESS: ${account.address}, CHAINS: ${chains.map((chain) => `${chain.name} (${chain.id})`).join(", ")}`,
     messages,
-    maxSteps: 10,
-    tools: tools as Record<string, CoreTool<any, any>>,
-    experimental_activeTools: Object.keys(tools),
+    stopWhen: stepCountIs(10),
+    tools,
+    activeTools: Object.keys(tools),
   });
 
   response.response.messages.forEach((message) => {
@@ -77,9 +76,9 @@ async function main() {
           console.log(`${content.text}`);
         } else if (content.type === "tool-call") {
           console.log(`[Tool:${content.toolName}]`);
-          console.log(`${JSON.stringify(content.args, null, 2)}`);
+          console.log(`${JSON.stringify(content.input, null, 2)}`);
         } else if (content.type === "tool-result") {
-          console.log(`\n---\n${JSON.stringify(content.result, null, 2)}`);
+          console.log(`\n---\n${JSON.stringify(content.output, null, 2)}`);
         }
       });
     }

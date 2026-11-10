@@ -10,9 +10,12 @@ import {
   Hex,
   SignableMessage,
   TypedDataParameter,
-  TypedDataDomain
+  TypedDataDomain,
+  keccak256, hashMessage, hashTypedData
 } from "viem";
 import { z } from "zod";
+import { wireValue } from "./utils/wire.js";
+import { identityAddress, uint256, byteHex } from "./utils/exact.js";
 import type {
   Connection,
   Keypair,
@@ -57,11 +60,26 @@ async function awaitSolanaRpcStage<T>(
 }
 
 // Base interface for all tools
-export interface BaseTool {
+export interface ToolCapabilities {
+  effect: "read" | "transaction" | "payment" | "publish" | "reasoning";
+  execution: "read" | "conditional" | "proposal";
+  availability: "available" | "unavailable";
+}
+export function toolCapabilities(name: string): ToolCapabilities {
+  const proposal = ["intentSwap", "intentSwapSolana", "intent0xSwap", "getNativeSwapProposal", "intentDepositAcross", "planSelectedRevocations"].includes(name) || name.startsWith("intent") && name.includes("WNS");
+  const effect = proposal ? "transaction" : name === "x402Fetch" ? "payment" : name === "generateAndPinImage" ? "publish" : name === "think" ? "reasoning" : /^(intent|depositWETH|withdrawWETH)/.test(name) ? "transaction" : "read";
+  return { effect, execution: proposal ? "proposal" : effect === "read" || effect === "reasoning" ? "read" : "conditional", availability: name === "intent0xSwap" ? "unavailable" : "available" };
+}
+export function isNonCancellableTool(tool: BaseTool): boolean {
+  const capability = tool.capabilities ?? toolCapabilities(tool.name);
+  return capability.execution === "conditional";
+}
+export interface BaseTool<TArgs = any, TResult = any> {
+  capabilities?: ToolCapabilities;
   name: string;
   description: string;
   parameters: z.ZodObject<any, any, any, any>;
-  execute: (client: AgentekClient, args: any) => Promise<any>;
+  execute: (client: AgentekClient, args: TArgs) => Promise<TResult>;
   supportedChains?: Chain[];
 }
 
@@ -175,7 +193,26 @@ function toSolanaSecretKey(
   return decodeBase58(trimmed);
 }
 
+export interface ExecutionRecord {
+  id: string;
+  chainId: number;
+  operations: { index: number; op: Op; hash?: string; status: "prepared" | "signed" | "submitted" | "confirmed" | "reverted" | "unknown" }[];
+  status: "pending" | "confirmed" | "failed" | "unknown";
+}
+export class TransactionExecutionError extends Error {
+  readonly retryable = false;
+  constructor(message: string, public readonly execution: ExecutionRecord) { super(message); this.name = "TransactionExecutionError"; }
+}
+export class OperationExecutionError extends Error {
+  readonly retryable = false;
+  constructor(message: string, public readonly failedIndex: number, public readonly completed: {index: number; hash?: string; signatures?: string[]}[], public readonly transaction?: ExecutionRecord) {
+    super(message); this.name = "OperationExecutionError";
+  }
+}
 export interface AgentekClientConfig {
+  /** Existing library callers retain execute behavior. Adapters default to prepare. */
+  executionMode?: "prepare" | "execute";
+  onExecutionUpdated?: (record: ExecutionRecord) => void | Promise<void>;
   transports: Transport[];
   chains: Chain[];
   accountOrAddress: Account | Address;
@@ -185,7 +222,7 @@ export interface AgentekClientConfig {
 
 // Type guards for runtime checking
 export const isTransactionOp = (op: Operation): op is Op => {
-  return 'target' in op && 'value' in op && 'data' in op;
+  return !('type' in op) && 'target' in op && 'value' in op && 'data' in op;
 };
 
 export const isPersonalSign = (op: Operation): op is PersonalSign => {
@@ -206,6 +243,10 @@ export class AgentekClient {
   private tools: Map<string, BaseTool>;
   private chains: Chain[];
   private accountOrAddress: Account | Address;
+  private readonly executionMode: "prepare" | "execute";
+  private readonly executionObserver?: AgentekClientConfig["onExecutionUpdated"];
+  private executionQueues = new Map<number, Promise<unknown>>();
+  private executions = new Map<string, ExecutionRecord>();
   private solanaConfig?: SolanaConfig;
   private solanaConnection?: Connection;
   private solanaKeypair?: Keypair;
@@ -216,6 +257,9 @@ export class AgentekClient {
     this.chains = config.chains;
     this.accountOrAddress = config.accountOrAddress;
     this.solanaConfig = config.solana;
+    this.executionMode = config.executionMode ?? "execute";
+    if (!["prepare", "execute"].includes(this.executionMode)) throw new Error("Invalid execution mode");
+    this.executionObserver = config.onExecutionUpdated;
 
     config.chains.forEach((chain, index) => {
       const transport = config.transports[index] || config.transports[0];
@@ -246,6 +290,9 @@ export class AgentekClient {
 
     this.tools = new Map(config.tools.map((tool) => [tool.name, tool]));
   }
+
+  public getExecutionMode(): "prepare" | "execute" { return this.executionMode; }
+  public getExecutions(): ExecutionRecord[] { return wireValue([...this.executions.values()]); }
 
   // Get address
   public async getAddress(): Promise<Address> {
@@ -298,6 +345,7 @@ export class AgentekClient {
 
   // Get wallet client for specific chain
   public getWalletClient(chainId?: number): WalletClient | undefined {
+    if (this.executionMode === "prepare") return undefined;
     if (!chainId) {
       return this.walletClients.values().next().value;
     }
@@ -346,56 +394,68 @@ export class AgentekClient {
   }
 
   public async executeOps(ops: Op[], chainId: number): Promise<string> {
-    const walletClient = this.getWalletClient(chainId);
-    const publicClient = this.getPublicClient(chainId);
+    // A chain queue prevents competing local operations from choosing the same nonce.
+    if ([...this.executions.values()].some(record => record.chainId === chainId && record.status === "unknown")) throw new Error("An earlier submission on this chain has an unknown outcome; reconcile it before sending another transaction");
+    const previous = this.executionQueues.get(chainId) ?? Promise.resolve();
+    const next = previous.catch(() => undefined).then(() => this.submitOps(ops, chainId));
+    this.executionQueues.set(chainId, next);
+    try { return await next; } finally { if (this.executionQueues.get(chainId) === next) this.executionQueues.delete(chainId); }
+  }
 
-    if (!walletClient) {
-      throw new Error(`No wallet client available for chain ${chainId}`);
-    }
-
-    if (!publicClient) {
-      throw new Error(`No public client available for chain ${chainId}`);
-    }
-
-    let hash = "";
-    for (const [index, op] of ops.entries()) {
-      // Remove the explicit account parameter as it's already set in the wallet client
-      // @ts-expect-error
-      const txHash = await walletClient.sendTransaction({
-        to: op.target,
-        value: BigInt(op.value),
-        data: op.data,
-      });
-
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-      });
-
-      // viem resolves for a reverted transaction rather than throwing — the
-      // outcome is in receipt.status. Without this check a reverted approval
-      // was reported as a successful hash, and the swap that depended on it
-      // was still submitted afterwards.
-      if (receipt.status !== "success") {
-        throw new Error(
-          `Transaction ${txHash} reverted on chain ${chainId}` +
-            (ops.length > 1 ? ` (operation ${index + 1} of ${ops.length})` : "") +
-            `. No further operations in this intent were submitted.`,
-        );
+  private async submitOps(ops: Op[], chainId: number): Promise<string> {
+    if (!Array.isArray(ops) || !ops.length) throw new Error("At least one operation is required");
+    for (const op of ops) { identityAddress.parse(op.target); uint256(op.value); byteHex(op.data); }
+    if ([...this.executions.values()].some(record => record.chainId === chainId && record.status === "unknown")) throw new Error("Reconcile the earlier unknown execution first");
+    const bounded = async <T>(promise: Promise<T>): Promise<T> => {
+      const outcome = await awaitSolanaRpcStage(promise);
+      if (outcome.kind === "timeout") throw new Error("RPC outcome deadline exceeded");
+      if (outcome.kind === "error") throw outcome.error;
+      return outcome.value;
+    };
+    const wallet: any = this.getWalletClient(chainId), rpc = this.getPublicClient(chainId);
+    if (!wallet) throw new Error(`No wallet client available for chain ${chainId}; execution mode is ${this.executionMode}`);
+    if (wallet.account?.type !== "local" || !wallet.prepareTransactionRequest || !wallet.signTransaction || !rpc.sendRawTransaction) throw new Error("Execution requires a signer that can sign locally before broadcasting; use prepare mode for external wallets");
+    const record: ExecutionRecord = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, chainId,
+      status: "pending", operations: ops.map((op, index) => ({ index, op: { ...op }, status: "prepared" })) };
+    const save = async () => { this.executions.set(record.id, wireValue(record)); await this.executionObserver?.(wireValue(record)); };
+    await save();
+    for (const entry of record.operations) {
+      try {
+        const transaction = { to: entry.op.target, value: BigInt(entry.op.value), data: entry.op.data };
+        const request = await bounded(wallet.prepareTransactionRequest(transaction));
+        const serialized = await bounded(wallet.signTransaction(request));
+        entry.hash = keccak256(serialized as Hex);
+        entry.status = "signed";
+        await save(); // Persist the verifiable identity BEFORE the irreversible boundary.
+        entry.status = "unknown";
+        await save();
+        const returned = await bounded<Hex>(rpc.sendRawTransaction({ serializedTransaction: serialized as Hex }));
+        if (returned.toLowerCase() !== entry.hash.toLowerCase()) throw new Error("RPC returned a different transaction hash");
+        entry.status = "submitted";
+        await save();
+        const receipt = await bounded<any>(rpc.waitForTransactionReceipt({ hash: entry.hash, timeout: 120000 }));
+        if (receipt.status !== "success") {
+          entry.status = "reverted";
+          throw new Error(`Transaction ${entry.hash} reverted on chain ${chainId}`);
+        }
+        entry.status = "confirmed";
+        await save();
+      } catch (error) {
+        record.status = entry.status === "unknown" || entry.status === "submitted" || entry.status === "signed" ? "unknown" : "failed";
+        await save().catch(() => undefined);
+        throw new TransactionExecutionError(`${error instanceof Error ? error.message : String(error)}. No further operations were submitted. Reconcile execution ${record.id} before retrying.`, wireValue(record));
       }
-
-      if (ops.length > 1) {
-        hash = hash + txHash + ";";
-      } else {
-        hash = txHash;
-      }
     }
-
-    return hash;
+    record.status = "confirmed";
+    try { await save(); }
+    catch (error) { throw new TransactionExecutionError(`All transactions confirmed, but the final journal update failed: ${String(error)}`, wireValue(record)); }
+    const hashes = record.operations.map(op => op.hash).join(";");
+    return ops.length > 1 ? hashes + ";" : hashes;
   }
 
   public async executeSign(signs: Sign[], chainId: number): Promise<string[]> {
     const walletClient = this.getWalletClient(chainId);
-    const account = await this.getAddress()
+    const account = walletClient?.account;
     if (!walletClient) {
       throw new Error(`No wallet client available for chain ${chainId}`);
     }
@@ -435,20 +495,29 @@ export class AgentekClient {
     hash?: string;
     signatures?: string[];
   }> {
-    const transactionOps = operations.filter(isTransactionOp);
-    const signOps = operations.filter(isSignOperation);
-
+    for (const op of operations) {
+      if (!op || typeof op !== "object" || (!isTransactionOp(op) && !isSignOperation(op))) throw new Error("Unsupported operation");
+      if (isTransactionOp(op)) { identityAddress.parse(op.target); uint256(op.value); byteHex(op.data); }
+      else if (isPersonalSign(op)) hashMessage(op.message);
+      else hashTypedData({domain: op.domain, types: op.types, primaryType: op.primaryType, message: op.message} as any);
+    }
     const results: { hash?: string; signatures?: string[] } = {};
-
-    // Execute transaction operations
-    if (transactionOps.length > 0) {
-      results.hash = await this.executeOps(transactionOps, chainId);
+    const hashes: string[] = [];
+    const completed: OperationExecutionError["completed"] = [];
+    for (const [index, op] of operations.entries()) {
+      try {
+        if (isTransactionOp(op)) {
+          const hash = await this.executeOps([op], chainId); hashes.push(hash); completed.push({index, hash});
+        } else {
+          const signatures = await this.executeSign([op], chainId);
+          results.signatures = [...(results.signatures ?? []), ...signatures]; completed.push({index, signatures});
+        }
+      } catch (error) {
+        throw new OperationExecutionError(`Operation ${index + 1} failed after ${completed.length} completed operations. Do not retry the whole batch; reconcile completed effects first. ${String(error)}`, index, completed,
+          error instanceof TransactionExecutionError ? error.execution : undefined);
+      }
     }
-
-    // Execute signing operations
-    if (signOps.length > 0) {
-      results.signatures = await this.executeSign(signOps, chainId);
-    }
+    if (hashes.length) results.hash = hashes.join(";");
 
     return results;
   }
@@ -559,6 +628,7 @@ export class AgentekClient {
     blockhash: string,
     lastValidBlockHeight: number,
   ): Promise<SolanaExecutionResult> {
+    if (this.executionMode === "prepare") throw new Error("Client is in prepare mode");
     const keypair = await this.getSolanaKeypair();
     if (!keypair) {
       throw new Error(
@@ -635,7 +705,7 @@ export class AgentekClient {
     // An empty supportedChains means "not chain-specific", which is how every
     // tool that declares one uses it. Read literally it meant "supports no
     // chain", so a chain-agnostic tool rejected any chainId the model passed.
-    if (args.chainId && tool.supportedChains?.length) {
+    if (args?.chainId && tool.supportedChains?.length) {
       if (!tool.supportedChains.map((c) => c.id).includes(args.chainId)) {
         throw new Error(
           `Chain ${args.chainId} not supported by tool ${method}. Supported: ${tool.supportedChains
@@ -651,7 +721,7 @@ export class AgentekClient {
       throw new Error(JSON.stringify(validatedArgs.error));
     }
 
-    return tool.execute(this, validatedArgs.data);
+    return wireValue(await tool.execute(this, validatedArgs.data));
   }
 }
 
@@ -661,7 +731,7 @@ export function createAgentekClient(
   return new AgentekClient(config);
 }
 
-export function createTool<T extends z.ZodObject<any, any, any, any>>({
+export function createTool<T extends z.ZodObject<any, any, any, any>, R>({
   name,
   description,
   parameters,
@@ -671,14 +741,22 @@ export function createTool<T extends z.ZodObject<any, any, any, any>>({
   name: string;
   description: string;
   parameters: T;
-  execute: (client: AgentekClient, args: z.infer<T>) => Promise<any>;
+  execute: (client: AgentekClient, args: z.infer<T>) => Promise<R>;
   supportedChains?: Chain[];
-}): BaseTool {
+}): BaseTool<z.input<T>, R> {
   return {
     name,
     description,
     parameters,
-    execute,
+    execute: async (client, args) => {
+      const parsed = parameters.parse(args);
+      if (parsed.chainId !== undefined) {
+        if (!Number.isSafeInteger(parsed.chainId) || parsed.chainId <= 0) throw new Error("Invalid chainId");
+        if (supportedChains?.length && !supportedChains.some(chain => chain.id === parsed.chainId)) throw new Error("Chain not supported by tool");
+      }
+      return execute(client, parsed);
+    },
+    capabilities: toolCapabilities(name),
     supportedChains,
   };
 }
@@ -686,3 +764,7 @@ export function createTool<T extends z.ZodObject<any, any, any, any>>({
 export function createToolCollection(tools: BaseTool[]): BaseTool[] {
   return tools;
 }
+
+export { wireValue, failedResult } from "./utils/wire.js";
+
+export { parseExactUnits } from "./utils/exact.js";

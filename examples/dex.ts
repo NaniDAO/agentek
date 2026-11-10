@@ -1,13 +1,13 @@
 import { Hex, http } from "viem";
 import { base } from "viem/chains";
-import AgentekToolkit from "../packages/ai-sdk/toolkit";
+import AgentekToolkit from "@agentek/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { CoreMessage, CoreTool, generateText } from "ai";
-import { dexscreenerTools } from "../packages/shared/dexscreener";
-import { swapTools } from "../packages/shared/swap";
-import { searchTools } from "../packages/shared/search";
-import { erc20Tools } from "../packages/shared/erc20";
+import { ModelMessage, Tool, stepCountIs, generateText } from "ai";
+import { dexscreenerTools } from "@agentek/tools";
+import { swapTools } from "@agentek/tools";
+import { searchTools } from "@agentek/tools";
+import { erc20Tools } from "@agentek/tools";
 
 // 1) Setup
 async function main() {
@@ -91,7 +91,7 @@ Remember:
 
   // Conversation starts with the system instructions, plus an initial "user" prompt.
   // The user prompt can be short, or you can omit it if you prefer the agent to just do its job.
-  let conversationHistory: CoreMessage[] = [
+  let conversationHistory: ModelMessage[] = [
     { role: "system", content: systemPrompt },
     {
       role: "user",
@@ -110,10 +110,10 @@ Remember:
       model: openrouter("anthropic/claude-3.5-sonnet"),
       system: systemPrompt,
       messages: conversationHistory,
-      maxSteps: 5, // let the agent do up to 20 tool calls in a single turn
-      tools: tools as Record<string, CoreTool<any, any>>,
+      stopWhen: stepCountIs(5), // let the agent do up to 20 tool calls in a single turn
+      tools,
       // Let the agent call any tool it wants:
-      experimental_activeTools: Object.keys(tools),
+      activeTools: Object.keys(tools),
     });
 
     // 5) Print out the AI's new messages

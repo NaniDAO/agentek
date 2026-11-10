@@ -67,7 +67,7 @@ describe("Solana signing", () => {
     expect(await client.getSolanaAddress()).toBe(sender.publicKey.toBase58());
   });
 
-  it("signs the compiled message with a signature the sender's key verifies", async () => {
+  it.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("signs the compiled message with a signature the sender's key verifies", async () => {
     const client = createClient({ privateKey: encodeBase58(sender.secretKey) });
 
     const { transaction, blockhash, lastValidBlockHeight } =
@@ -243,7 +243,7 @@ describe("Solana signing", () => {
     }
   });
 
-  it("checks the balance before building a transfer it cannot fund", async () => {
+  it.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("checks the balance before building a transfer it cannot fund", async () => {
     const client = createClient({ privateKey: encodeBase58(sender.secretKey) });
 
     await expect(
@@ -254,7 +254,7 @@ describe("Solana signing", () => {
     ).rejects.toThrow(/holds 0 SOL, less than the 0.25 SOL requested/);
   }, 60_000);
 
-  it("applies a priority fee as a compute budget instruction", async () => {
+  it.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("applies a priority fee as a compute budget instruction", async () => {
     const client = createClient({ address: sender.publicKey.toBase58() });
 
     const intent = await intentTransferSolTool.execute(client, {

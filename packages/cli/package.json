@@ -20,9 +20,10 @@
     "skill"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsup",
+    "build": "pnpm typecheck && rm -rf dist && tsup",
     "dev": "tsup --watch",
-    "start": "node dist/index.mjs"
+    "start": "node dist/index.mjs",
+    "typecheck": "tsc -p tsconfig.check.json"
   },
   "dependencies": {
     "@agentek/tools": "workspace:*",

@@ -66,7 +66,7 @@ const intentMintPosition = createTool({
     slippageTolerance: z.number().default(0.5).describe("Max slippage as a percentage (e.g. 0.5 for 0.5%). Default: 0.5"),
     recipient: z.string().optional().describe("Address to receive the LP NFT (0x...). Defaults to the connected wallet."),
     deadline: z.number().optional().describe("Unix timestamp deadline for the transaction. Defaults to 20 minutes from now."),
-    chainId: z.number().describe("Chain ID where the pool exists (e.g. 1, 8453, 42161)"),
+    chainId: z.number().int().positive().safe().describe("Chain ID where the pool exists (e.g. 1, 8453, 42161)"),
   }),
   execute: async (client, args) => {
     const user = await client.getAddress();
@@ -135,7 +135,7 @@ const intentIncreaseLiquidity = createTool({
     amount1Desired: z.string().describe("Desired amount of token1 to add in wei as a decimal string"),
     slippageTolerance: z.number().default(0.5).describe("Max slippage as a percentage (e.g. 0.5 for 0.5%). Default: 0.5"),
     deadline: z.number().optional().describe("Unix timestamp deadline for the transaction. Defaults to 20 minutes from now."),
-    chainId: z.number().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
+    chainId: z.number().int().positive().safe().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
   }),
   execute: async (client, args) => {
     const deadline = args.deadline || Math.floor(Date.now() / 1000) + 1200;
@@ -198,7 +198,7 @@ const intentDecreaseLiquidity = createTool({
     amount0Min: z.string().optional().describe("Minimum amount of token0 to receive, in wei as a decimal string. Omit to derive it from a simulation of the withdrawal minus slippageTolerance."),
     amount1Min: z.string().optional().describe("Minimum amount of token1 to receive, in wei as a decimal string. Omit to derive it from a simulation of the withdrawal minus slippageTolerance."),
     deadline: z.number().optional().describe("Unix timestamp deadline for the transaction. Defaults to 20 minutes from now."),
-    chainId: z.number().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
+    chainId: z.number().int().positive().safe().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
   }),
   execute: async (client, args) => {
     const deadline = args.deadline || Math.floor(Date.now() / 1000) + 1200;
@@ -283,7 +283,7 @@ const intentCollectFees = createTool({
   parameters: z.object({
     tokenId: z.string().describe("The NFT token ID of the LP position to collect fees from"),
     recipient: z.string().optional().describe("Address to receive the collected tokens (0x...). Defaults to the connected wallet."),
-    chainId: z.number().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
+    chainId: z.number().int().positive().safe().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
   }),
   execute: async (client, args) => {
     const user = await client.getAddress();
@@ -335,7 +335,7 @@ const intentTransferPosition = createTool({
   parameters: z.object({
     tokenId: z.string().describe("The NFT token ID of the LP position to transfer"),
     to: z.string().describe("The recipient address to transfer the LP NFT to (0x...)"),
-    chainId: z.number().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
+    chainId: z.number().int().positive().safe().describe("Chain ID where the position exists (e.g. 1, 8453, 42161)"),
   }),
   execute: async (client, args) => {
     const data = encodeFunctionData({

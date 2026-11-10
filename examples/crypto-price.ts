@@ -1,5 +1,5 @@
-import { createAgentekClient } from "../packages/shared/client";
-import { cryptoPriceTools } from "../packages/shared/cryptoprices";
+import { createAgentekClient } from "@agentek/tools/client";
+import { cryptoPriceTools } from "@agentek/tools";
 import { mainnet } from "viem/chains";
 import { http } from "viem";
 

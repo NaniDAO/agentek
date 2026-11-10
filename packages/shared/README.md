@@ -46,28 +46,30 @@ The package includes tools for:
 
 ```typescript
 import { allTools } from '@agentek/tools';
-import { createPublicClient, http } from 'viem';
+import { createAgentekClient } from '@agentek/tools/client';
+import { http } from 'viem';
 import { mainnet } from 'viem/chains';
 
 // Initialize the tools
-const tools = allTools({
+const tools = await allTools({
   // Optional API keys for additional functionality
   perplexityApiKey: process.env.PERPLEXITY_API_KEY,
-  zeroxApiKey: process.env.ZEROX_API_KEY,
   // ...other API keys
 });
 
 // Create a client to use the tools
-const client = new AgentekClient({
+const client = createAgentekClient({
   transports: [http('https://ethereum.publicnode.com')],
   chains: [mainnet],
-  accountOrAddress: '0xYourAddress',
+  accountOrAddress: '0x0000000000000000000000000000000000000000',
   tools: tools,
 });
 
 // Execute a tool
-const balance = await client.execute('getEthBalance', {
+const balance = await client.execute('getBalance', {
   address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+  chainId: 1,
+  formatEth: true,
 });
 console.log(`Balance: ${balance} ETH`);
 ```

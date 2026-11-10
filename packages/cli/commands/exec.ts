@@ -1,3 +1,4 @@
+import { isNonCancellableTool, TransactionExecutionError, OperationExecutionError, failedResult } from "@agentek/tools/client";
 import { outputJson, outputError } from "../utils/output.js";
 import { unknownToolError, formatZodError, formatChainError } from "../utils/errors.js";
 import { parseFlags } from "../utils/flags.js";
@@ -5,10 +6,7 @@ import { withTimeout } from "../utils/timeout.js";
 import type { ClientContext } from "../utils/client.js";
 
 const DEFAULT_TIMEOUT_MS = 120_000;
-const NON_CANCELLABLE_TOOLS = new Set([
-  "intentTransferSol",
-  "intentTransferSplToken",
-]);
+
 
 export async function handleExec(
   { agentekClient, toolsMap }: ClientContext,
@@ -25,7 +23,7 @@ export async function handleExec(
   const flagArgs = rest.slice(1);
   const timeoutIdx = flagArgs.indexOf("--timeout");
   if (timeoutIdx !== -1) {
-    if (NON_CANCELLABLE_TOOLS.has(toolName)) {
+    if (isNonCancellableTool(tool!)) {
       outputError(
         `--timeout is not supported for ${toolName}; wait for its confirmationStatus and reconcile the returned signature before retrying`,
         { code: "INVALID_ARGS", retryable: false },
@@ -33,7 +31,7 @@ export async function handleExec(
     }
     const raw = flagArgs[timeoutIdx + 1];
     const parsed = Number(raw);
-    if (!raw || Number.isNaN(parsed) || parsed <= 0) {
+    if (!raw || !Number.isFinite(parsed) || parsed <= 0 || parsed > 2147483647) {
       outputError("--timeout requires a positive number (milliseconds)");
     }
     timeoutMs = parsed;
@@ -47,18 +45,21 @@ export async function handleExec(
     // These calls may have crossed the irreversible submission boundary when
     // the timer fires. Waiting for their explicit confirmationStatus is safer
     // than reporting a timeout that invites a duplicate retry.
-    const result = NON_CANCELLABLE_TOOLS.has(toolName)
+    const result = isNonCancellableTool(tool!)
       ? await execution
       : await withTimeout(execution, timeoutMs, toolName);
+    if (failedResult(result)) outputError("Tool returned no successful result", { code: "EXECUTION_ERROR", details: result });
     outputJson(result);
   } catch (err: any) {
+    if (err instanceof OperationExecutionError) outputError(err.message, {code: "EXECUTION_ERROR", retryable: false, details: {failedIndex: err.failedIndex, completed: err.completed, transaction: err.transaction}});
+    if (err instanceof TransactionExecutionError) outputError(err.message, { code: "EXECUTION_ERROR", retryable: false, details: err.execution });
     const msg: string = err.message || String(err);
 
     if (msg.includes("timed out after")) {
       const doubled = timeoutMs * 2;
       outputError(msg, {
         code: "TIMEOUT",
-        hint: `Retry with a longer timeout: --timeout ${doubled}`,
+        hint: `Read timed out; retry with a longer timeout: --timeout ${doubled}`,
         retryable: true,
       });
     }
