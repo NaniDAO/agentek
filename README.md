@@ -457,8 +457,8 @@ never a workspace package's compiled dist. Its scoped catalogue retains WNS,
 NANI staking/governance, ZAMM, contract/yield research and read-only chain research.
 It excludes Tacit, paid HTTP/image publishing, the echo-only think tool, the
 superseded scraper/swap intent, legacy approval scans and protocol position
-management. The Mac profile retains its existing broader catalogue; the injected platform selects
-the profile explicitly. The general SDK retains its separate collections.
+management. The Mac profile pins its existing broader catalogue to explicit tool names; new
+registrations require matching app support. The injected platform selects the profile. The general SDK retains its separate collections.
 
 WNS registration returns `workflow: {schemaVersion:1, mode:"sequential", steps}`
 without top-level ops. Each stage contains `id`, `title`, `ops`,

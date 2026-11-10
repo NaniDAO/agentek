@@ -5,6 +5,7 @@ import { thinkTools } from "../shared/think/index.js";
 import { zrouterTools } from "../shared/zrouter/index.js";
 import { approvalTools } from "../shared/approvals/index.js";
 import { solanaMarketTools } from "../shared/solana/market-tools.js";
+import { macosToolNames } from "./profiles.js";
 import { hostCapabilities, installPublicTransport } from "./native-transport.js";
 /**
  * WKWebView entry point shared by the iPhone and Mac apps.
@@ -121,7 +122,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
     ...thinkTools(), ...zammTools(), ...zrouterTools(), ...wnsTools(),
     ...resolveTokenTools(), ...approvalTools(), ...contractTools(), ...researchCATools(),
     ...solanaMarketTools({includeJupiter: true, includeIntents: false}),
-  ] : [
+  ].filter(tool => macosToolNames.has(tool.name)) : [
     ...ensTools(), ...erc20Tools(), ...rpcTools(), ...transferTools(),
     ...blockscoutTools(), getAaveReserveData, ...acrossTools(), getUniV3Pool, getPoolFeeData,
     ...wethTools(), ...naniTools(), ...securityTools(), webPageExtractor, webPageResult,
