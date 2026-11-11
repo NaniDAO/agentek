@@ -1,4 +1,4 @@
-import { createExecutionJournal } from "@agentek/tools/journal";
+import { createExecutionJournal, createRequestJournal } from "@agentek/tools/journal";
 import { join } from "node:path";
 import { getConfigDir } from "../config.js";
 import { type Hex, type Account, isHex, zeroAddress } from "viem";
@@ -13,6 +13,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { resolveKeys } from "../config.js";
 import { isDaemonReachable, getDaemonAddress, createDaemonAccount } from "../signer/client.js";
 import { outputError } from "./output.js";
+import { keyfileExists } from "../signer/crypto.js";
 
 export async function createClientFromEnv() {
   // ── Environment (env vars override config file) ────────────────────────
@@ -72,6 +73,8 @@ export async function createClientFromEnv() {
   if (daemonUp) {
     const addr = await getDaemonAddress();
     account = createDaemonAccount(addr);
+  } else if (keyfileExists()) {
+    throw new Error("Encrypted signer keyfile exists but the signer daemon is unreachable. Start 'agentek signer start' before using this client.");
   } else if (PRIVATE_KEY) {
     account = privateKeyToAccount(PRIVATE_KEY as Hex);
   } else {
@@ -84,6 +87,10 @@ export async function createClientFromEnv() {
   const agentekClient = createAgentekClient({
     executionMode,
     onExecutionUpdated: createExecutionJournal(join(getConfigDir(), "executions")),
+    requestStore: createRequestJournal(join(getConfigDir(), "requests")),
+    // The daemon owns the final policy and interactive approval. Raw keys have
+    // no independent reviewer and therefore cannot receive automatic consent.
+    authorizeAction: daemonUp ? request => request.kind === "evm_transaction" || request.kind === "signature" : undefined,
     transports,
     chains,
     accountOrAddress: account,

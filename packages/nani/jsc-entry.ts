@@ -33,7 +33,8 @@ import { hostCapabilities, installPublicTransport } from "./native-transport.js"
 
 import { type Hex, isHex, zeroAddress } from "viem";
 import { DEFAULT_CHAINS, resolveTransports } from "../shared/chains/config.js";
-import { createAgentekClient, type BaseTool } from "../shared/client.js";
+import { createAgentekClient, TransactionExecutionError, OperationExecutionError, SolanaExecutionError, type BaseTool } from "../shared/client.js";
+import { sanitizeToolOutput } from "../shared/utils/safe-errors.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import { ensTools } from "../shared/ens/index.js";
@@ -175,7 +176,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   }
 
   if (!toolsMap.has(name)) {
-    return JSON.stringify({ error: `Unknown tool: ${name}` });
+    return JSON.stringify({ error: "Unknown tool" });
   }
 
   try {
@@ -185,9 +186,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
       TOOL_TIMEOUT_MS,
       name,
     );
-    const text = typeof result === "object" ? JSON.stringify(result) : String(result);
+    const safeResult = sanitizeToolOutput(result, agentekClient);
+    const text = typeof safeResult === "object" ? JSON.stringify(safeResult) : String(safeResult);
     return JSON.stringify({ result: text });
   } catch (err) {
-    return JSON.stringify({ error: "Tool read or action failed", errorInfo: safeResearchError(name, err) });
+    const execution = err instanceof TransactionExecutionError || err instanceof SolanaExecutionError ? { retryable: false, execution: err.execution }
+      : err instanceof OperationExecutionError ? { retryable: false, completed: err.completed, failedIndex: err.failedIndex, transaction: err.transaction } : {};
+    return JSON.stringify(sanitizeToolOutput({ error: "Tool read or action failed", errorInfo: safeResearchError(name, err), ...execution }, agentekClient));
   }
 };

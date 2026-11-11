@@ -4,8 +4,10 @@ import type { PolicyConfig } from "./protocol.js";
 
 
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/).transform(v => v.toLowerCase());
+const exactAmount = z.string().refine(v => { try { return parseExactUnits(v, 18) >= 0n; } catch { return false; } }, "Invalid nonnegative exact ETH amount");
 export const policySchema = z.object({
-  maxValuePerTx: z.string().refine(v => { try { parseExactUnits(v, 18); return true; } catch { return false; } }, "Invalid exact ETH amount"),
+  maxValuePerTx: exactAmount,
+  maxValuePerSession: exactAmount.optional(),
   allowedChains: z.array(z.number().int().positive().safe()),
   allowContractCreation: z.boolean().default(false),
   blockedContracts: z.array(address).default([]), allowedContracts: z.array(address).default([]),
@@ -27,11 +29,16 @@ export interface TxRequest {
   to?: string | null;
   value?: bigint | string;
   data?: string;
+  gas?: bigint | string;
+  gasPrice?: bigint | string;
+  maxFeePerGas?: bigint | string;
+  maxPriorityFeePerGas?: bigint | string;
 }
 
 export function defaultPolicy(): PolicyConfig {
   return {
     maxValuePerTx: "0.1",
+    maxValuePerSession: "0.1",
     allowedChains: [1, 8453, 42161, 137, 10],
     allowContractCreation: false,
     blockedContracts: [],
@@ -46,7 +53,7 @@ export function evaluatePolicy(policy: PolicyConfig, tx: TxRequest): PolicyResul
   policy = validatePolicy(policy);
   // 1. Chain check
   const chainId = tx.chainId;
-  if (!Number.isInteger(chainId) || (chainId as number) <= 0) {
+  if (!Number.isSafeInteger(chainId) || (chainId as number) <= 0) {
     return {
       allowed: false,
       needsApproval: false,
@@ -111,15 +118,22 @@ export function evaluatePolicy(policy: PolicyConfig, tx: TxRequest): PolicyResul
   }
 
   // 6. Value cap
-  const txValue = typeof tx.value === "string" ? BigInt(tx.value) : (tx.value ?? 0n);
+  const txValue = nativeLiability(tx);
   const maxValue = parseExactUnits(policy.maxValuePerTx, 18);
 
   if (txValue > maxValue) {
     return {
       allowed: false,
       needsApproval: false,
-      reason: `Transaction value ${txValue} exceeds maximum ${maxValue} (${policy.maxValuePerTx} ETH)`,
+      reason: `Transaction native liability (value + maximum execution fee) ${txValue} exceeds maximum ${maxValue} (${policy.maxValuePerTx} ETH units)`,
     };
+  }
+
+  // These chains use the execution-gas fee model accounted for here. Other
+  // chains (including rollups with L1 data/operator charges) require review:
+  // gas * feePerGas is not a universal upper bound on their total charge.
+  if (![1, 137, 11155111].includes(normalizedChainId)) {
+    return { allowed: true, needsApproval: true, reason: "Additional chain fees are not bounded by this signer; review the chain's total native charge" };
   }
 
   // 7. Approval logic
@@ -132,13 +146,24 @@ export function evaluatePolicy(policy: PolicyConfig, tx: TxRequest): PolicyResul
     if (txValue > threshold) {
       return { allowed: true, needsApproval: true };
     }
-    if (policy.contracts !== undefined) {
-      const approved = to && Object.prototype.hasOwnProperty.call(policy.contracts, to) ? policy.contracts[to] : [];
-      const selector = tx.data && tx.data.length >= 10 ? tx.data.slice(0, 10).toLowerCase() : undefined;
-      const preapproved = approved.includes("*") || (selector !== undefined && approved.includes(selector));
-      return { allowed: true, needsApproval: !preapproved };
-    }
+    const approved = to && policy.contracts && Object.prototype.hasOwnProperty.call(policy.contracts, to) ? policy.contracts[to] : [];
+    const selector = tx.data && tx.data.length >= 10 ? tx.data.slice(0, 10).toLowerCase() : undefined;
+    const preapproved = approved.includes("*") || (selector !== undefined && approved.includes(selector));
+    // Empty calldata can invoke a contract's fallback/receive code. It does
+    // not establish an EOA or bound the caller authority exercised by a call.
+    return { allowed: true, needsApproval: !preapproved, ...(!preapproved ? { reason: "Recipient/function is not explicitly preapproved; even empty calldata can invoke contract fallback code" } : {}) };
   }
 
   return { allowed: true, needsApproval: false };
+}
+
+export function nativeLiability(tx: TxRequest): bigint {
+  const amount = (value: bigint | string | undefined) => {
+    if (value === undefined) return 0n;
+    if (typeof value !== "bigint" && !/^(0|[1-9][0-9]*)$/.test(value)) throw new Error("Invalid exact native quantity");
+    const result = BigInt(value);
+    if (result < 0n || result >= 2n ** 256n) throw new Error("Native quantity out of range");
+    return result;
+  };
+  return amount(tx.value) + amount(tx.gas) * amount(tx.maxFeePerGas ?? tx.gasPrice);
 }

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { type AgentekClient, createTool } from "../client.js";
 import { robinhood } from "../chains/robinhood.js";
 import { addressSchema } from "../utils.js";
-import { assertOkResponse, readBoundedJSON } from "../utils/fetch.js";
+import { providerJSON } from "../utils/fetch.js";
+import { safeErrorMessage } from "../utils/safe-errors.js";
 
 const supportedChains = [mainnet, optimism, arbitrum, polygon, base, robinhood];
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -47,11 +48,9 @@ const boolAbi = (name: string) => [{
 
 async function fetchJson(url: string): Promise<SourceResult> {
   try {
-    const response = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(15000) });
-    await assertOkResponse(response, `Research source ${url}`);
-    return { ok: true, url, data: await readBoundedJSON(response, MAX_RESPONSE_BYTES) };
+    return { ok: true, url, data: await providerJSON(url, {headers: {accept: "application/json"}}, "Contract research source failed", {maximumBytes: MAX_RESPONSE_BYTES}) };
   } catch (error) {
-    return { ok: false, url, error: error instanceof Error ? error.message : String(error) };
+    return { ok: false, url, error: safeErrorMessage(error) };
   }
 }
 
@@ -278,7 +277,7 @@ export const researchCA = createTool({
       },
       contract: {
         hasCode: codeResult.ok ? Boolean(codeResult.data && codeResult.data !== "0x") : undefined,
-        codeCheckError: codeResult.ok ? undefined : String(codeResult.error),
+        codeCheckError: codeResult.ok ? undefined : safeErrorMessage(codeResult.error),
         verified: contractResult.data?.is_verified,
         name: safeText(contractResult.data?.name),
         compilerVersion: safeText(contractResult.data?.compiler_version),

@@ -1,7 +1,7 @@
 import { type RouteOption, type RouteStep } from "zrouter-sdk";
 import { ZROUTER_API_URL } from "./constants.js";
 import { byteHex, identityAddress, uint256 } from "../utils/exact.js";
-import { readBoundedJSON } from "../utils/fetch.js";
+import { providerJSON } from "../utils/fetch.js";
 
 const serializeToken = (token: { address: string; id?: bigint }) => ({ address: token.address, ...(token.id !== undefined ? { id: token.id.toString() } : {}) });
 const exact = (v: unknown) => uint256(v);
@@ -27,9 +27,8 @@ export function deserializeRoutes(input: unknown): RouteOption[] {
 
 export async function fetchApiRoutes(params: { chainId: number; tokenIn: { address: string; id?: bigint }; tokenOut: { address: string; id?: bigint }; side: string; amount: bigint; owner: string; slippageBps?: number }): Promise<RouteOption[] | null> {
   try {
-    const response = await fetch(`${ZROUTER_API_URL}/quote`, { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chainId: params.chainId.toString(), tokenIn: serializeToken(params.tokenIn), tokenOut: serializeToken(params.tokenOut), side: params.side, amount: params.amount.toString(), owner: params.owner, slippageBps: params.slippageBps ?? 50 }), signal: AbortSignal.timeout(15000) });
-    if (!response.ok) return null;
-    return deserializeRoutes(await readBoundedJSON(response, 1048576));
+    const data = await providerJSON(`${ZROUTER_API_URL}/quote`, { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chainId: params.chainId.toString(), tokenIn: serializeToken(params.tokenIn), tokenOut: serializeToken(params.tokenOut), side: params.side, amount: params.amount.toString(), owner: params.owner, slippageBps: params.slippageBps ?? 50 }) }, "Router quote request failed", {maximumBytes: 1048576});
+    return deserializeRoutes(data);
   } catch { return null; }
 }

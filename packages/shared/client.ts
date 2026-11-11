@@ -11,11 +11,11 @@ import {
   SignableMessage,
   TypedDataParameter,
   TypedDataDomain,
-  keccak256, hashMessage, hashTypedData
+  keccak256, hashMessage, hashTypedData, bytesToHex
 } from "viem";
 import { z } from "zod";
 import { wireValue } from "./utils/wire.js";
-import { identityAddress, uint256, byteHex } from "./utils/exact.js";
+import { identityAddress, uint256, byteHex, parseExactUnits } from "./utils/exact.js";
 import type {
   Connection,
   Keypair,
@@ -24,6 +24,41 @@ import type {
 } from "@solana/web3.js";
 import { DEFAULT_SOLANA_RPC_URL } from "./solana/constants.js";
 import { decodeBase58, encodeBase58 } from "./solana/base58.js";
+import { sanitizeToolOutput, sanitizeToolError, safeErrorMessage } from "./utils/safe-errors.js";
+import { normalizeTypedData } from "./utils/signing.js";
+
+/** Supplied by the trusted host, never by an AI tool argument or tool result. */
+export interface ActionApproval {
+  kind: "evm_transaction" | "signature" | "solana_transaction" | "payment" | "publish";
+  account: string;
+  chainId?: number;
+  payload: unknown;
+}
+export interface ToolRequestRecord {
+  fingerprint: string;
+  state: "pending" | "complete";
+  result?: unknown;
+}
+export interface ToolRequestStore {
+  /** Atomically reserve an ID, or return its existing immutable record. */
+  claim(id: string, fingerprint: string): Promise<ToolRequestRecord | undefined>;
+  complete(id: string, fingerprint: string, result: unknown): Promise<void>;
+}
+export interface SolanaExecutionRecord {
+  id: string;
+  signature: string;
+  transaction: string;
+  status: "signed" | "unknown" | "submitted" | "confirmed" | "failed";
+  /** Retained for reconciliation; optional when reading older journal records. */
+  account?: string;
+  genesisHash?: string;
+  blockhash?: string;
+  lastValidBlockHeight?: number;
+}
+export class SolanaExecutionError extends Error {
+  readonly retryable = false;
+  constructor(message: string, public readonly execution: SolanaExecutionRecord) { super(message); this.name = "SolanaExecutionError"; }
+}
 
 const SOLANA_RPC_OUTCOME_TIMEOUT_MS = 120_000;
 
@@ -210,8 +245,17 @@ export class OperationExecutionError extends Error {
   }
 }
 export interface AgentekClientConfig {
-  /** Existing library callers retain execute behavior. Adapters default to prepare. */
+  /** All entry points default to unsigned preparation. */
   executionMode?: "prepare" | "execute";
+  /** Review the exact effect outside the model; missing/false approval fails closed. */
+  authorizeAction?: (request: Readonly<ActionApproval>) => boolean | Promise<boolean>;
+  /** Trusted cumulative USDC authorization budget for this client, default zero. */
+  paymentBudgetUsd?: string;
+  /** Trusted maximum publication count for this client, default zero. */
+  publicationBudget?: number;
+  /** Durable request reservations prevent successful-response-loss replays. */
+  requestStore?: ToolRequestStore;
+  onSolanaExecutionUpdated?: (record: SolanaExecutionRecord) => void | Promise<void>;
   onExecutionUpdated?: (record: ExecutionRecord) => void | Promise<void>;
   transports: Transport[];
   chains: Chain[];
@@ -250,6 +294,14 @@ export class AgentekClient {
   private solanaConfig?: SolanaConfig;
   private solanaConnection?: Connection;
   private solanaKeypair?: Keypair;
+  private readonly actionApprover?: AgentekClientConfig["authorizeAction"];
+  private readonly requestStore?: ToolRequestStore;
+  private readonly solanaObserver?: AgentekClientConfig["onSolanaExecutionUpdated"];
+  private paymentRemaining: bigint;
+  private publicationRemaining: number;
+  private approvalQueue: Promise<unknown> = Promise.resolve();
+  private solanaOutcomeUnknown = false;
+  private solanaExecutionQueue: Promise<unknown> = Promise.resolve();
 
   constructor(config: AgentekClientConfig) {
     this.publicClients = new Map();
@@ -257,9 +309,15 @@ export class AgentekClient {
     this.chains = config.chains;
     this.accountOrAddress = config.accountOrAddress;
     this.solanaConfig = config.solana;
-    this.executionMode = config.executionMode ?? "execute";
+    this.executionMode = config.executionMode ?? "prepare";
     if (!["prepare", "execute"].includes(this.executionMode)) throw new Error("Invalid execution mode");
     this.executionObserver = config.onExecutionUpdated;
+    this.actionApprover = config.authorizeAction;
+    this.requestStore = config.requestStore;
+    this.solanaObserver = config.onSolanaExecutionUpdated;
+    this.paymentRemaining = parseExactUnits(config.paymentBudgetUsd ?? "0", 6);
+    this.publicationRemaining = config.publicationBudget ?? 0;
+    if (!Number.isSafeInteger(this.publicationRemaining) || this.publicationRemaining < 0 || this.publicationRemaining > 1000) throw new Error("Invalid trusted publication budget");
 
     config.chains.forEach((chain, index) => {
       const transport = config.transports[index] || config.transports[0];
@@ -268,6 +326,7 @@ export class AgentekClient {
       const publicClient = createPublicClient({
         transport,
         chain,
+        ccipRead: false,
       });
 
       this.publicClients.set(chain.id, publicClient as PublicClient<Transport, Chain>);
@@ -279,6 +338,7 @@ export class AgentekClient {
           transport,
           chain,
           account: config.accountOrAddress,
+          ccipRead: false,
         });
 
         // Force‐cast so TS doesn't expand the full generic return type.
@@ -293,6 +353,40 @@ export class AgentekClient {
 
   public getExecutionMode(): "prepare" | "execute" { return this.executionMode; }
   public getExecutions(): ExecutionRecord[] { return wireValue([...this.executions.values()]); }
+
+  public async authorizeAction(kind: ActionApproval["kind"], payload: unknown, chainId?: number): Promise<void> {
+    if (this.executionMode !== "execute") throw new Error("Client is in prepare mode; this action requires explicit execution and host approval");
+    if (!this.actionApprover) throw new Error("A trusted host authorizeAction callback is required before side effects");
+    const captured = wireValue(payload);
+    const snapshot = wireValue({ kind, account: kind === "solana_transaction" ? await this.getSolanaAddress() : await this.getAddress(), ...(chainId === undefined ? {} : { chainId }), payload: captured });
+    const freeze = (value: any): any => {
+      if (value && typeof value === "object") { Object.values(value).forEach(freeze); Object.freeze(value); }
+      return value;
+    };
+    freeze(snapshot);
+    const work = this.approvalQueue.catch(() => undefined).then(async () => {
+      const amount = kind === "payment" ? uint256((captured as any)?.amountRaw) : 0n;
+      if (kind === "payment" && (amount === 0n || amount > this.paymentRemaining)) throw new Error("The trusted payment budget is exhausted or missing");
+      if (kind === "publish" && this.publicationRemaining === 0) throw new Error("The trusted publication budget is exhausted or missing");
+      if (await this.actionApprover!(snapshot) !== true) throw new Error("The host denied authorization for this action");
+      // Reserve before any signature/request is made. Ambiguous outcomes never
+      // refund budget and cannot race a second authorization.
+      if (kind === "payment") this.paymentRemaining -= amount;
+      if (kind === "publish") this.publicationRemaining--;
+    });
+    this.approvalQueue = work;
+    await work;
+  }
+
+  /** Never preserve provider causes/stacks while crossing into model-visible output. */
+  public safeError(error: unknown): Error {
+    const message = error instanceof Error ? sanitizeToolOutput(error.message, this) : "Tool execution failed";
+    if (error instanceof TransactionExecutionError) return new TransactionExecutionError(message, sanitizeToolOutput(error.execution, this));
+    if (error instanceof OperationExecutionError) return new OperationExecutionError(message, error.failedIndex, sanitizeToolOutput(error.completed, this), sanitizeToolOutput(error.transaction, this));
+    if (error instanceof SolanaExecutionError) return new SolanaExecutionError(message, sanitizeToolOutput(error.execution, this));
+    if (error && typeof error === "object" && ("shortMessage" in error || "metaMessages" in error)) return sanitizeToolError(error, this);
+    return new Error(sanitizeToolOutput(error instanceof Error ? error.message : "Tool execution failed", this));
+  }
 
   // Get address
   public async getAddress(): Promise<Address> {
@@ -354,7 +448,7 @@ export class AgentekClient {
 
   // Get all wallet clients
   public getWalletClients(): Map<number, WalletClient> {
-    return this.walletClients;
+    return this.executionMode === "prepare" ? new Map() : new Map(this.walletClients);
   }
 
   // Get all available chains
@@ -394,10 +488,11 @@ export class AgentekClient {
   }
 
   public async executeOps(ops: Op[], chainId: number): Promise<string> {
+    const snapshot = ops.map(op => ({ target: identityAddress.parse(op.target) as Address, value: uint256(op.value).toString(), data: byteHex(op.data) }));
     // A chain queue prevents competing local operations from choosing the same nonce.
     if ([...this.executions.values()].some(record => record.chainId === chainId && record.status === "unknown")) throw new Error("An earlier submission on this chain has an unknown outcome; reconcile it before sending another transaction");
     const previous = this.executionQueues.get(chainId) ?? Promise.resolve();
-    const next = previous.catch(() => undefined).then(() => this.submitOps(ops, chainId));
+    const next = previous.catch(() => undefined).then(() => this.submitOps(snapshot, chainId));
     this.executionQueues.set(chainId, next);
     try { return await next; } finally { if (this.executionQueues.get(chainId) === next) this.executionQueues.delete(chainId); }
   }
@@ -414,6 +509,7 @@ export class AgentekClient {
     };
     const wallet: any = this.getWalletClient(chainId), rpc = this.getPublicClient(chainId);
     if (!wallet) throw new Error(`No wallet client available for chain ${chainId}; execution mode is ${this.executionMode}`);
+    if (!this.executionObserver) throw new Error("Durable onExecutionUpdated persistence is required before EVM signing");
     if (wallet.account?.type !== "local" || !wallet.prepareTransactionRequest || !wallet.signTransaction || !rpc.sendRawTransaction) throw new Error("Execution requires a signer that can sign locally before broadcasting; use prepare mode for external wallets");
     const record: ExecutionRecord = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, chainId,
       status: "pending", operations: ops.map((op, index) => ({ index, op: { ...op }, status: "prepared" })) };
@@ -423,6 +519,8 @@ export class AgentekClient {
       try {
         const transaction = { to: entry.op.target, value: BigInt(entry.op.value), data: entry.op.data };
         const request = await bounded(wallet.prepareTransactionRequest(transaction));
+        const approved = Object.fromEntries(["chainId", "nonce", "gas", "gasPrice", "maxFeePerGas", "maxPriorityFeePerGas", "to", "value", "data", "type", "accessList"].filter(key => request[key] !== undefined).map(key => [key, request[key]]));
+        await this.authorizeAction("evm_transaction", { ...approved, batch: { mode: "sequential", index: entry.index, total: ops.length, operations: ops } }, chainId);
         const serialized = await bounded(wallet.signTransaction(request));
         entry.hash = keccak256(serialized as Hex);
         entry.status = "signed";
@@ -443,17 +541,31 @@ export class AgentekClient {
       } catch (error) {
         record.status = entry.status === "unknown" || entry.status === "submitted" || entry.status === "signed" ? "unknown" : "failed";
         await save().catch(() => undefined);
-        throw new TransactionExecutionError(`${error instanceof Error ? error.message : String(error)}. No further operations were submitted. Reconcile execution ${record.id} before retrying.`, wireValue(record));
+        throw new TransactionExecutionError(`${safeErrorMessage(error)}. No further operations were submitted. Reconcile execution ${record.id} before retrying.`, wireValue(record));
       }
     }
     record.status = "confirmed";
     try { await save(); }
-    catch (error) { throw new TransactionExecutionError(`All transactions confirmed, but the final journal update failed: ${String(error)}`, wireValue(record)); }
+    catch { throw new TransactionExecutionError("All transactions confirmed, but the final journal update failed; reconcile before retrying", wireValue(record)); }
     const hashes = record.operations.map(op => op.hash).join(";");
     return ops.length > 1 ? hashes + ";" : hashes;
   }
 
   public async executeSign(signs: Sign[], chainId: number): Promise<string[]> {
+    // Capture every signed field before the first asynchronous approval. Use the
+    // same canonical domain/schema validation as the socket signer.
+    const captured: Sign[] = signs.map(sign => {
+      if (isTypedDataSign(sign)) {
+        const typed = normalizeTypedData({ domain: sign.domain, types: sign.types, primaryType: sign.primaryType, message: sign.message });
+        return { type: "typed_data_sign", ...typed } as TypedDataSign;
+      }
+      if (isPersonalSign(sign)) {
+        const message = typeof sign.message === "string" ? sign.message : { raw: byteHex(typeof sign.message.raw === "string" ? sign.message.raw : bytesToHex(sign.message.raw)) };
+        if (typeof message === "string" && Buffer.from(message, "utf8").toString("utf8") !== message) throw new Error("Personal message must be valid Unicode text");
+        return { type: "personal_sign", message };
+      }
+      throw new Error("Unsupported sign operation type");
+    });
     const walletClient = this.getWalletClient(chainId);
     const account = walletClient?.account;
     if (!walletClient) {
@@ -462,16 +574,20 @@ export class AgentekClient {
 
     const signatures: string[] = [];
 
-    for (const sign of signs) {
+    for (const sign of captured) {
       let signature: string;
 
       if (isPersonalSign(sign)) {
+        await this.authorizeAction("signature", { ...wireValue(sign), digest: hashMessage(sign.message) }, chainId);
         // EIP-191 Personal Sign
         signature = await walletClient.signMessage({
           account,
           message: sign.message as SignableMessage,
         });
       } else if (isTypedDataSign(sign)) {
+        if (sign.domain.chainId === undefined || BigInt(sign.domain.chainId) !== BigInt(chainId)) throw new Error("Typed-data domain must match the execution chain");
+        const digest = hashTypedData({ domain: sign.domain, types: sign.types, primaryType: sign.primaryType, message: sign.message } as any);
+        await this.authorizeAction("signature", { ...wireValue(sign), digest }, chainId);
         // EIP-712 Typed Data Sign
         signature = await walletClient.signTypedData({
           account,
@@ -513,7 +629,7 @@ export class AgentekClient {
           results.signatures = [...(results.signatures ?? []), ...signatures]; completed.push({index, signatures});
         }
       } catch (error) {
-        throw new OperationExecutionError(`Operation ${index + 1} failed after ${completed.length} completed operations. Do not retry the whole batch; reconcile completed effects first. ${String(error)}`, index, completed,
+        throw new OperationExecutionError(`Operation ${index + 1} failed after ${completed.length} completed operations. Do not retry the whole batch; reconcile completed effects first.`, index, completed,
           error instanceof TransactionExecutionError ? error.execution : undefined);
       }
     }
@@ -628,7 +744,18 @@ export class AgentekClient {
     blockhash: string,
     lastValidBlockHeight: number,
   ): Promise<SolanaExecutionResult> {
+    const previous = this.solanaExecutionQueue;
+    const next = previous.catch(() => undefined).then(() => this.submitSolanaTransaction(transaction, blockhash, lastValidBlockHeight));
+    this.solanaExecutionQueue = next;
+    return next;
+  }
+
+  private async submitSolanaTransaction(
+    transaction: VersionedTransaction, blockhash: string, lastValidBlockHeight: number,
+  ): Promise<SolanaExecutionResult> {
     if (this.executionMode === "prepare") throw new Error("Client is in prepare mode");
+    if (this.solanaOutcomeUnknown) throw new Error("Reconcile the earlier Solana signature before submitting another transaction");
+    if (!this.solanaObserver) throw new Error("Durable onSolanaExecutionUpdated persistence is required before signing");
     const keypair = await this.getSolanaKeypair();
     if (!keypair) {
       throw new Error(
@@ -637,17 +764,40 @@ export class AgentekClient {
     }
 
     const connection = await this.getSolanaConnection();
+    if (!Number.isSafeInteger(lastValidBlockHeight) || lastValidBlockHeight < 0 || blockhash !== transaction.message.recentBlockhash) throw new Error("Solana confirmation lifetime does not match the transaction");
+    const unsigned = new Uint8Array(transaction.serialize());
+    const { VersionedTransaction } = await import("@solana/web3.js");
+    const capturedTransaction = VersionedTransaction.deserialize(unsigned);
+    const [genesisHash, fee] = await Promise.all([
+      this.awaitSolanaPreSubmission(connection.getGenesisHash(), "getGenesisHash"),
+      this.awaitSolanaPreSubmission(connection.getFeeForMessage(capturedTransaction.message), "getFeeForMessage"),
+    ]);
+    if (!Number.isSafeInteger(fee?.value) || fee.value < 0 || fee.value > 10_000_000) throw new Error("Solana fee is unknown or exceeds the 0.01 SOL fee ceiling");
+    await this.authorizeAction("solana_transaction", { transaction: Buffer.from(unsigned).toString("base64"), genesisHash, feeLamports: String(fee.value), blockhash, lastValidBlockHeight });
+    if (Buffer.from(transaction.serialize()).toString("base64") !== Buffer.from(unsigned).toString("base64")) throw new Error("Solana transaction changed during approval");
     transaction.sign([keypair]);
 
     // The signature is deterministic and already present locally. Preserve it
     // across every RPC failure so callers can reconcile instead of rebuilding
     // with a new blockhash and accidentally paying twice.
     const signature = encodeBase58(transaction.signatures[0]);
+    const signedBytes = new Uint8Array(transaction.serialize());
+    const record: SolanaExecutionRecord = { id: signature, signature, transaction: Buffer.from(signedBytes).toString("base64"), status: "signed", account: keypair.publicKey.toBase58(), genesisHash, blockhash, lastValidBlockHeight };
+    const save = async () => {
+      try { await this.solanaObserver!(wireValue(record)); }
+      catch { throw new SolanaExecutionError("Solana persistence failed; reconcile the stored signature before retrying", wireValue(record)); }
+    };
+    // Even a failed persistence callback can have written durable state or
+    // exposed signed bytes. Keep this client locked until reconciliation.
+    this.solanaOutcomeUnknown = true;
+    await save();
+    record.status = "unknown";
+    await save();
 
     const executionStartedAt = Date.now();
     const sendOutcome = await awaitSolanaRpcStage(
       connection.sendRawTransaction(
-        transaction.serialize(),
+        signedBytes,
         { maxRetries: 3 },
       ),
     );
@@ -655,12 +805,9 @@ export class AgentekClient {
       return { signature, confirmationStatus: "unknown" };
     }
     if (sendOutcome.kind === "error") {
-      const { SendTransactionError } = await import("@solana/web3.js");
-      if (sendOutcome.error instanceof SendTransactionError) {
-        // Simulation/preflight rejection is a definitive non-submission and
-        // should remain an actionable error rather than ambiguous success.
-        throw sendOutcome.error;
-      }
+      // web3.js uses SendTransactionError for every send RPC error, including
+      // unavailable nodes and "already processed" responses. Its class (or
+      // action=simulate message) does not prove that no submission occurred.
       return { signature, confirmationStatus: "unknown" };
     }
     const rpcSignature = sendOutcome.value;
@@ -671,6 +818,7 @@ export class AgentekClient {
       // identity rather than trusting RPC-controlled output.
       return { signature, confirmationStatus: "unknown" };
     }
+    record.status = "submitted"; await save();
 
     const confirmationOutcome = await awaitSolanaRpcStage(
       connection.confirmTransaction(
@@ -686,17 +834,17 @@ export class AgentekClient {
       return { signature, confirmationStatus: "submitted" };
     }
     const confirmation = confirmationOutcome.value;
-
-    if (confirmation.value.err) {
-      throw new Error(
-        `Solana transaction ${signature} failed: ${JSON.stringify(confirmation.value.err)}`,
-      );
+    const confirmationError = confirmation?.value?.err;
+    if (confirmationError === undefined || (confirmationError !== null && typeof confirmationError !== "object" && typeof confirmationError !== "string")) return { signature, confirmationStatus: "submitted" };
+    if (confirmationError !== null) {
+      record.status = "failed"; await save(); this.solanaOutcomeUnknown = false;
+      throw new SolanaExecutionError("Solana transaction failed; reconcile fees and effects before retrying", wireValue(record));
     }
-
+    record.status = "confirmed"; await save(); this.solanaOutcomeUnknown = false;
     return { signature, confirmationStatus: "confirmed" };
   }
 
-  public async execute(method: string, args: any): Promise<any> {
+  public async execute(method: string, args: any, context?: { requestId: string }): Promise<any> {
     const tool = this.tools.get(method);
     if (!tool) {
       throw new Error(`Tool ${method} not found`);
@@ -721,7 +869,28 @@ export class AgentekClient {
       throw new Error(JSON.stringify(validatedArgs.error));
     }
 
-    return wireValue(await tool.execute(this, validatedArgs.data));
+    const capability = tool.capabilities ?? toolCapabilities(method);
+    const sideEffects = this.executionMode === "execute" && capability.execution === "conditional";
+    let requestId: string | undefined, fingerprint: string | undefined;
+    if (sideEffects) {
+      requestId = context?.requestId;
+      if (!requestId || !/^[a-zA-Z0-9._-]{1,128}$/.test(requestId)) throw new Error("Side-effecting tool calls require a stable host requestId");
+      if (!this.requestStore) throw new Error("A durable requestStore is required for side-effecting tool calls");
+      const solanaAccount = this.solanaConfig?.privateKey || this.solanaConfig?.address ? await this.getSolanaAddress() : null;
+      const networks = { evmChains: this.chains.map(chain => chain.id), solanaRpc: this.solanaConfig ? this.getSolanaRpcUrl() : null };
+      fingerprint = keccak256(new TextEncoder().encode(JSON.stringify(wireValue([method, validatedArgs.data, await this.getAddress(), solanaAccount, networks]))));
+      const existing = await this.requestStore.claim(requestId, fingerprint);
+      if (existing) {
+        if (existing.fingerprint !== fingerprint) throw new Error("requestId is already bound to a different action");
+        if (existing.state !== "complete") throw new Error("The earlier request has an unresolved outcome; reconcile it before retrying");
+        return sanitizeToolOutput(existing.result, this);
+      }
+    }
+    try {
+      const result = sanitizeToolOutput(wireValue(await tool.execute(this, validatedArgs.data)), this);
+      if (requestId) await this.requestStore!.complete(requestId, fingerprint!, result);
+      return result;
+    } catch (error) { throw this.safeError(error); }
   }
 }
 
@@ -754,7 +923,17 @@ export function createTool<T extends z.ZodObject<any, any, any, any>, R>({
         if (!Number.isSafeInteger(parsed.chainId) || parsed.chainId <= 0) throw new Error("Invalid chainId");
         if (supportedChains?.length && !supportedChains.some(chain => chain.id === parsed.chainId)) throw new Error("Chain not supported by tool");
       }
-      return execute(client, parsed);
+      try {
+        if (toolCapabilities(name).effect === "publish") {
+          if (typeof client?.authorizeAction !== "function") throw new Error("A trusted host authorization callback is required for publication");
+          await client.authorizeAction("publish", { tool: name, arguments: parsed });
+        }
+        return sanitizeToolOutput(await execute(client, parsed), client);
+      } catch (error) {
+        if (typeof client?.safeError === "function") throw client.safeError(error);
+        if (error && typeof error === "object" && ("shortMessage" in error || "metaMessages" in error)) throw sanitizeToolError(error, client);
+        throw new Error(sanitizeToolOutput(error instanceof Error ? error.message : "Tool execution failed", client));
+      }
     },
     capabilities: toolCapabilities(name),
     supportedChains,
@@ -768,3 +947,5 @@ export function createToolCollection(tools: BaseTool[]): BaseTool[] {
 export { wireValue, failedResult } from "./utils/wire.js";
 
 export { parseExactUnits } from "./utils/exact.js";
+export { safeErrorMessage, sanitizeToolOutput, sanitizeToolError } from "./utils/safe-errors.js";
+export { normalizeTypedData } from "./utils/signing.js";

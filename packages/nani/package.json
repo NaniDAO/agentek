@@ -7,7 +7,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "pnpm typecheck && bun build --minify --external @solana/web3.js --external @solana/spl-token jsc-entry.ts --outfile dist/nani-tools.js",
+    "build": "pnpm typecheck && bun build --minify --external @solana/web3.js jsc-entry.ts --outfile dist/nani-tools.js",
     "typecheck": "tsc -p tsconfig.check.json"
   },
   "dependencies": {

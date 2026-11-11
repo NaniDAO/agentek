@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeErrorMessage } from "../utils/safe-errors.js";
 import { decodeFunctionData, hashTypedData, parseAbi, type Address, type Hex } from "viem";
 import { createTool } from "../client.js";
 import { abiWord, byteHex, identityAddress, quantitySchema, uint256, dynamicBytes } from "../utils/exact.js";
@@ -107,7 +108,7 @@ export const observeGuardianQueue = createTool({ name: "observeGuardianQueue", d
           discovered.set(entry.hash, entry);
         }
         succeeded.push(r); evidence.push({ range: r, status: "verified" });
-      } catch (err) { failed.push(r); evidence.push({ range: r, status: "failure", reason: err instanceof Error ? err.message : "Queue range read failed" }); }
+      } catch (err) { failed.push(r); evidence.push({ range: r, status: "failure", reason: safeErrorMessage(err) }); }
     }
     let covered = mergeCoverage([...(previous?.coveredRanges ?? []), ...succeeded]);
     let gaps = subtractCoverage([...(previous?.failedRanges ?? []), ...failed], succeeded);

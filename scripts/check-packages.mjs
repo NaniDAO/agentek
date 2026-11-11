@@ -45,6 +45,10 @@ try {
     packages.push({ source, destination, packed });
   }
 
+  const shared = packages.find(p => p.packed.name === '@agentek/tools');
+  const zodPatch = 'patches/zod@3.25.76.patch';
+  assert.equal(readFileSync(join(shared.destination, zodPatch), 'utf8'), readFileSync(join(shared.source, zodPatch), 'utf8'), 'Packed tools must include the exact Zod security backport');
+
   // Use installed external dependencies, but resolve all @agentek packages to
   // the extracted tarballs so workspace links cannot hide packaging failures.
   for (const { source, packed } of packages) {

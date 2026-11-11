@@ -6,8 +6,11 @@ const owner = "0x1111111111111111111111111111111111111111";
 const word = (v: bigint) => v.toString(16).padStart(64, "0");
 let data = "0x" + [9007199254740993n, 1n, 0n, 8000n, 7500n, 1000000000000000000n].map(word).join("");
 let code = "0x6000", reads = 0, reorg = false, duplicate = false, malformed = false;
+const observationTimestamp = BigInt(Math.floor(Date.now() / 1000));
 const rpc = {
   getBlockNumber: async () => 16n,
+  getChainId: async () => 1,
+  getBlock: async (_args: any) => ({ number: 16n, hash: "0x" + "a".repeat(64), timestamp: observationTimestamp }),
   getCode: async (args: any) => { assert.equal(args.blockNumber, 16n); return code; },
   request: async () => ({ number: "0x10", hash: "0x" + ((++reads % 2 === 0 && reorg) ? "b" : "a").repeat(64) }),
   call: async (args: any) => {

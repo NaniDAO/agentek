@@ -1,3 +1,4 @@
+import { providerJSON } from "../utils/fetch.js";
 import z from "zod";
 import { createTool } from "../client.js";
 import type { BaseTool, AgentekClient } from "../client.js";
@@ -16,6 +17,9 @@ export function createTallyProposalsTool(tallyApiKey: string): BaseTool {
         .describe("The DAO or space identifier e.g. uniswap, hai, nounsdao"),
       limit: z
         .number()
+        .int()
+        .min(1)
+        .max(100)
         .optional()
         .default(10)
         .describe("Maximum number of proposals to fetch"),
@@ -78,13 +82,12 @@ export function createTallyProposalsTool(tallyApiKey: string): BaseTool {
         }
       `;
 
-      const proposalsResponse = await fetch(TALLY_API_URL, {
+      const result = await providerJSON(TALLY_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Api-Key": tallyApiKey,
         },
-        signal: AbortSignal.timeout(TALLY_TIMEOUT_MS),
         body: JSON.stringify({
           query: getProposalsQuery,
           variables: {
@@ -92,11 +95,9 @@ export function createTallyProposalsTool(tallyApiKey: string): BaseTool {
             limit: args.limit || 10,
           },
         }),
-      });
-
-      const result = await proposalsResponse.json();
-      if (result.errors) {
-        throw new Error(`Tally API Error: ${JSON.stringify(result.errors)}`);
+      }, "Tally request failed", {timeoutMs: TALLY_TIMEOUT_MS});
+      if (!result || typeof result !== "object" || !result.data || result.errors) {
+        throw new Error("Tally API returned an unsuccessful response");
       }
       return result.data;
     },
@@ -131,19 +132,16 @@ export function createTallyChainsTool(tallyApiKey: string): BaseTool {
         }
       `;
 
-      const response = await fetch(TALLY_API_URL, {
+      const result = await providerJSON(TALLY_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Api-Key": tallyApiKey,
         },
-        signal: AbortSignal.timeout(TALLY_TIMEOUT_MS),
         body: JSON.stringify({ query }),
-      });
-
-      const result = await response.json();
-      if (result.errors) {
-        throw new Error(`Tally API Error: ${JSON.stringify(result.errors)}`);
+      }, "Tally request failed", {timeoutMs: TALLY_TIMEOUT_MS});
+      if (!result || typeof result !== "object" || !result.data || result.errors) {
+        throw new Error("Tally API returned an unsuccessful response");
       }
       return result.data;
     },
@@ -189,13 +187,12 @@ export function createTallyUserDaosTool(tallyApiKey: string): BaseTool {
         }
       `;
 
-      const response = await fetch(TALLY_API_URL, {
+      const result = await providerJSON(TALLY_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Api-Key": tallyApiKey,
         },
-        signal: AbortSignal.timeout(TALLY_TIMEOUT_MS),
         body: JSON.stringify({
           query,
           variables: {
@@ -207,12 +204,10 @@ export function createTallyUserDaosTool(tallyApiKey: string): BaseTool {
             },
           },
         }),
-      });
+      }, "Tally request failed", {timeoutMs: TALLY_TIMEOUT_MS});
 
-      const result = await response.json();
-
-      if (result.errors) {
-        throw new Error(`Tally API Error: ${JSON.stringify(result.errors)}`);
+      if (!result || typeof result !== "object" || !result.data || result.errors) {
+        throw new Error("Tally API returned an unsuccessful response");
       }
 
       return result.data;

@@ -183,14 +183,14 @@ describe("Solana market clients", () => {
   it("surfaces Jupiter HTTP and structured order errors", async () => {
     await expect(
       searchJupiterTokens("BONK", "key-1", async () => jsonResponse({}, 400)),
-    ).rejects.toThrow(/400 Bad Request/);
+    ).rejects.toThrow(/^Jupiter token search failed: HTTP 400$/);
     await expect(
       getJupiterSwapOrder(
         { inputMint: "SOL", outputMint: "USDC", amount: "1" },
         "key-1",
-        async () => jsonResponse({ errorCode: 1, errorMessage: "No route" }),
+        async () => jsonResponse({ errorCode: 1, errorMessage: "No route private-provider-diagnostic" }),
       ),
-    ).rejects.toThrow(/No route/);
+    ).rejects.toThrow(/^Jupiter swap order failed: provider rejected order$/);
   });
 
   it("filters Dexscreener profiles and paid promotions to Solana", async () => {

@@ -1,3 +1,4 @@
+import { providerJSON } from "../utils/fetch.js";
 import z from "zod";
 import { createTool } from "../client.js";
 import type { BaseTool, AgentekClient } from "../client.js";
@@ -12,18 +13,11 @@ const DEFAULT_USER_FIELDS =
 const DEFAULT_EXPANSIONS = "author_id";
 
 async function xFetch(url: string, bearerToken: string | (() => Promise<string>)): Promise<any> {
-  const response = await fetch(url, {
+  return providerJSON(url, {
     headers: {
       Authorization: `Bearer ${typeof bearerToken === "function" ? await bearerToken() : bearerToken}`,
     },
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`X API error ${response.status}: ${body}`);
-  }
-
-  return response.json();
+  }, "X API request failed", {maximumBytes: 2 * 1024 * 1024});
 }
 
 export function createSearchRecentTweetsTool(

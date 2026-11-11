@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { execFile, spawn } from "node:child_process";
 import { join } from "node:path";
-import { mkdtempSync, rmSync, unlinkSync, existsSync, writeFileSync, chmodSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { createServer, connect, type Server } from "node:net";
+import { connect } from "node:net";
 import { encrypt, decrypt } from "./signer/crypto.js";
 import { defaultPolicy, evaluatePolicy } from "./signer/policy.js";
 import { createDaemonAccount } from "./signer/client.js";
 import { startDaemon, stopDaemon } from "./signer/daemon.js";
 import { privateKeyToAccount } from "viem/accounts";
-import type { Hex, SignableMessage, TransactionSerializable, TypedDataDefinition } from "viem";
-import type { DecryptedPayload, JsonRpcRequest, JsonRpcResponse, AgentekKeyfile } from "./signer/protocol.js";
+import type { Hex } from "viem";
+import type { DecryptedPayload, JsonRpcRequest, JsonRpcResponse } from "./signer/protocol.js";
 import { RPC_METHODS, RPC_ERRORS, getSocketPath } from "./signer/protocol.js";
 
 // Use path.resolve to avoid naming collision with Promise resolve
@@ -149,8 +149,9 @@ describe("Signer — crypto", () => {
 // ── Unit: policy ────────────────────────────────────────────────────────────
 
 describe("Signer — policy", () => {
-  it("should allow a valid transaction within limits", () => {
+  it("should allow a preapproved recipient transaction within limits", () => {
     const policy = defaultPolicy();
+    policy.contracts = { "0x1234567890abcdef1234567890abcdef12345678": ["*"] };
     const result = evaluatePolicy(policy, {
       chainId: 1,
       to: "0x1234567890abcdef1234567890abcdef12345678",
@@ -253,6 +254,7 @@ describe("Signer — policy", () => {
 
   it("should require approval above threshold (50% of 0.1 ETH = 0.05 ETH)", () => {
     const policy = defaultPolicy();
+    policy.contracts = { "0x1234567890abcdef1234567890abcdef12345678": ["*"] };
     const result = evaluatePolicy(policy, {
       chainId: 1,
       to: "0x1234567890abcdef1234567890abcdef12345678",
@@ -262,8 +264,9 @@ describe("Signer — policy", () => {
     expect(result.needsApproval).toBe(true);
   });
 
-  it("should not require approval below threshold", () => {
+  it("should not require approval below threshold for an explicitly preapproved recipient", () => {
     const policy = defaultPolicy();
+    policy.contracts = { "0x1234567890abcdef1234567890abcdef12345678": ["*"] };
     const result = evaluatePolicy(policy, {
       chainId: 1,
       to: "0x1234567890abcdef1234567890abcdef12345678",
@@ -302,7 +305,6 @@ describe("Signer — policy", () => {
 
 describe("Signer — daemon integration", () => {
   let tmpDir: string;
-  let server: Server | null = null;
   let prevConfigDir: string | undefined;
 
   const TEST_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as Hex;
@@ -311,6 +313,10 @@ describe("Signer — daemon integration", () => {
   function sendRpc(socketPath: string, method: string, params?: unknown): Promise<JsonRpcResponse> {
     return new Promise((resolve, reject) => {
       const id = Math.floor(Math.random() * 10000);
+      if (method === RPC_METHODS.SIGN_TRANSACTION && params && typeof params === "object") {
+        const tx = params as Record<string, unknown>;
+        params = { nonce: 0, gas: "21000", ...(tx.maxFeePerGas === undefined ? { gasPrice: "1" } : {}), ...tx };
+      }
       const request: JsonRpcRequest = { jsonrpc: "2.0", id, method, params };
 
       const socket = connect(socketPath, () => {
@@ -351,123 +357,21 @@ describe("Signer — daemon integration", () => {
   });
 
   afterEach(() => {
-    if (server) {
-      server.close();
-      server = null;
-    }
+    stopDaemon();
     try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
     if (prevConfigDir === undefined) delete process.env.AGENTEK_CONFIG_DIR;
     else process.env.AGENTEK_CONFIG_DIR = prevConfigDir;
   });
 
-  /** Start a minimal in-process daemon on a Unix socket for testing. */
-  function startTestDaemon(
+  /** Exercise the production server and handler, with an explicit approving operator. */
+  async function startTestDaemon(
     policyMutator?: (policy: ReturnType<typeof defaultPolicy>) => void,
   ): Promise<string> {
-    const socketPath = join(tmpDir, "signer.sock");
-    const account = privateKeyToAccount(TEST_KEY);
     const policy = defaultPolicy();
-    policy.requireApproval = "never"; // no interactive prompts in tests
+    policy.requireApproval = "never";
     policyMutator?.(policy);
-
-    return new Promise((promiseResolve, promiseReject) => {
-      if (existsSync(socketPath)) {
-        try { unlinkSync(socketPath); } catch {}
-      }
-
-      server = createServer((conn) => {
-        let buf = "";
-        conn.on("data", (chunk) => {
-          buf += chunk.toString();
-          let idx: number;
-          while ((idx = buf.indexOf("\n")) !== -1) {
-            const line = buf.slice(0, idx);
-            buf = buf.slice(idx + 1);
-            if (!line.trim()) continue;
-            handleMessage(line, account, policy).then((res) => {
-              conn.write(JSON.stringify(res) + "\n");
-            });
-          }
-        });
-      });
-
-      server.on("error", promiseReject);
-
-      server.listen(socketPath, () => {
-        try { chmodSync(socketPath, 0o600); } catch {}
-        promiseResolve(socketPath);
-      });
-    });
-  }
-
-  async function handleMessage(
-    line: string,
-    account: ReturnType<typeof privateKeyToAccount>,
-    policy: ReturnType<typeof defaultPolicy>,
-  ): Promise<JsonRpcResponse> {
-    let request: JsonRpcRequest;
-    try {
-      request = JSON.parse(line);
-    } catch {
-      return { jsonrpc: "2.0", id: 0, error: { code: RPC_ERRORS.PARSE_ERROR, message: "Invalid JSON" } };
-    }
-
-    const { id, method, params } = request;
-
-    switch (method) {
-      case RPC_METHODS.PING:
-        return { jsonrpc: "2.0", id, result: "pong" };
-
-      case RPC_METHODS.GET_ADDRESS:
-        return { jsonrpc: "2.0", id, result: account.address };
-
-      case RPC_METHODS.SIGN_TRANSACTION: {
-        const tx = params as any;
-        if (!tx) return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.INVALID_PARAMS, message: "Missing params" } };
-
-        let policyResult;
-        try {
-          policyResult = evaluatePolicy(policy, tx);
-        } catch (err: any) {
-          return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.INTERNAL_ERROR, message: err.message } };
-        }
-        if (!policyResult.allowed) {
-          return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.POLICY_DENIED, message: policyResult.reason || "Policy denied" } };
-        }
-
-        try {
-          const signed = await account.signTransaction(tx as TransactionSerializable);
-          return { jsonrpc: "2.0", id, result: signed };
-        } catch (err: any) {
-          return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.INTERNAL_ERROR, message: err.message } };
-        }
-      }
-
-      case RPC_METHODS.SIGN_MESSAGE: {
-        const p = params as { message: SignableMessage } | undefined;
-        if (!p?.message) return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.INVALID_PARAMS, message: "Missing message" } };
-        try {
-          const sig = await account.signMessage({ message: p.message });
-          return { jsonrpc: "2.0", id, result: sig };
-        } catch (err: any) {
-          return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.INTERNAL_ERROR, message: err.message } };
-        }
-      }
-
-      case RPC_METHODS.SIGN_TYPED_DATA: {
-        const p = params as TypedDataDefinition | undefined;
-        if (!p) return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.INVALID_PARAMS, message: "Missing typed data" } };
-        try {
-          const sig = await account.signTypedData(p);
-          return { jsonrpc: "2.0", id, result: sig };
-        } catch (err: any) {
-          return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.INTERNAL_ERROR, message: err.message } };
-        }
-      }
-
-      default:
-        return { jsonrpc: "2.0", id, error: { code: RPC_ERRORS.METHOD_NOT_FOUND, message: `Unknown method: ${method}` } };
-    }
+    await startDaemon({ privateKey: TEST_KEY, policy }, { approve: async () => true });
+    return getSocketPath();
   }
 
   it("should respond to ping", async () => {
@@ -519,7 +423,7 @@ describe("Signer — daemon integration", () => {
       type: "legacy",
     });
     expect(res.error).toBeDefined();
-    expect(res.error!.code).toBe(RPC_ERRORS.POLICY_DENIED);
+    expect(res.error!.code).toBe(RPC_ERRORS.INVALID_PARAMS);
     expect(res.error!.message).toContain("chainId is required");
   }, 10_000);
 
@@ -619,17 +523,9 @@ describe("Signer — daemon integration", () => {
     expect(actual).toBe(expected);
   }, 10_000);
 
-  it("should return INTERNAL_ERROR when policy is invalid", async () => {
-    const socketPath = await startTestDaemon((policy) => {
-      policy.maxValuePerTx = "not-an-eth-amount";
-    });
-    const res = await sendRpc(socketPath, RPC_METHODS.SIGN_TRANSACTION, {
-      chainId: 1,
-      to: "0x1234567890abcdef1234567890abcdef12345678",
-      value: "1",
-    });
-    expect(res.error).toBeDefined();
-    expect(res.error!.code).toBe(RPC_ERRORS.INTERNAL_ERROR);
+  it("rejects invalid policy before opening the signer socket", async () => {
+    await expect(startTestDaemon(policy => { policy.maxValuePerTx = "not-an-eth-amount"; })).rejects.toThrow();
+    expect(existsSync(getSocketPath())).toBe(false);
   }, 10_000);
 });
 

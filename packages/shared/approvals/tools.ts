@@ -1,3 +1,4 @@
+import { providerJSON } from "../utils/fetch.js";
 import { z } from "zod";
 import type { Address } from "viem";
 import { erc20Abi, formatUnits, maxUint256, encodeFunctionData } from "viem";
@@ -59,12 +60,7 @@ async function fetchApprovalLogs(
     url.searchParams.set("page", String(page));
     url.searchParams.set("offset", "1000");
 
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      throw new Error(`Blockscout getLogs failed (${res.status}): ${await res.text()}`);
-    }
-
-    const data = (await res.json()) as EtherscanLogsResponse;
+    const data = await providerJSON<EtherscanLogsResponse>(url, {}, "Blockscout approval discovery failed");
     if (data.status !== "1") {
       if (data.status === "0" && /no (records|transactions) found/i.test(data.message) && Array.isArray(data.result) && data.result.length === 0) break;
       throw new Error("Approval discovery failed; coverage is unknown. Use bounded permission discovery.");

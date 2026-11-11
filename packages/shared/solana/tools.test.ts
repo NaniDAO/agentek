@@ -267,18 +267,16 @@ describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Solana intents", () 
   it("refuses an SPL transfer to a token account rather than a wallet", async () => {
     const watchOnly = createSolanaTestClient({ address: FUNDED_ADDRESS });
     const { PublicKey } = await import("@solana/web3.js");
-    const { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } = await import(
-      "@solana/spl-token"
-    );
+    const { associatedTokenAddress } = await import("./spl.js");
+    const { TOKEN_PROGRAM_ID } = await import("./constants.js");
 
     // What a block explorer shows for a token holding, and a routine thing to
     // paste in place of the wallet that owns it. It is a PDA, so it is a valid
     // 32-byte key that passes address validation but can never sign.
-    const tokenAccount = getAssociatedTokenAddressSync(
+    const tokenAccount = associatedTokenAddress(
       new PublicKey(SOLANA_TOKENS.USDC),
       new PublicKey(FUNDED_ADDRESS),
-      false,
-      TOKEN_PROGRAM_ID,
+      new PublicKey(TOKEN_PROGRAM_ID),
     ).toBase58();
 
     expect(PublicKey.isOnCurve(new PublicKey(tokenAccount).toBytes())).toBe(

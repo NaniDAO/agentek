@@ -18,7 +18,7 @@ async function main() {
   let privateKey = process.env.PRIVATE_KEY;
   if (!privateKey) {
     privateKey = generatePrivateKey();
-    console.log("Generated PRIVATE_KEY:", privateKey);
+    console.log("Using a temporary unfunded account in prepare mode.");
   }
 
   const account = privateKeyToAccount(privateKey as Hex);
@@ -32,6 +32,7 @@ async function main() {
 
   // 2) Initialize Toolkit (with your Tools)
   const toolkit = new AgentekToolkit({
+    executionMode: "prepare",
     transports: [http()],
     chains,
     accountOrAddress: account,

@@ -144,7 +144,7 @@ describe.runIf(hasAnvil)("Gym Agentek client", () => {
       amount: "0.25",
       to: RECIPIENT,
       chainId: 1,
-    });
+    }, { requestId: "gym-transfer-1" });
     expect(result).toMatchObject({ chain: 1 });
     expect(result.hash).toMatch(/^0x[0-9a-f]{64}$/i);
 

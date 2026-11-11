@@ -1,3 +1,4 @@
+import { providerJSON } from "../utils/fetch.js";
 import {
   createSearchRecentTweetsTool,
   createGetTweetByIdTool,
@@ -7,31 +8,22 @@ import {
 } from "./tools.js";
 import { createToolCollection } from "../client.js";
 import type { BaseTool } from "../client.js";
-import { TwitterApi } from "twitter-api-v2";
+import { boundedHomeTimelineClient } from "./transport.js";
 
 async function fetchBearerToken(
   apiKey: string,
   apiKeySecret: string,
 ): Promise<string> {
   const credentials = btoa(`${apiKey}:${apiKeySecret}`);
-  const response = await fetch("https://api.x.com/oauth2/token", {
+  const data = await providerJSON("https://api.x.com/oauth2/token", {
     method: "POST",
     headers: {
       Authorization: `Basic ${credentials}`,
       "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
     },
     body: "grant_type=client_credentials",
-    signal: AbortSignal.timeout(15000),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      `Failed to obtain X Bearer Token (${response.status}): ${body}`,
-    );
-  }
-
-  const data = await response.json();
+  }, "Failed to obtain X Bearer Token", {maximumBytes: 64 * 1024});
+  if (!data || typeof data.access_token !== "string" || !data.access_token || data.access_token.length > 4096) throw new Error("Invalid X token response");
   return data.access_token;
 }
 
@@ -68,7 +60,7 @@ export async function twitterTools(
     config.xAccessToken &&
     config.xAccessTokenSecret
   ) {
-    const userClient = new TwitterApi({
+    const userClient = boundedHomeTimelineClient({
       appKey: config.xApiKey,
       appSecret: config.xApiKeySecret,
       accessToken: config.xAccessToken,

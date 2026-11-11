@@ -9,7 +9,7 @@ const valid = {scheme: "exact", network: "eip155:8453", asset: TOKEN_REGISTRY.US
   amount: "100000", payTo: address, maxTimeoutSeconds: 60, extra: {name: "USD Coin", version: "2"}};
 function fixture(requirement = valid) {
   const signTypedData = vi.fn(async () => `0x${"11".repeat(65)}`);
-  const client: any = {getWalletClient: () => ({chain: {id: 8453}, account: {address, signTypedData}}), getPublicClient: () => ({readContract: vi.fn()})};
+  const client: any = {authorizeAction: vi.fn(async () => undefined), getWalletClient: () => ({chain: {id: 8453}, account: {address, signTypedData}}), getPublicClient: () => ({readContract: vi.fn()})};
   const payment = {x402Version: 2, resource: {url: "https://paid.example/data", description: "test", mimeType: "application/json"}, accepts: [requirement]};
   vi.mocked(publicFetch).mockResolvedValueOnce(new Response("{}", {status: 402, headers: {"payment-required": Buffer.from(JSON.stringify(payment)).toString("base64")}})).mockResolvedValueOnce(Response.json({ok: true}));
   return {client, signTypedData};
@@ -29,6 +29,7 @@ describe("x402 signing boundary", () => {
     const {client, signTypedData} = fixture();
     const result = await x402FetchTool.execute(client, {url: "https://paid.example/data", maxPaymentUsd: 0.1});
     expect(signTypedData).toHaveBeenCalledTimes(1);
+    expect(client.authorizeAction).toHaveBeenCalledWith("payment", expect.objectContaining({amountRaw: "100000"}), 8453);
     expect(signTypedData.mock.calls[0][0]).toMatchObject({domain: {chainId: 8453, verifyingContract: valid.asset}, primaryType: "TransferWithAuthorization", message: {value: 100000n}});
     expect(result).toMatchObject({status: 200, authorizationCreated: true, settlement: "unverified"});
   });

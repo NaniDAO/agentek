@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createTool, AgentekClient } from "../client.js";
-import { assertOkResponse } from "../utils/fetch.js";
+import { providerJSON } from "../utils/fetch.js";
 
 const getLatestCoindeskNewsToolParams = z.object({
   limit: z.number().min(1).max(100).default(10).describe("Number of articles to fetch (1-100). Default: 10"),
@@ -38,11 +38,9 @@ export const createCoindeskNewsTool = (apiKey: string) => {
       };
 
       try {
-        const response = await fetch(url.toString(), options);
-        await assertOkResponse(response, "Coindesk API error");
-        const json = await response.json();
+        const json = await providerJSON(url, options, "CoinDesk API request failed");
         if (json?.Err && Object.keys(json.Err).length > 0) {
-          throw new Error(json.Err.message || JSON.stringify(json.Err));
+          throw new Error("CoinDesk returned an unsuccessful response");
         }
         // The API answers with a top-level `Data` array. Reading `json.articles`
         // always yielded undefined, so a successful call returned an empty list
@@ -53,7 +51,7 @@ export const createCoindeskNewsTool = (apiKey: string) => {
         return { articles };
       } catch (err) {
         throw new Error(
-          `Failed to fetch latest Coindesk news articles: ${err}`,
+          "Failed to fetch latest CoinDesk news articles",
         );
       }
     },

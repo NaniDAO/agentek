@@ -9,6 +9,7 @@ import {
 } from "./constants.js";
 import { Address, erc721Abi } from "viem";
 import { addressSchema } from "../utils.js";
+import { beginChainObservation, finishChainObservation, observationIdentity } from "../utils/chainObservation.js";
 
 const getUniV3Pool = createTool({
   name: "getUniV3Pool",
@@ -81,49 +82,61 @@ const getPositionDetails = createTool({
 
 const getUserPositions = createTool({
   name: "getUserPositions",
-  description: "Gets all Uniswap V3 LP positions owned by a user. Defaults to the connected wallet if no user address is provided.",
+  description: "Reads one bounded page of Uniswap V3 LP positions at a fresh checked block. Defaults to the connected wallet. Other pages require fresh ownership checks; returned positions are not executable liquidity or implementation verification.",
   supportedChains,
   parameters: z.object({
-    chainId: z.number().describe("Chain ID to query (e.g. 1, 8453, 42161)"),
+    chainId: z.number().int().positive().safe().describe("Chain ID to query (e.g. 1, 8453, 42161)"),
     offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
     limit: z.number().int().min(1).max(50).default(20),
-    user: z.string().optional().describe("The wallet address to check. Omit to use the connected wallet."),
+    user: addressSchema.optional().describe("The wallet address to check. Omit to use the connected wallet."),
   }),
   execute: async (client, { chainId, user, offset, limit }) => {
     const publicClient = client.getPublicClient(chainId);
     const owner = user || (await client.getAddress());
+    const snapshot = await beginChainObservation(publicClient, chainId);
+    const manager = getPositionManagerAddress(chainId);
 
     const balance = await publicClient.readContract({
-      address: getPositionManagerAddress(chainId),
+      address: manager,
       abi: nonfungiblePositionManagerAbi,
       functionName: "balanceOf",
       args: [owner as Address],
+      blockNumber: snapshot.blockNumber,
     });
+    if (typeof balance !== "bigint" || balance < 0n) throw new Error("Position balance unavailable; not zero");
 
     const tokenIds = await Promise.all(
       Array.from({ length: Number(balance > BigInt(offset) ? (balance - BigInt(offset) > BigInt(limit) ? BigInt(limit) : balance - BigInt(offset)) : 0n) }).map((_, i) =>
         publicClient.readContract({
-          address: getPositionManagerAddress(chainId),
+          address: manager,
           abi: nonfungiblePositionManagerAbi,
           functionName: "tokenOfOwnerByIndex",
-          args: [owner as Address, BigInt(offset + i)],
+          args: [owner as Address, BigInt(offset) + BigInt(i)],
+          blockNumber: snapshot.blockNumber,
         }),
       ),
     );
+    if (tokenIds.some(id => typeof id !== "bigint" || id < 0n) || new Set(tokenIds.map(String)).size !== tokenIds.length) throw new Error("Position enumeration is unavailable or returned duplicate IDs");
 
     const positionDetails = await Promise.all(
       tokenIds.map((tokenId) =>
         publicClient.readContract({
-          address: getPositionManagerAddress(chainId),
+          address: manager,
           abi: nonfungiblePositionManagerAbi,
           functionName: "positions",
           args: [tokenId],
+          blockNumber: snapshot.blockNumber,
         }),
       ),
     );
+    await finishChainObservation(publicClient, snapshot);
+    const next = BigInt(offset) + BigInt(tokenIds.length);
+    if (next < balance && next > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Position pagination exceeds safe offset bounds");
 
     return clean({
-      total: balance.toString(), offset, nextOffset: BigInt(offset + tokenIds.length) < balance ? offset + tokenIds.length : null,
+      ...observationIdentity(snapshot), owner: owner.toLowerCase(), manager: manager.toLowerCase(),
+      total: balance.toString(), offset, nextOffset: next < balance ? Number(next) : null,
+      observedAt: new Date().toISOString(),
       positions: tokenIds.map((id, index) => ({
         tokenId: id.toString(),
         token0: positionDetails[index][2],

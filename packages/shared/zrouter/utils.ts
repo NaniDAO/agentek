@@ -3,7 +3,7 @@ import { ResolvedToken, ZToken } from "./types.js";
 import { Address, erc20Abi } from "viem";
 import { parseExactUnits, precision, uint256 } from "../utils/exact.js";
 import { TOKEN_REGISTRY } from "../resolveToken/constants.js";
-import { assertOkResponse, readBoundedJSON } from "../utils/fetch.js";
+import { providerJSON } from "../utils/fetch.js";
 
 type TokenListEntry = {
   chainId: number;
@@ -25,11 +25,7 @@ async function loadTokenList(): Promise<TokenListEntry[]> {
   const now = Date.now();
   if (_tokenListCache && now - _tokenListCache.fetchedAt < 5 * 60_000) return _tokenListCache.tokens;
 
-  const res = await fetch("https://assets.zamm.finance/tokenlist.json", {
-    signal: AbortSignal.timeout(12_000),
-  });
-  await assertOkResponse(res, "Failed to fetch tokenlist");
-  const json: any = await readBoundedJSON(res, 8 * 1024 * 1024);
+  const json = await providerJSON("https://assets.zamm.finance/tokenlist.json", {}, "Token list request failed", {maximumBytes: 8 * 1024 * 1024, timeoutMs: 12_000});
   if (!Array.isArray(json?.tokens) || json.tokens.length > 20000) throw new Error("Malformed or oversized token list");
   const tokens: TokenListEntry[] = json.tokens;
   _tokenListCache = { fetchedAt: now, tokens };

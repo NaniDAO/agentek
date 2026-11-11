@@ -1,5 +1,6 @@
 import { encodeFunctionData, type Address, type Hex, type PublicClient } from "viem";
 import { byteHex, dynamicBytes } from "../utils/exact.js";
+import { safeErrorMessage } from "../utils/safe-errors.js";
 
 /**
  * Direct on-chain routing via the zQuoter contract.
@@ -145,7 +146,7 @@ export async function buildBestSwap(
   } catch (err) {
     console.warn(
       `[zrouter] zQuoter.buildBestSwap failed on chain ${params.chainId}: ${
-        err instanceof Error ? err.message : String(err)
+        safeErrorMessage(err)
       }`
     );
     return null;

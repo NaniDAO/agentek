@@ -6,7 +6,8 @@ import { formatUnits, maxUint256 } from "viem";
 /** Aave scales health factors, and most user-facing amounts, by 1e18. */
 const WAD = 10n ** 18n;
 
-const formatRate = (rate: bigint) =>
+// These are raw annualized ray rates. No compounding/APY calculation is performed.
+const formatAnnualizedRate = (rate: bigint) =>
   `${(Number(formatUnits(rate, 27)) * 100).toFixed(2)}%`;
 const isZeroAddress = (address: string) =>
   address === "0x0000000000000000000000000000000000000000";
@@ -94,7 +95,7 @@ export const getAaveUserData = createTool({
 export const getAaveReserveData = createTool({
   name: "getAaveReserveData",
   description:
-    "Fetches reserve data for a given asset from Aave including available liquidity, total stable and variable debt, and interest rates.",
+    "Fetches Aave reserve configuration, token addresses, indexes and raw annualized ray interest rates displayed as APR. Compounding is not calculated; deprecated APY fields are null.",
   parameters: z.object({
     asset: z.string().describe("The token contract address of the asset."),
     chainId: z.number().describe("Chain ID where Aave is deployed."),
@@ -141,9 +142,13 @@ export const getAaveReserveData = createTool({
               : "ACTIVE"
           : "INACTIVE",
         borrowingEnabled: readConfigFlag(result.configuration.data, 58),
-        supplyAPY: formatRate(result.currentLiquidityRate),
-        variableBorrowAPY: formatRate(result.currentVariableBorrowRate),
-        stableBorrowAPY: formatRate(result.currentStableBorrowRate),
+        supplyAPR: formatAnnualizedRate(result.currentLiquidityRate),
+        variableBorrowAPR: formatAnnualizedRate(result.currentVariableBorrowRate),
+        stableBorrowAPR: formatAnnualizedRate(result.currentStableBorrowRate),
+        supplyAPY: null,
+        variableBorrowAPY: null,
+        stableBorrowAPY: null,
+        rateBasis: "Raw annualized protocol rates scaled by 1e27, displayed as APR percentages. Compounding is not calculated; deprecated APY fields are null.",
         lastUpdate: new Date(result.lastUpdateTimestamp * 1000).toISOString(),
       },
       tokens: {

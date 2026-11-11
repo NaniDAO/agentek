@@ -10,10 +10,10 @@ export interface KnownKey {
 }
 
 export const KNOWN_KEYS: KnownKey[] = [
-  { name: "AGENTEK_EXECUTION_MODE", description: "prepare (default) or execute: explicitly permit transaction submission" },
-  { name: "PRIVATE_KEY", description: "Hex-encoded private key for signing transactions" },
+  { name: "AGENTEK_EXECUTION_MODE", description: "prepare (default) or execute; submission also requires the signer daemon and request ID" },
+  { name: "PRIVATE_KEY", description: "Hex EVM key for address context; CLI submission uses the signer daemon" },
   { name: "ACCOUNT", description: "Hex address to use as the sender (read-only)" },
-  { name: "SOLANA_PRIVATE_KEY", description: "Base58 or JSON-array Solana secret key for signing Solana transactions" },
+  { name: "SOLANA_PRIVATE_KEY", description: "Base58 or JSON-array Solana key; CLI prepares unsigned transactions only" },
   { name: "SOLANA_ACCOUNT", description: "Base58 Solana address to use as the sender (read-only)" },
   { name: "SOLANA_RPC_URL", description: "Solana JSON-RPC endpoint (defaults to the public mainnet-beta endpoint)" },
   { name: "JUPITER_API_KEY", description: "Jupiter Tokens V2 and Swap V2 tools" },
@@ -27,7 +27,7 @@ export const KNOWN_KEYS: KnownKey[] = [
   { name: "MODE_RPC_URL", description: "Mode JSON-RPC endpoint" },
   { name: "SEPOLIA_RPC_URL", description: "Sepolia testnet JSON-RPC endpoint" },
   { name: "PERPLEXITY_API_KEY", description: "Perplexity AI search tools" },
-  { name: "ZEROX_API_KEY", description: "0x swap/quote tools" },
+  { name: "ZEROX_API_KEY", description: "Deprecated; 0x execution is unavailable" },
   { name: "TALLY_API_KEY", description: "Tally governance tools" },
   { name: "COINDESK_API_KEY", description: "CoinDesk news/data tools" },
   { name: "COINMARKETCAL_API_KEY", description: "CoinMarketCal event tools" },

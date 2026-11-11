@@ -1,4 +1,4 @@
-import { readBoundedBytes, createDeadline } from "../utils/fetch.js";
+import { readBoundedBytes, createDeadline, providerJSON } from "../utils/fetch.js";
 import type { BaseTool } from '../client.js';
 import { searchTools } from '../search/index.js';
 import { coindeskTools } from '../coindesk/index.js';
@@ -26,8 +26,7 @@ export function credentialTools(enabled: string[] = []): BaseTool[] {
     // Shared tools keep timeline formatting; native host handles OAuth signatures.
     const get = async (path: string, params = {}) => {
       const query = new URLSearchParams(Object.entries(params).map(([k,v]) => [k, Array.isArray(v) ? v.join(',') : String(v)]));
-      const response = await fetch(`https://api.x.com/2/${path}?${query}`, {headers: {'x-nani-private': 'true'}});
-      return response.json();
+      return providerJSON(`https://api.x.com/2/${path}?${query}`, {headers: {'x-nani-private': 'true'}}, 'X timeline request failed', {maximumBytes: 2 * 1024 * 1024});
     };
     tools.push(createGetHomeTimelineTool({v2: {
       me: () => get('users/me'),

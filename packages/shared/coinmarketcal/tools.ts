@@ -1,3 +1,4 @@
+import { providerJSON } from "../utils/fetch.js";
 import { z } from "zod";
 import { createTool, AgentekClient } from "../client.js";
 
@@ -91,24 +92,9 @@ export const createMarketEventsTool = (apiKey: string) => {
       };
 
       try {
-        const response = await fetch(url.toString(), options);
-
-        if (!response.ok) {
-          switch (response.status) {
-            case 400:
-              throw new Error("Bad Request: Invalid parameters");
-            case 403:
-              throw new Error("Invalid API key");
-            case 429:
-              throw new Error("Quota exceeded or too many requests");
-            default:
-              throw new Error(
-                `API error: ${response.status} ${response.statusText}`,
-              );
-          }
-        }
-
-        const json: MarketEvent[] = (await response.json()).body;
+        const data = await providerJSON(url, options, "CoinMarketCal request failed");
+        if (!Array.isArray(data?.body) || data.body.length > 50) throw new Error("Unreadable CoinMarketCal events response");
+        const json: MarketEvent[] = data.body;
         const filteredEvents = json.map((event) => {
           const { vote_history, view_history, ...rest } = event;
           return rest;
@@ -117,7 +103,7 @@ export const createMarketEventsTool = (apiKey: string) => {
         return filteredEvents;
       } catch (err) {
         throw new Error(
-          `Failed to fetch market events: ${err instanceof Error ? err.message : "Unknown error"}`,
+          "Failed to fetch market events",
         );
       }
     },

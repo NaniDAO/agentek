@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createTool } from '../client.js';
-import { assertOkResponse } from '../utils/fetch.js';
+import { providerJSON } from '../utils/fetch.js';
+import { safeErrorMessage } from '../utils/safe-errors.js';
 
 interface ChartDataPoint {
   timestamp: number
@@ -88,11 +89,8 @@ export const getTokenChartTool = createTool({
 
       url.search = new URLSearchParams(params).toString();
 
-      const response = await fetch(url.toString());
-
-      await assertOkResponse(response, `Failed to fetch chart data from ${url.toString()}`);
-
-      const data = await response.json();
+      const data = await providerJSON(url, {}, "DefiLlama chart request failed");
+      if (!data?.coins || typeof data.coins !== "object" || Array.isArray(data.coins)) throw new Error("Malformed token chart response");
 
       return {
         success: true,
@@ -102,7 +100,7 @@ export const getTokenChartTool = createTool({
       };
 
     } catch (error) {
-      throw new Error(`Failed to fetch token chart data: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to fetch token chart data: ${safeErrorMessage(error)}`);
     }
   }
 });

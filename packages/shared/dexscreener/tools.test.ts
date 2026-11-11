@@ -1,236 +1,154 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { getLatestTokens } from "./tools.js";
 import { dexscreenerTools } from "./index.js";
-import {
-  createTestClient,
-  validateToolStructure,
-  withRetry,
-} from "../test-helpers.js";
+import { createTestClient, validateToolStructure, withRetry } from "../test-helpers.js";
+import { providerJSON } from "../utils/fetch.js";
 
-// Create a test client with DexScreener tools
 const client = createTestClient(dexscreenerTools());
+const address = (n: number) => `0x${BigInt(n).toString(16).padStart(40, "0")}`;
+const now = Date.parse("2026-11-11T12:00:00Z");
+const profile = (n: number, chainId = "ethereum") => ({chainId, tokenAddress: address(n), description: `Token ${n}`});
+const pair = (n: number, changes = {}) => ({
+  chainId: "ethereum", baseToken: {address: address(n)}, quoteToken: {address: address(999)},
+  pairAddress: address(1000 + n), dexId: "fixture-dex", priceUsd: "0.25",
+  liquidity: {usd: 20_000}, volume: {h24: 10_000, h1: 1000},
+  txns: {h24: {buys: 20, sells: 10}}, pairCreatedAt: now - 2 * 3600000,
+  priceChange: {h24: -2}, boosts: {active: 3}, ...changes,
+});
+const json = (value: unknown) => new Response(JSON.stringify(value));
+afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
-describe("DexScreener Tools", () => {
-  describe("Tool Structure", () => {
-    it("rejects unknown chains without substituting Ethereum", async () => {
-      await expect(getLatestTokens.execute(client, {chainId: 999})).rejects.toThrow(/Chain/);
-    });
+function feed(profiles: unknown[], pairs: unknown[]) {
+  vi.spyOn(Date, "now").mockReturnValue(now);
+  const fetcher = vi.fn(async (input: string | URL | Request) => String(input).includes("token-profiles") ? json(profiles) : json(pairs));
+  vi.stubGlobal("fetch", fetcher);
+  return fetcher;
+}
 
-    it("getLatestTokens should have valid tool structure", () => {
-      const result = validateToolStructure(getLatestTokens);
-      expect(result.valid).toBe(true);
-      expect(result.errors).toEqual([]);
-    });
+function assertEvidence(result: Awaited<ReturnType<typeof getLatestTokens.execute>>) {
+  expect(result).toMatchObject({schemaVersion: 1, rankingVersion: "profile-activity-v1"});
+  expect(result.coverage.examinedCandidates).toBe(result.candidates.length);
+  expect(result.coverage.source).toBe("Dexscreener latest profiles");
+  expect(result.note).toContain("No safety or sellability verdict");
+  expect(result.trending.every(token => token.eligible && token.trendScore !== null && token.exclusionReasons.length === 0)).toBe(true);
+  for (const token of result.candidates) {
+    expect(token.tokenAddress).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    expect(token.priceUSD === null || typeof token.priceUSD === "string").toBe(true);
+    for (const value of [token.volume24h, token.volume1h, token.priceChange24h, token.liquidityUSD, token.trades24h, token.pairAgeHours]) {
+      expect(value === null || typeof value === "number" && Number.isFinite(value)).toBe(true);
+    }
+  }
+}
 
-    it("dexscreenerTools() should return the getLatestTokens tool", () => {
-      const tools = dexscreenerTools();
-      expect(tools).toHaveLength(1);
-      expect(tools.map((t) => t.name)).toContain("getLatestTokens");
-    });
-
-    it("getLatestTokens should have correct name and description", () => {
-      expect(getLatestTokens.name).toBe("getLatestTokens");
-      expect(getLatestTokens.description).toContain("missing evidence");
-      expect(getLatestTokens.description).toContain("promotional");
-    });
-
-    it("getLatestTokens should support mainnet and base chains", () => {
-      expect(getLatestTokens.supportedChains).toBeDefined();
-      const chainIds = getLatestTokens.supportedChains?.map((c) => c.id);
-      expect(chainIds).toContain(1); // Ethereum mainnet
-      expect(chainIds).toContain(8453); // Base
-    });
+describe("Dexscreener tool structure", () => {
+  it("exposes one profile discovery tool on Ethereum and Base", () => {
+    expect(validateToolStructure(getLatestTokens)).toMatchObject({valid: true, errors: []});
+    expect(dexscreenerTools().map(tool => tool.name)).toEqual(["getLatestTokens"]);
+    expect(getLatestTokens.supportedChains?.map(chain => chain.id)).toEqual([1, 8453]);
+    expect(getLatestTokens.description).toContain("missing evidence");
+    expect(getLatestTokens.description).toContain("promotional");
   });
 
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getLatestTokens - Real API Calls", () => {
-    it(
-      "should fetch trending tokens for Ethereum mainnet (chainId: 1)",
-      async () => {
-        const result = await withRetry(() =>
-          getLatestTokens.execute(client, { chainId: 1 })
-        );
+  it.each([999, 1.5, -1, Infinity, NaN])("rejects an unsupported or malformed chain %s before network access", async chainId => {
+    const fetcher = vi.fn(); vi.stubGlobal("fetch", fetcher);
+    await expect(getLatestTokens.execute(client, {chainId})).rejects.toThrow();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+});
 
-        // Verify the response structure
-        expect(result).toHaveProperty("trending");
-        expect(Array.isArray(result.trending)).toBe(true);
-
-        // There should be at least some trending tokens
-        // Note: This could be 0 if no tokens have profiles on Ethereum at the moment
-        if (result.trending.length > 0) {
-          const firstToken = result.trending[0];
-
-          // Each token should have the expected fields
-          expect(firstToken).toHaveProperty("tokenAddress");
-          expect(firstToken).toHaveProperty("priceUSD");
-          expect(firstToken).toHaveProperty("volume24h");
-          expect(firstToken).toHaveProperty("priceChange24h");
-
-          // Token address should be a valid Ethereum address
-          expect(firstToken.tokenAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
-
-          // Price fields should be strings (they may be "0" if no pair data)
-          expect(typeof firstToken.priceUSD).toBe("string");
-          expect(typeof firstToken.volume24h).toBe("string");
-          expect(typeof firstToken.priceChange24h).toBe("string");
-        }
-      },
-      30000
-    );
-
-    it(
-      "should fetch trending tokens for Base chain (chainId: 8453)",
-      async () => {
-        const result = await withRetry(() =>
-          getLatestTokens.execute(client, { chainId: 8453 })
-        );
-
-        // Verify the response structure
-        expect(result).toHaveProperty("trending");
-        expect(Array.isArray(result.trending)).toBe(true);
-
-        // Base typically has trending tokens
-        if (result.trending.length > 0) {
-          const firstToken = result.trending[0];
-
-          expect(firstToken).toHaveProperty("tokenAddress");
-          expect(firstToken).toHaveProperty("priceUSD");
-          expect(firstToken).toHaveProperty("volume24h");
-          expect(firstToken).toHaveProperty("priceChange24h");
-
-          // Token address should be a valid address
-          expect(firstToken.tokenAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
-        }
-      },
-      30000
-    );
-
-
-    it(
-      "should return tokens with description when available",
-      async () => {
-        // Fetch tokens and check if any have descriptions
-        const result = await withRetry(() =>
-          getLatestTokens.execute(client, { chainId: 1 })
-        );
-
-        expect(result).toHaveProperty("trending");
-
-        // Description field should exist in the response
-        if (result.trending.length > 0) {
-          const firstToken = result.trending[0];
-          expect("description" in firstToken).toBe(true);
-          // Description can be undefined/null or a string
-          expect(
-            firstToken.description === undefined ||
-              firstToken.description === null ||
-              typeof firstToken.description === "string"
-          ).toBe(true);
-        }
-      },
-      30000
-    );
-
-    it(
-      "should handle price and volume data correctly",
-      async () => {
-        const result = await withRetry(() =>
-          getLatestTokens.execute(client, { chainId: 8453 })
-        );
-
-        expect(result).toHaveProperty("trending");
-
-        // Find a token that has pair data (priceUSD != "0")
-        const tokenWithPriceData = result.trending.find(
-          (t: { priceUSD: string }) => t.priceUSD !== "0"
-        );
-
-        if (tokenWithPriceData) {
-          // If we found a token with price data, verify the values are numeric strings
-          const price = parseFloat(tokenWithPriceData.priceUSD);
-          expect(isNaN(price)).toBe(false);
-          expect(price).toBeGreaterThan(0);
-        }
-      },
-      30000
-    );
+describe("Dexscreener relative profile evidence", () => {
+  it("reports numeric activity units, exact price strings, negative changes and promotion separately", async () => {
+    feed([profile(1)], [pair(1)]);
+    const result = await getLatestTokens.execute(client, {chainId: 1});
+    assertEvidence(result);
+    expect(result.complete).toBe(true);
+    expect(result.trending).toHaveLength(1);
+    expect(result.trending[0]).toMatchObject({priceUSD: "0.25", volume24h: 10_000, volume1h: 1000, liquidityUSD: 20_000, trades24h: 30, priceChange24h: -2, pairAgeHours: 2, activityAcceleration: 2.4, paidBoosts: 3, eligible: true});
+    expect(typeof result.trending[0].trendScore).toBe("number");
   });
 
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("DexScreener API Endpoints", () => {
-    it(
-      "should successfully reach the token-profiles endpoint",
-      async () => {
-        const response = await fetch(
-          "https://api.dexscreener.com/token-profiles/latest/v1"
-        );
-        expect(response.ok).toBe(true);
-        expect(response.status).toBe(200);
-
-        const data = await response.json();
-        expect(Array.isArray(data)).toBe(true);
-      },
-      15000
-    );
-
-    it(
-      "should successfully reach the tokens endpoint",
-      async () => {
-        // Use a well-known token on Ethereum (USDC)
-        const usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-        const response = await fetch(
-          `https://api.dexscreener.com/tokens/v1/ethereum/${usdcAddress}`
-        );
-        expect(response.ok).toBe(true);
-        expect(response.status).toBe(200);
-
-        // /tokens/v1/{chain}/{addresses} answers with a bare array of pairs,
-        // not { pairs: [...] }. The tool used to read `.pairs` off it, which is
-        // why every price it reported was "0".
-        const data = await response.json();
-        expect(Array.isArray(data)).toBe(true);
-      },
-      15000
-    );
-
-    it(
-      "should return pair data for well-known tokens",
-      async () => {
-        // WETH on Ethereum has many pairs
-        const wethAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-        const response = await fetch(
-          `https://api.dexscreener.com/tokens/v1/ethereum/${wethAddress}`
-        );
-        expect(response.ok).toBe(true);
-
-        const data = await response.json();
-        expect(Array.isArray(data)).toBe(true);
-
-        if (data.length > 0) {
-          const pair = data[0];
-          expect(pair).toHaveProperty("baseToken");
-          expect(pair).toHaveProperty("quoteToken");
-          expect(pair).toHaveProperty("priceUsd");
-          expect(pair).toHaveProperty("volume");
-        }
-      },
-      15000
-    );
+  it.each([[1, "ethereum"], [8453, "base"]] as const)("pins chain %i to %s while filtering foreign profiles", async (chainId, chainName) => {
+    const fetcher = feed([profile(1, chainName), profile(2, chainName === "ethereum" ? "base" : "ethereum")], [pair(1, {chainId: chainName})]);
+    const result = await getLatestTokens.execute(client, {chainId});
+    expect(result.candidates.map(row => row.tokenAddress)).toEqual([address(1)]);
+    expect(String(fetcher.mock.calls[1][0])).toBe(`https://api.dexscreener.com/tokens/v1/${chainName}/${address(1)}`);
   });
 
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Chain ID Resolution", () => {
-    it("should resolve chainId 1 to ethereum", async () => {
-      // This is implicitly tested by the API call succeeding
-      // If the resolution is wrong, the API will return different data
-      const result = await withRetry(() =>
-        getLatestTokens.execute(client, { chainId: 1 })
-      );
-      expect(result).toHaveProperty("trending");
-    }, 30000);
-
-    it("should resolve chainId 8453 to base", async () => {
-      const result = await withRetry(() =>
-        getLatestTokens.execute(client, { chainId: 8453 })
-      );
-      expect(result).toHaveProperty("trending");
-    }, 30000);
+  it("chooses the deepest matching base-token pair rather than source order or quote-token price", async () => {
+    feed([profile(1)], [
+      pair(1, {priceUsd: "99", liquidity: {usd: 15_000}}),
+      pair(2, {quoteToken: {address: address(1)}, priceUsd: "1000", liquidity: {usd: 1_000_000}}),
+      pair(1, {pairAddress: address(2000), priceUsd: "0.50", liquidity: {usd: 50_000}}),
+    ]);
+    const result = await getLatestTokens.execute(client, {chainId: 1});
+    expect(result.trending[0]).toMatchObject({pairAddress: address(2000), priceUSD: "0.50", liquidityUSD: 50_000});
   });
+
+  it("keeps absent evidence unknown and excludes thin promoted activity from ranking", async () => {
+    feed([profile(1), profile(2), profile(3)], [
+      pair(1),
+      pair(2, {liquidity: {usd: 100}, volume: {h24: 50, h1: 50}, txns: {h24: {buys: 2, sells: 1}}, boosts: {active: 1000}, priceChange: {h24: 100_000}}),
+    ]);
+    const result = await getLatestTokens.execute(client, {chainId: 1});
+    assertEvidence(result);
+    expect(result.trending.map(row => row.tokenAddress)).toEqual([address(1)]);
+    expect(result.candidates.find(row => row.tokenAddress === address(2))).toMatchObject({eligible: false, trendScore: null, paidBoosts: 1000, exclusionReasons: expect.arrayContaining(["liquidityUSD below minimum", "volume24h below minimum", "trades24h below minimum"])});
+    expect(result.candidates.find(row => row.tokenAddress === address(3))).toMatchObject({priceUSD: null, volume24h: null, priceChange24h: null, liquidityUSD: null, trendScore: null, eligible: false, exclusionReasons: expect.arrayContaining(["liquidityUSD unknown", "pairAgeHours unknown"])});
+  });
+
+  it("ranks eligible activity by score and uses token identity to resolve ties", async () => {
+    feed([profile(3), profile(2), profile(1)], [pair(3), pair(2), pair(1, {liquidity: {usd: 100_000}, volume: {h24: 100_000, h1: 10_000}})]);
+    const result = await getLatestTokens.execute(client, {chainId: 1});
+    expect(result.trending.map(row => row.tokenAddress)).toEqual([address(1), address(2), address(3)]);
+    expect(result.trending[0].trendScore).toBeGreaterThan(result.trending[1].trendScore);
+    expect(result.trending[1].trendScore).toBe(result.trending[2].trendScore);
+  });
+
+  it("rejects a malformed profile envelope rather than reporting no candidates", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({data: []})));
+    await expect(getLatestTokens.execute(client, {chainId: 1})).rejects.toThrow(/coverage/);
+  });
+
+  it("preserves failed pair coverage as incomplete with unknown activity", async () => {
+    vi.stubGlobal("fetch", vi.fn(async input => String(input).includes("token-profiles") ? json([profile(1)]) : json({pairs: []})));
+    const result = await getLatestTokens.execute(client, {chainId: 1});
+    expect(result).toMatchObject({complete: false, trending: [], coverage: {examinedCandidates: 1}});
+    expect(result.errors).toEqual([{addresses: [address(1)], message: expect.stringContaining("not verified empty")}]);
+    expect(result.candidates[0]).toMatchObject({volume24h: null, priceUSD: null, eligible: false});
+  });
+
+  it("deduplicates identities and marks the bounded latest-profile sample as truncated", async () => {
+    const profiles = Array.from({length: 61}, (_, i) => profile(i + 1));
+    const fetcher = feed([profiles[0], ...profiles], []);
+    const result = await getLatestTokens.execute(client, {chainId: 1});
+    expect(result).toMatchObject({complete: false, coverage: {observedCandidates: 61, examinedCandidates: 60, truncated: true}});
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(result.trending).toEqual([]);
+  });
+});
+
+describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Dexscreener live provider contracts", () => {
+  it.each([1, 8453])("returns explicit sample coverage and ranking evidence for chain %i", async chainId => {
+    const result = await withRetry(() => getLatestTokens.execute(client, {chainId}));
+    assertEvidence(result);
+    expect(result.chainId).toBe(chainId);
+    expect(result.coverage.examinedCandidates).toBeLessThanOrEqual(60);
+    expect(result.complete).toBe(result.errors.length === 0 && !result.coverage.truncated);
+    for (let i = 1; i < result.trending.length; i++) {
+      expect(result.trending[i - 1].trendScore).toBeGreaterThanOrEqual(result.trending[i].trendScore);
+    }
+  }, 30_000);
+
+  it("recognizes the bare pair-array provider format for a known Ethereum token", async () => {
+    const weth = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+    const data = await providerJSON(`https://api.dexscreener.com/tokens/v1/ethereum/${weth}`, {}, "Dexscreener contract test failed");
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThan(0);
+    expect(data.some(pair => pair.baseToken?.address?.toLowerCase() === weth.toLowerCase())).toBe(true);
+    for (const pair of data) {
+      expect(pair.chainId).toBe("ethereum");
+      expect(pair.baseToken.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+      expect(pair.quoteToken.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    }
+  }, 15_000);
 });

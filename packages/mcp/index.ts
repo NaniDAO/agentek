@@ -1,11 +1,8 @@
-import { createExecutionJournal } from "@agentek/tools/journal";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { type Hex, isHex, zeroAddress } from "viem";
-import { createAgentekClient, isNonCancellableTool, TransactionExecutionError, OperationExecutionError, failedResult, type BaseTool } from "@agentek/tools/client";
+import { createAgentekClient, isNonCancellableTool, TransactionExecutionError, OperationExecutionError, SolanaExecutionError, failedResult, safeErrorMessage, sanitizeToolOutput, type BaseTool } from "@agentek/tools/client";
 import {
   allTools,
   DEFAULT_CHAINS,
@@ -76,10 +73,13 @@ async function main() {
 
   // ── Agentek client ───────────────────────────────────────────────────
   const executionMode = process.env.AGENTEK_EXECUTION_MODE ?? "prepare";
-  if (executionMode !== "prepare" && executionMode !== "execute") throw new Error("AGENTEK_EXECUTION_MODE must be prepare or execute");
+  if (executionMode !== "prepare") {
+    log("This stdio server supports prepare mode only. Submission requires an SDK host with independent approval and durable request storage.");
+    process.exitCode = 1;
+    return;
+  }
   const agentekClient = createAgentekClient({
     executionMode,
-    onExecutionUpdated: createExecutionJournal(join(process.env.AGENTEK_CONFIG_DIR ?? join(homedir(), ".agentek"), "executions")),
     transports,
     chains,
     accountOrAddress: account,
@@ -142,15 +142,16 @@ async function main() {
           ? await execution
           : await withTimeout(execution, TOOL_TIMEOUT_MS, name);
 
-        const text = typeof result === "object"
-          ? JSON.stringify(result, null, 2)
-          : String(result);
+        const safeResult = sanitizeToolOutput(result, agentekClient);
+        const text = typeof safeResult === "object"
+          ? JSON.stringify(safeResult, null, 2)
+          : String(safeResult);
 
         return { content: [{ type: "text" as const, text }], isError: failedResult(result) };
         } catch (error) {
-          if (error instanceof OperationExecutionError) return {content: [{type: "text" as const, text: JSON.stringify({error: error.message, retryable: false, completed: error.completed, failedIndex: error.failedIndex, transaction: error.transaction})}], isError: true};
-          if (error instanceof TransactionExecutionError) return {content: [{type: "text" as const, text: JSON.stringify({error: error.message, retryable: false, execution: error.execution})}], isError: true};
-          throw error;
+          const details = error instanceof OperationExecutionError ? {retryable: false, completed: error.completed, failedIndex: error.failedIndex, transaction: error.transaction}
+            : error instanceof TransactionExecutionError || error instanceof SolanaExecutionError ? {retryable: false, execution: error.execution} : {};
+          return {content: [{type: "text" as const, text: JSON.stringify(sanitizeToolOutput({error: safeErrorMessage(error), ...details}, agentekClient))}], isError: true};
         }
       },
     );
@@ -173,13 +174,13 @@ async function main() {
 
 // ── Global safety nets ───────────────────────────────────────────────────
 process.on("uncaughtException", (err) => {
-  log(`Uncaught exception: ${err}`);
+  log(`Uncaught exception: ${safeErrorMessage(err)}`);
 });
 process.on("unhandledRejection", (reason) => {
-  log(`Unhandled rejection: ${reason}`);
+  log(`Unhandled rejection: ${safeErrorMessage(reason)}`);
 });
 
 main().catch((error) => {
-  log(`Fatal: ${error}`);
+  log(`Fatal: ${safeErrorMessage(error)}`);
   process.exit(1);
 });

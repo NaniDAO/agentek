@@ -9,7 +9,7 @@
     "moduleResolution": "NodeNext",
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
-    "noEmitOnError": false,
+    "noEmitOnError": true,
     "strict": false
   },
   "include": ["./**/*.ts"],

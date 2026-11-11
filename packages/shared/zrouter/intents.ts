@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeErrorMessage } from "../utils/safe-errors.js";
 import { createTool } from "../client.js";
 import { AmountSchema, SymbolOrTokenSchema } from "./types.js";
 import { addressSchema } from "../utils.js";
@@ -52,6 +53,6 @@ export const intentSwap = createTool({
       return await buildNativeSwapProposal(client, { schemaVersion: 1, requestId: "intentSwap", owner, chainId: args.chainId,
         recipient, sellAsset: { address: sell.address, id: (sell.id ?? 0n).toString() }, buyAsset: { address: buy.address, id: (buy.id ?? 0n).toString() },
         mode: args.side, amountRaw: amount.toString(), boundRaw: limit.toString(), deadline: deadline.toString(), slippageBps: args.slippageBps, source: "zquoter" });
-    } catch (error) { return unavailableSwap(args, error instanceof Error ? error.message : "Swap unavailable", "zquoter", "failed"); }
+    } catch (error) { return unavailableSwap(args, safeErrorMessage(error), "zquoter", "failed"); }
   },
 });

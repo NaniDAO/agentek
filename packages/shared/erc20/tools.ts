@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createTool } from "../client.js";
 import { Address, erc20Abi, formatUnits, getAddress } from "viem";
 import { erc20Chains } from "./constants.js";
+import { safeErrorMessage } from "../utils/safe-errors.js";
 
 /** Normalize an address string to proper EIP-55 checksum so mixed-case input never fails. */
 const normalizeAddress = (addr: string): Address => getAddress(addr.toLowerCase());
@@ -97,10 +98,9 @@ export const getAllowanceTool = createTool({
             allowance: formatUnits(allowance, decimals),
           };
         } catch (error) {
-          // @TODO type specific viem short errors
           return {
             chain: chain.id,
-            error: `Failed to fetch allowance: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
+            error: `Failed to fetch allowance: ${safeErrorMessage(error)}`,
           };
         }
       }),
@@ -144,7 +144,7 @@ export const getBalanceOfTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch balance: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
+            error: `Failed to fetch balance: ${safeErrorMessage(error)}`,
           };
         }
       }),
@@ -186,7 +186,7 @@ export const getTotalSupplyTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch total supply: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
+            error: `Failed to fetch total supply: ${safeErrorMessage(error)}`,
           };
         }
       }),
@@ -223,7 +223,7 @@ export const getDecimalsTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch decimals: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
+            error: `Failed to fetch decimals: ${safeErrorMessage(error)}`,
           };
         }
       }),
@@ -260,7 +260,7 @@ export const getNameTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch name: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
+            error: `Failed to fetch name: ${safeErrorMessage(error)}`,
           };
         }
       }),
@@ -297,7 +297,7 @@ export const getSymbolTool = createTool({
         } catch (error) {
           return {
             chain: chain.id,
-            error: `Failed to fetch symbol: ${typeof error === "object" && error ? ("shortMessage" in error ? error.shortMessage : "message" in error ? error.message : "Unknown error") : String(error)}`,
+            error: `Failed to fetch symbol: ${safeErrorMessage(error)}`,
           };
         }
       }),

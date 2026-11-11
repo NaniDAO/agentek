@@ -1,3 +1,4 @@
+import { providerBytes, providerJSON } from "../utils/fetch.js";
 import { createTool } from "../client.js";
 import { z } from "zod";
 import { ImageGenToolOptions } from "./index.js";
@@ -27,7 +28,7 @@ export function createImageGenAndPinTool({
       /* 1 ▶ Generate the image (binary) */
       const fwEndpoint =
         `https://api.fireworks.ai/inference/v1/image_generation/${model}`;
-      const fwRes = await fetch(fwEndpoint, {
+      const imageBuffer = await providerBytes(fwEndpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${fireworksApiKey}`,
@@ -42,14 +43,8 @@ export function createImageGenAndPinTool({
           steps,                          // default 30
           safety_check: true,
         }),
-      });
-
-      if (!fwRes.ok) {
-        const detail = await fwRes.text().catch(() => fwRes.statusText);
-        throw new Error(`Fireworks error ${fwRes.status}: ${detail}`);
-      }
-
-      const imageBuffer = await fwRes.arrayBuffer();
+      }, "Image generation failed", {maximumBytes: 16 * 1024 * 1024, timeoutMs: 120_000});
+      if (imageBuffer.length === 0) throw new Error("Image generation returned no image");
 
       /* 2 ▶ Pin to IPFS via Pinata */
       const formData = new FormData();
@@ -59,18 +54,17 @@ export function createImageGenAndPinTool({
         JSON.stringify({ name: "AI Generated Image", keyvalues: { prompt } })
       );
 
-      const pinRes = await fetch(
+      const pinJson = await providerJSON(
         "https://api.pinata.cloud/pinning/pinFileToIPFS",
         {
           method: "POST",
           headers: { Authorization: `Bearer ${pinataJWT}` },
           body: formData,
-        },
+        }, "Image publication failed", {maximumBytes: 256 * 1024, timeoutMs: 60_000},
       );
 
-      const pinJson = await pinRes.json();
-      if (!pinJson?.IpfsHash) {
-        throw new Error(`Failed to pin image to IPFS: ${pinJson?.error || ""}`);
+      if (typeof pinJson?.IpfsHash !== "string" || !/^[a-zA-Z0-9]{32,160}$/.test(pinJson.IpfsHash)) {
+        throw new Error("Failed to pin image to IPFS");
       }
 
       return {

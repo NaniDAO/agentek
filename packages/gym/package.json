@@ -34,7 +34,7 @@
     "@types/node": "^24.1.0",
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=20.18.1"

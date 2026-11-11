@@ -11,7 +11,7 @@ import { getPoolFeeData, getUserPositions } from "./uniV3/tools.js";
 const owner = "0x1111111111111111111111111111111111111111", token = "0x2222222222222222222222222222222222222222";
 const account = privateKeyToAccount(`0x${"11".repeat(32)}`);
 const op = {target: owner, value: "1", data: "0x"} as const;
-const makeClient = (extra = {}) => createAgentekClient({chains: [mainnet], transports: [http()], accountOrAddress: account, tools: [], ...extra});
+const makeClient = (extra = {}) => createAgentekClient({chains: [mainnet], transports: [http()], accountOrAddress: account, tools: [], executionMode: "execute", authorizeAction: () => true, ...extra});
 afterEach(() => vi.restoreAllMocks());
 
 describe("transaction failure and signature contracts", () => {
@@ -85,7 +85,8 @@ describe("exact amounts and honest observations", () => {
   });
   it("pages LP positions with a bounded number of RPC reads", async () => {
     const readContract = vi.fn(async ({functionName, args}) => functionName === "balanceOf" ? 1000000000n : functionName === "tokenOfOwnerByIndex" ? args[1] : [0,0,token,owner,3000,0,1,1n,0,0,0n,0n]);
-    const result = await getUserPositions.execute({getPublicClient: () => ({readContract}), getAddress: async () => owner} as any, {chainId: 1, offset: 5, limit: 2});
+    const header = { number: 100n, hash: `0x${"a".repeat(64)}`, timestamp: BigInt(Math.floor(Date.now() / 1000)) };
+    const result = await getUserPositions.execute({getPublicClient: () => ({readContract, getChainId: async () => 1, getBlock: async () => header}), getAddress: async () => owner} as any, {chainId: 1, offset: 5, limit: 2});
     expect(result.nextOffset).toBe(7); expect(result.positions.map(p => p.tokenId)).toEqual(["5", "6"]);
     expect(readContract).toHaveBeenCalledTimes(5);
   });

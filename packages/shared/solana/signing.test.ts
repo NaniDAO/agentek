@@ -17,7 +17,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { createAgentekClient, type SolanaConfig } from "../client.js";
+import { createAgentekClient, SolanaExecutionError, type SolanaConfig, type AgentekClientConfig } from "../client.js";
 import { solanaTools } from "./index.js";
 import { intentTransferSolTool } from "./intents.js";
 import { decodeBase58, encodeBase58 } from "./base58.js";
@@ -36,13 +36,17 @@ const toKeyObject = (raw: Uint8Array) =>
 const sender = Keypair.generate();
 const recipient = Keypair.generate();
 
-const createClient = (solana: SolanaConfig) =>
+const createClient = (solana: SolanaConfig, extra: Partial<AgentekClientConfig> = {}) =>
   createAgentekClient({
+    executionMode: "execute",
+    authorizeAction: () => true,
+    onSolanaExecutionUpdated: () => undefined,
     transports: [http()],
     chains: [mainnet],
     accountOrAddress: privateKeyToAccount(generatePrivateKey()),
     tools: solanaTools(),
     solana: { rpcUrl: RPC, ...solana },
+    ...extra,
   });
 
 describe("Solana signing", () => {
@@ -79,12 +83,10 @@ describe("Solana signing", () => {
         }),
       ]);
 
-    // The account is unfunded, so preflight definitively rejects it. A known
-    // SendTransactionError remains an error rather than ambiguous submission.
-    const error = await client
-      .executeSolanaTransaction(transaction, blockhash, lastValidBlockHeight)
-      .then(() => null, (reason: Error) => reason);
-    expect(error).toBeInstanceOf(SendTransactionError);
+    // A send RPC error cannot establish non-submission, even when an unfunded
+    // account would normally fail preflight. Retain its local reconciliation ID.
+    const result = await client.executeSolanaTransaction(transaction, blockhash, lastValidBlockHeight);
+    expect(result.confirmationStatus).toBe("unknown");
 
     const signed = VersionedTransaction.deserialize(transaction.serialize());
     expect(
@@ -115,6 +117,8 @@ describe("Solana signing", () => {
     );
 
     const connection = {
+      getGenesisHash: vi.fn(async () => "devnet-fixture"),
+      getFeeForMessage: vi.fn(async () => ({value: 5000})),
       sendRawTransaction: vi.fn(async (raw: Uint8Array) => {
         const submitted = VersionedTransaction.deserialize(raw);
         return encodeBase58(submitted.signatures[0]);
@@ -151,6 +155,8 @@ describe("Solana signing", () => {
     );
 
     const connection = {
+      getGenesisHash: vi.fn(async () => "devnet-fixture"),
+      getFeeForMessage: vi.fn(async () => ({value: 5000})),
       sendRawTransaction: vi.fn(async () => {
         throw new Error("connection reset after request write");
       }),
@@ -171,8 +177,14 @@ describe("Solana signing", () => {
     expect(connection.confirmTransaction).not.toHaveBeenCalled();
   });
 
-  it("rethrows a definitive preflight rejection", async () => {
-    const client = createClient({ privateKey: encodeBase58(sender.secretKey) });
+  it.each([
+    ["simulate", "insufficient funds"],
+    ["simulate", "Node is unhealthy"],
+    ["simulate", "Transaction has already been processed"],
+    ["send", "RPC failed after accepting transaction"],
+  ] as const)("keeps SendTransactionError ambiguous (%s: %s)", async (action, transactionMessage) => {
+    const records: any[] = [];
+    const client = createClient({ privateKey: encodeBase58(sender.secretKey) }, { onSolanaExecutionUpdated: record => { records.push(record); } });
     const blockhash = PublicKey.default.toBase58();
     const transaction = new VersionedTransaction(
       new TransactionMessage({
@@ -182,11 +194,13 @@ describe("Solana signing", () => {
       }).compileToV0Message(),
     );
     const rejection = new SendTransactionError({
-      action: "simulate",
+      action,
       signature: "",
-      transactionMessage: "insufficient funds",
+      transactionMessage,
     });
     const connection = {
+      getGenesisHash: vi.fn(async () => "devnet-fixture"),
+      getFeeForMessage: vi.fn(async () => ({value: 5000})),
       sendRawTransaction: vi.fn(async () => {
         throw rejection;
       }),
@@ -194,10 +208,61 @@ describe("Solana signing", () => {
     };
     (client as any).solanaConnection = connection;
 
-    await expect(
-      client.executeSolanaTransaction(transaction, blockhash, 123),
-    ).rejects.toBe(rejection);
+    const result = await client.executeSolanaTransaction(transaction, blockhash, 123);
+    expect(result).toEqual({ signature: encodeBase58(transaction.signatures[0]), confirmationStatus: "unknown" });
     expect(connection.confirmTransaction).not.toHaveBeenCalled();
+    expect(records.map(record => record.status)).toEqual(["signed", "unknown"]);
+    expect(records[0]).toMatchObject({ account: sender.publicKey.toBase58(), genesisHash: "devnet-fixture", blockhash, lastValidBlockHeight: 123 });
+    await expect(client.executeSolanaTransaction(transaction, blockhash, 123)).rejects.toThrow(/Reconcile the earlier Solana signature/);
+    expect(connection.sendRawTransaction).toHaveBeenCalledOnce();
+  });
+
+  it("broadcasts the exact persisted signed snapshot despite caller mutation during persistence", async () => {
+    const blockhash = PublicKey.default.toBase58();
+    const transaction = new VersionedTransaction(new TransactionMessage({ payerKey: sender.publicKey, recentBlockhash: blockhash, instructions: [] }).compileToV0Message());
+    const records: any[] = [];
+    const client = createClient({ privateKey: encodeBase58(sender.secretKey) }, { onSolanaExecutionUpdated: record => {
+      records.push(record);
+      if (record.status === "signed") transaction.message.recentBlockhash = recipient.publicKey.toBase58();
+    } });
+    const connection = {
+      getGenesisHash: vi.fn(async () => "devnet-fixture"),
+      getFeeForMessage: vi.fn(async () => ({ value: 5000 })),
+      sendRawTransaction: vi.fn(async (raw: Uint8Array) => {
+        expect(Buffer.from(raw).toString("base64")).toBe(records[0].transaction);
+        const submitted = VersionedTransaction.deserialize(raw);
+        expect(submitted.message.recentBlockhash).toBe(blockhash);
+        return encodeBase58(submitted.signatures[0]);
+      }),
+      confirmTransaction: vi.fn(async () => ({ value: { err: null } })),
+    };
+    (client as any).solanaConnection = connection;
+    await expect(client.executeSolanaTransaction(transaction, blockhash, 123)).resolves.toMatchObject({ confirmationStatus: "confirmed" });
+    expect(records.map(record => record.status)).toEqual(["signed", "unknown", "submitted", "confirmed"]);
+  });
+
+  it("locks subsequent signing after persistence fails, even before broadcast", async () => {
+    const blockhash = PublicKey.default.toBase58();
+    const transaction = new VersionedTransaction(new TransactionMessage({ payerKey: sender.publicKey, recentBlockhash: blockhash, instructions: [] }).compileToV0Message());
+    const client = createClient({ privateKey: encodeBase58(sender.secretKey) }, { onSolanaExecutionUpdated: () => { throw new Error("persistence failed after write"); } });
+    const connection = { getGenesisHash: vi.fn(async () => "devnet-fixture"), getFeeForMessage: vi.fn(async () => ({ value: 5000 })), sendRawTransaction: vi.fn() };
+    (client as any).solanaConnection = connection;
+    await expect(client.executeSolanaTransaction(transaction, blockhash, 123)).rejects.toBeInstanceOf(SolanaExecutionError);
+    await expect(client.executeSolanaTransaction(transaction, blockhash, 123)).rejects.toThrow(/Reconcile the earlier Solana signature/);
+    expect(connection.sendRawTransaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects mismatched confirmation lifetimes before signing", async () => {
+    const blockhash = PublicKey.default.toBase58();
+    const transaction = new VersionedTransaction(new TransactionMessage({ payerKey: sender.publicKey, recentBlockhash: blockhash, instructions: [] }).compileToV0Message());
+    const client = createClient({ privateKey: encodeBase58(sender.secretKey) });
+    const connection = { getGenesisHash: vi.fn(), getFeeForMessage: vi.fn(), sendRawTransaction: vi.fn() };
+    (client as any).solanaConnection = connection;
+    await expect(client.executeSolanaTransaction(transaction, recipient.publicKey.toBase58(), 123)).rejects.toThrow(/lifetime/);
+    await expect(client.executeSolanaTransaction(transaction, blockhash, Number.MAX_SAFE_INTEGER + 1)).rejects.toThrow(/lifetime/);
+    expect(transaction.signatures[0].every(byte => byte === 0)).toBe(true);
+    expect(connection.getGenesisHash).not.toHaveBeenCalled();
+    expect(connection.sendRawTransaction).not.toHaveBeenCalled();
   });
 
   it("bounds a stalled confirmation and returns a reconcilable status", async () => {
@@ -214,6 +279,8 @@ describe("Solana signing", () => {
         }).compileToV0Message(),
       );
       const connection = {
+        getGenesisHash: vi.fn(async () => "devnet-fixture"),
+        getFeeForMessage: vi.fn(async () => ({value: 5000})),
         sendRawTransaction: vi.fn(async (raw: Uint8Array) =>
           encodeBase58(
             VersionedTransaction.deserialize(raw).signatures[0],
@@ -230,8 +297,7 @@ describe("Solana signing", () => {
         blockhash,
         123,
       );
-      await Promise.resolve();
-      await Promise.resolve();
+      await vi.waitFor(() => expect(connection.confirmTransaction).toHaveBeenCalledOnce());
       await vi.advanceTimersByTimeAsync(120_000);
 
       await expect(execution).resolves.toEqual({

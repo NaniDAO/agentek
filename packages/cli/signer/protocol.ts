@@ -97,7 +97,9 @@ export interface DecryptedPayload {
 // ── Policy ──────────────────────────────────────────────────────────────────
 
 export interface PolicyConfig {
-  maxValuePerTx: string; // ETH, e.g. "0.1"
+  maxValuePerTx: string; // Native value plus worst-case execution fees, in ETH units.
+  /** Cumulative native liability per daemon lifetime; defaults to maxValuePerTx for older policies. */
+  maxValuePerSession?: string;
   allowedChains: number[];
   allowContractCreation: boolean;
   blockedContracts: string[]; // lowercase addresses

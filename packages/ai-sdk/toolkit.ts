@@ -21,6 +21,11 @@ class AgentekToolkit {
     solana,
     executionMode = "prepare",
     onExecutionUpdated,
+    authorizeAction,
+    requestStore,
+    onSolanaExecutionUpdated,
+    paymentBudgetUsd,
+    publicationBudget,
   }: {
     accountOrAddress: Account | Address;
     chains: Chain[];
@@ -30,10 +35,20 @@ class AgentekToolkit {
     solana?: SolanaConfig;
     executionMode?: "prepare" | "execute";
     onExecutionUpdated?: AgentekClientConfig["onExecutionUpdated"];
+    authorizeAction?: AgentekClientConfig["authorizeAction"];
+    requestStore?: AgentekClientConfig["requestStore"];
+    onSolanaExecutionUpdated?: AgentekClientConfig["onSolanaExecutionUpdated"];
+    paymentBudgetUsd?: AgentekClientConfig["paymentBudgetUsd"];
+    publicationBudget?: AgentekClientConfig["publicationBudget"];
   }) {
     this._agent = createAgentekClient({
       executionMode,
       onExecutionUpdated,
+      authorizeAction,
+      requestStore,
+      onSolanaExecutionUpdated,
+      paymentBudgetUsd,
+      publicationBudget,
       accountOrAddress,
       chains,
       transports,

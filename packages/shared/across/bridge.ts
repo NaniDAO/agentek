@@ -1,3 +1,4 @@
+import { providerJSON } from '../utils/fetch.js';
 import { z } from 'zod';
 import { encodeFunctionData, erc20Abi, parseUnits, type Address } from 'viem';
 import { mainnet, optimism, arbitrum, base, polygon } from 'viem/chains';
@@ -16,9 +17,7 @@ function endpoints(origin: number, destination: number) {
   if(origin === destination || !bridgeChains.some(c=>c.id===origin) || !bridgeChains.some(c=>c.id===destination)) throw new Error('Choose two configured mainnets; no network substitution');
 }
 async function json(url: string) {
-  const response = await fetch(url, {redirect:'error'});
-  if(!response.ok) throw new Error(`Across request failed (HTTP ${response.status}); route availability unknown`);
-  return response.json();
+  return providerJSON(url, {}, 'Across request failed; route availability unknown');
 }
 export const getAcrossRoutes = createTool({name:'getAcrossRoutes',supportedChains:bridgeChains,
   description:'Discover exact Across token pairs and native ETH routes on requested networks. Empty means no listed routes; failed requests remain unknown. Deployment configuration is separate.',parameters:pair,

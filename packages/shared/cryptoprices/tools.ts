@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTool } from "../client.js";
-import { assertOkResponse } from "../utils/fetch.js";
+import { providerJSON } from "../utils/fetch.js";
+import { safeErrorMessage } from "../utils/safe-errors.js";
 
 export const getCryptoPriceTool = createTool({
   name: "getCryptoPrice",
@@ -13,13 +14,10 @@ export const getCryptoPriceTool = createTool({
     const normalizedSymbol = symbol.toUpperCase().trim();
     
     try {
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${mapSymbolToId(normalizedSymbol)}&vs_currencies=usd`
+      const data = await providerJSON(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(mapSymbolToId(normalizedSymbol))}&vs_currencies=usd`,
+        {}, "CoinGecko API request failed", {maximumBytes: 256 * 1024},
       );
-      
-      await assertOkResponse(response, "CoinGecko API error");
-      
-      const data = await response.json();
       const id = mapSymbolToId(normalizedSymbol);
       
       if (!data[id]) {
@@ -34,7 +32,7 @@ export const getCryptoPriceTool = createTool({
         source: "CoinGecko"
       };
     } catch (error) {
-      throw new Error(`Error fetching price for ${normalizedSymbol}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Error fetching price for ${normalizedSymbol}: ${safeErrorMessage(error)}`);
     }
   }
 });

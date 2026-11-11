@@ -17,6 +17,34 @@ import {
   solanaSignatureSchema,
 } from "./utils.js";
 
+const safeInteger = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const u64 = z.union([
+  safeInteger,
+  z.string().regex(/^(0|[1-9][0-9]{0,19})$/).refine(value => /^(0|[1-9][0-9]{0,19})$/.test(value) && BigInt(value) <= 18_446_744_073_709_551_615n),
+]);
+const contextSchema = z.object({slot: safeInteger}).passthrough();
+const tokenAmountSchema = z.object({
+  amount: z.string().regex(/^(0|[1-9][0-9]{0,19})$/).refine(value => /^(0|[1-9][0-9]{0,19})$/.test(value) && BigInt(value) <= 18_446_744_073_709_551_615n),
+  decimals: z.number().int().min(0).max(255),
+  uiAmountString: z.string().max(300).regex(/^[0-9]+(?:\.[0-9]+)?$/),
+}).passthrough();
+const tokenAccountSchema = z.object({
+  pubkey: solanaAddressSchema,
+  account: z.object({
+    owner: z.enum([TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID]),
+    data: z.object({parsed: z.object({info: z.object({
+      mint: solanaAddressSchema,
+      tokenAmount: tokenAmountSchema,
+    }).passthrough()}).passthrough()}).passthrough(),
+  }).passthrough(),
+}).passthrough();
+const tokenAccountsSchema = z.object({context: contextSchema, value: z.array(tokenAccountSchema).max(10_000)}).passthrough();
+const validated = <T extends z.ZodTypeAny>(schema: T, value: unknown): z.infer<T> => {
+  const result = schema.safeParse(value);
+  if (!result.success) throw new Error("Malformed Solana RPC result; coverage unavailable");
+  return result.data;
+};
+
 /**
  * Cluster selection is an enum, not a free-form URL. This parameter is filled
  * in by the model, and an arbitrary endpoint would let any read tool POST to
@@ -65,6 +93,7 @@ export const getSolBalanceTool = createTool({
       args.address,
     ]);
 
+    validated(z.object({context: contextSchema, value: u64}), result);
     return clean({
       address: args.address,
       lamports: String(result.value),
@@ -89,7 +118,11 @@ export const getSolanaAccountInfoTool = createTool({
       [args.address, { encoding: "jsonParsed" }],
     );
 
-    if (!result?.value) {
+    validated(z.object({context: contextSchema, value: z.object({
+      owner: solanaAddressSchema, lamports: u64, executable: z.boolean(), rentEpoch: u64,
+      space: safeInteger.optional(), data: z.unknown(),
+    }).passthrough().nullable()}), result);
+    if (result.value === null) {
       throw new Error(`Account ${args.address} does not exist on-chain`);
     }
 
@@ -120,7 +153,12 @@ const fetchTokenAccounts = async (rpcUrl: string, owner: string) => {
     ),
   );
 
-  return responses.flatMap((response) => response?.value ?? []);
+  return responses.flatMap((response, index) => {
+    const parsed = validated(tokenAccountsSchema, response);
+    const program = index === 0 ? TOKEN_PROGRAM_ID : TOKEN_2022_PROGRAM_ID;
+    if (parsed.value.some(account => account.account.owner !== program)) throw new Error("Malformed Solana token program coverage");
+    return parsed.value;
+  });
 };
 
 const toTokenBalance = (account: any) => {
@@ -133,7 +171,7 @@ const toTokenBalance = (account: any) => {
       account.account.owner === TOKEN_2022_PROGRAM_ID ? "token-2022" : "token",
     amount: info.tokenAmount.amount,
     decimals: info.tokenAmount.decimals,
-    uiAmount: info.tokenAmount.uiAmountString,
+    uiAmount: formatUnits(BigInt(info.tokenAmount.amount), info.tokenAmount.decimals),
   };
 };
 
@@ -183,8 +221,9 @@ export const getSolanaTokenBalanceTool = createTool({
       [args.owner, { mint }, { encoding: "jsonParsed" }],
     );
 
-    if (!Array.isArray(result?.value)) throw new Error("Malformed token-account RPC response");
-    const accounts = result.value.map(toTokenBalance);
+    const parsed = validated(tokenAccountsSchema, result);
+    const accounts = parsed.value.map(toTokenBalance);
+    if (accounts.some(account => account.mint !== mint)) throw new Error("Malformed Solana mint coverage");
     if (accounts.length === 0) {
       return clean({
         owner: args.owner,
@@ -198,6 +237,7 @@ export const getSolanaTokenBalanceTool = createTool({
     }
 
     const decimals = accounts[0].decimals;
+    if (accounts.some(account => account.decimals !== decimals)) throw new Error("Inconsistent Solana token precision");
     const amount = accounts.reduce(
       (total, account) => total + BigInt(account.amount),
       0n,
@@ -233,12 +273,13 @@ export const getSolanaTokenSupplyTool = createTool({
       [mint],
     );
 
+    validated(z.object({context: contextSchema, value: tokenAmountSchema}), result);
     return clean({
       mint,
       symbol: SOLANA_MINT_SYMBOLS[mint] ?? null,
       amount: result.value.amount,
       decimals: result.value.decimals,
-      uiAmount: result.value.uiAmountString,
+      uiAmount: formatUnits(BigInt(result.value.amount), result.value.decimals),
     });
   },
 });
@@ -269,7 +310,14 @@ export const getSolanaTransactionTool = createTool({
       ],
     );
 
-    if (!transaction) {
+    validated(z.object({
+      slot: safeInteger, blockTime: z.number().finite().min(0).max(8_640_000_000_000).nullable().optional(),
+      transaction: z.object({message: z.object({instructions: z.array(z.object({
+        programId: solanaAddressSchema,
+      }).passthrough()).max(10_000)}).passthrough()}).passthrough(),
+      meta: z.object({fee: u64, err: z.unknown()}).passthrough().refine(meta => Object.hasOwn(meta, "err")).nullable().optional(),
+    }).passthrough().nullable(), transaction);
+    if (transaction === null) {
       throw new Error(
         `Transaction ${args.signature} not found - it may have expired from the RPC's history, or never landed`,
       );
@@ -330,6 +378,10 @@ export const getSolanaTransactionHistoryTool = createTool({
       [args.address, { limit: args.limit ?? 10, before: args.before }],
     );
 
+    validated(z.array(z.object({
+      signature: solanaSignatureSchema, slot: safeInteger, err: z.unknown().nullable(),
+      blockTime: z.number().finite().min(0).max(8_640_000_000_000).nullable().optional(), memo: z.string().nullable().optional(),
+    }).passthrough().refine(entry => Object.hasOwn(entry, "err"))).max(args.limit ?? 10), signatures);
     return clean({
       address: args.address,
       count: signatures.length,
@@ -356,6 +408,8 @@ export const getSolanaBlockTool = createTool({
     slot: z
       .number()
       .int()
+      .min(0)
+      .max(Number.MAX_SAFE_INTEGER)
       .optional()
       .describe("Slot to fetch. Omit for the latest finalized block."),
     includeTransactions: z
@@ -375,7 +429,8 @@ export const getSolanaBlockTool = createTool({
 
     if (args.slot !== undefined) {
       const block = await solanaRpc(rpcUrl, "getBlock", [args.slot, config]);
-      if (!block) {
+      validated(z.object({blockhash: z.string(), previousBlockhash: z.string(), parentSlot: safeInteger}).passthrough().nullable(), block);
+      if (block === null) {
         throw new Error(`Slot ${args.slot} was skipped and has no block`);
       }
       return clean({ slot: args.slot, ...block });
@@ -386,11 +441,13 @@ export const getSolanaBlockTool = createTool({
       { commitment: "finalized" },
     ]);
 
+    validated(safeInteger, slot);
     for (let attempt = 0; attempt < 10; attempt++) {
       const block = await solanaRpc(rpcUrl, "getBlock", [slot, config]).catch(
         () => null,
       );
-      if (block) return clean({ slot, ...block });
+      validated(z.object({blockhash: z.string(), previousBlockhash: z.string(), parentSlot: safeInteger}).passthrough().nullable(), block);
+      if (block !== null) return clean({ slot, ...block });
       slot -= 1;
     }
 
@@ -417,6 +474,9 @@ export const getSolanaNetworkStatusTool = createTool({
       solanaRpc(rpcUrl, "getEpochInfo"),
     ]);
 
+    validated(z.object({"solana-core": z.string(), "feature-set": safeInteger.optional()}), version);
+    validated(z.object({absoluteSlot: safeInteger, blockHeight: safeInteger, epoch: safeInteger, slotIndex: safeInteger, slotsInEpoch: safeInteger.min(1)}), epochInfo);
+    if (health !== "ok" && !(typeof health === "string" && health.startsWith("unhealthy:"))) throw new Error("Malformed Solana health response");
     return clean({
       // Origin only - the full URL may carry a provider API key.
       rpcUrl: endpointOrigin(rpcUrl),
@@ -446,7 +506,8 @@ export const getSolanaPriorityFeesTool = createTool({
     "Get recent Solana priority fees in micro-lamports per compute unit, summarised as percentiles. Use `recommended` as the priorityFeeMicroLamports for a transfer.",
   parameters: strictReadParameters({
     accounts: z
-      .array(z.string())
+      .array(solanaAddressSchema)
+      .max(128)
       .optional()
       .describe(
         "Accounts the transaction will write to. Fees are contention-specific, so passing these gives a far better estimate.",
@@ -460,6 +521,7 @@ export const getSolanaPriorityFeesTool = createTool({
       args.accounts?.length ? [args.accounts] : [],
     );
 
+    validated(z.array(z.object({slot: safeInteger, prioritizationFee: safeInteger})).max(1_000), fees);
     const sorted = fees
       .map((entry: any) => entry.prioritizationFee as number)
       .sort((a: number, b: number) => a - b);

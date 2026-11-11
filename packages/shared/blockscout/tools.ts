@@ -1,4 +1,4 @@
-import { readBoundedJSON } from "../utils/fetch.js";
+import { providerJSON, ProviderRequestError } from "../utils/fetch.js";
 import { z } from "zod";
 import { createTool } from "../client.js";
 import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
@@ -117,16 +117,7 @@ export async function fetchFromBlockscoutV2(
     url += `?${queryParams.toString()}`;
   }
   try {
-    // Without a signal, a Blockscout endpoint that never answers — which
-    // /internal-transactions and /withdrawals do for high-activity addresses —
-    // hangs the caller forever rather than failing.
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(BLOCKSCOUT_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      throw new ReadFailure("upstream_http", res.status === 429 || res.status >= 500);
-    }
-    const json: any = await readBoundedJSON(res, 4 * 1024 * 1024);
+    const json = await providerJSON(url, {}, "Blockscout request failed", {maximumBytes: 4 * 1024 * 1024, timeoutMs: BLOCKSCOUT_TIMEOUT_MS});
 
     // List endpoints return every item Blockscout has for the page — over half
     // a megabyte for an active address, which is more than the context window
@@ -149,6 +140,7 @@ export async function fetchFromBlockscoutV2(
     return json;
   } catch (error: unknown) {
     if (error instanceof ReadFailure) throw error;
+    if (error instanceof ProviderRequestError) throw new ReadFailure(error.category, error.retryable);
     if (error instanceof Error) {
       if (error.name === "TimeoutError" || error.name === "AbortError") {
         throw new ReadFailure("timeout", true);

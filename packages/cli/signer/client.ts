@@ -19,7 +19,7 @@ function normalizeSignableMessage(message: SignableMessage): SignableMessage {
 
   const raw = message.raw;
   if (typeof raw === "string") {
-    if (!isHex(raw)) {
+    if (!isHex(raw) || !/^0x(?:[a-fA-F0-9]{2})*$/.test(raw)) {
       throw new Error("Invalid raw message: expected hex string");
     }
     return { raw };
@@ -45,20 +45,24 @@ function sendRpcRequest(method: string, params?: unknown): Promise<JsonRpcRespon
     });
 
     let buffer = "";
+    const timeoutMs = [RPC_METHODS.PING, RPC_METHODS.GET_ADDRESS].includes(method as any) ? 2_000 : 120_000;
     const timeout = setTimeout(() => {
       socket.destroy();
-      reject(new Error(`RPC request timed out after 120s (method: ${method})`));
-    }, 120_000);
+      reject(new Error(`RPC request timed out (method: ${method})`));
+    }, timeoutMs);
 
     socket.on("data", (chunk) => {
       buffer += chunk.toString();
+      if (Buffer.byteLength(buffer, "utf8") > 512 * 1024) { clearTimeout(timeout); socket.destroy(); reject(new Error("Signer response exceeds size limit")); return; }
       const newlineIdx = buffer.indexOf("\n");
       if (newlineIdx !== -1) {
         clearTimeout(timeout);
         const line = buffer.slice(0, newlineIdx);
         socket.destroy();
         try {
-          resolve(JSON.parse(line) as JsonRpcResponse);
+          const response = JSON.parse(line) as JsonRpcResponse;
+          if (!response || response.jsonrpc !== "2.0" || response.id !== id || (response.error === undefined) === (response.result === undefined)) throw new Error("Invalid signer response");
+          resolve(response);
         } catch {
           reject(new Error("Invalid JSON response from daemon"));
         }
@@ -85,6 +89,7 @@ export async function isDaemonReachable(): Promise<boolean> {
 export async function getDaemonAddress(): Promise<Hex> {
   const res = await sendRpcRequest(RPC_METHODS.GET_ADDRESS);
   if (res.error) throw new Error(res.error.message);
+  if (typeof res.result !== "string" || !/^0x[a-fA-F0-9]{40}$/.test(res.result)) throw new Error("Invalid signer address");
   return res.result as Hex;
 }
 

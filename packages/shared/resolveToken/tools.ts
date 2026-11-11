@@ -3,7 +3,7 @@ import type { Address } from "viem";
 import { erc20Abi } from "viem";
 import { precision } from "../utils/exact.js";
 import { createTool } from "../client.js";
-import { assertOkResponse } from "../utils/fetch.js";
+import { providerJSON } from "../utils/fetch.js";
 import {
   resolveTokenChains,
   TOKEN_REGISTRY,
@@ -25,11 +25,16 @@ let coinListCache: Array<{
 async function fetchCoinGeckoList() {
   if (coinListCache) return coinListCache;
 
-  const response = await fetch(
-    "https://api.coingecko.com/api/v3/coins/list?include_platform=true",
+  const list = await providerJSON(
+    "https://api.coingecko.com/api/v3/coins/list?include_platform=true", {},
+    "Failed to fetch CoinGecko coin list", {maximumBytes: 16 * 1024 * 1024},
   );
-  await assertOkResponse(response, "Failed to fetch CoinGecko coin list");
-  coinListCache = (await response.json()) as typeof coinListCache;
+  const parsed = z.array(z.object({
+    id: z.string().max(160), symbol: z.string().max(160), name: z.string().max(512),
+    platforms: z.record(z.string().max(256)),
+  })).max(100_000).safeParse(list);
+  if (!parsed.success) throw new Error("Malformed CoinGecko coin list");
+  coinListCache = parsed.data as typeof coinListCache;
   return coinListCache!;
 }
 

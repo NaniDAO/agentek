@@ -1,3 +1,4 @@
+import { providerJSON, ProviderRequestError } from "../utils/fetch.js";
 import { identityAddress, quantitySchema } from "../utils/exact.js";
 import { z } from "zod";
 import type { Abi, Address } from "viem";
@@ -21,6 +22,16 @@ const argsSchema = z
   )
   .optional();
 
+async function contractJSON(url: string): Promise<any | null> {
+  try { return await providerJSON(url, {}, "Blockscout ABI request failed", {maximumBytes: 4 * 1024 * 1024}); }
+  catch (error) {
+    // Preserve unverified/non-OK ABI fallback, while transport/parse failures
+    // remain failures rather than being reported as a verified empty ABI.
+    if (error instanceof ProviderRequestError && error.category === "upstream_http") return null;
+    throw error;
+  }
+}
+
 /**
  * Fetch the ABI of a verified contract from Blockscout v2.
  * If the contract is a proxy, follows the implementation address to get the full ABI.
@@ -33,10 +44,8 @@ async function fetchAbiFromBlockscout(
   const baseUrl = BLOCKSCOUT_API_ENDPOINTS[chainId];
   if (!baseUrl) return null;
 
-  const res = await fetch(`${baseUrl}/smart-contracts/${address}`);
-  if (!res.ok) return null;
-
-  const data = await res.json();
+  const data = await contractJSON(`${baseUrl}/smart-contracts/${encodeURIComponent(address)}`);
+  if (!data) return null;
 
   // If the contract is a proxy with a known implementation, fetch the implementation ABI
   if (
@@ -46,9 +55,8 @@ async function fetchAbiFromBlockscout(
   ) {
     const implAddress = data.implementations[0].address_hash;
     if (implAddress) {
-      const implRes = await fetch(`${baseUrl}/smart-contracts/${implAddress}`);
-      if (implRes.ok) {
-        const implData = await implRes.json();
+      const implData = await contractJSON(`${baseUrl}/smart-contracts/${encodeURIComponent(implAddress)}`);
+      if (implData) {
         if (implData.abi && Array.isArray(implData.abi) && implData.abi.length > 0) {
           return implData.abi as Abi;
         }

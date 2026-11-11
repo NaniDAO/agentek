@@ -168,7 +168,7 @@ export class ToolHarness implements GymRpcObserver {
     const firstTransaction = this.transactions.length;
     const startedAt = Date.now();
     try {
-      trace.result = await client.execute(tool, args);
+      trace.result = await client.execute(tool, args, { requestId: `gym-call-${this.calls.length}` });
       this.assertActive();
       return trace.result;
     } catch (error) {

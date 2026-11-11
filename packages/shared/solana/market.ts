@@ -1,4 +1,4 @@
-import { assertOkResponse } from "../utils/fetch.js";
+import { providerJSON } from "../utils/fetch.js";
 import { SOLANA_TOKENS } from "./constants.js";
 import { resolveSolanaMint, solanaAddressSchema } from "./utils.js";
 
@@ -55,9 +55,7 @@ const getJSON = async (
   // These clients only need the exact, pinned provider origin. Refuse redirects
   // so a compromised or misconfigured provider cannot move a credentialed
   // request (or its trust decision) to a different endpoint.
-  const response = await fetcher(url, { headers, redirect: "error" });
-  await assertOkResponse(response, context);
-  return response.json();
+  return providerJSON(url, { headers }, context, { fetcher, maximumBytes: 4 * 1024 * 1024 });
 };
 
 /**
@@ -73,7 +71,8 @@ const getJSON = async (
  */
 const MAX_PROVIDER_STRING = 512;
 
-const sanitizeProviderValue = (value: unknown): unknown => {
+const sanitizeProviderValue = (value: unknown, depth = 0): unknown => {
+  if (depth > 12) return null;
   if (typeof value === "string") {
     const flattened = value
       .replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
@@ -83,12 +82,12 @@ const sanitizeProviderValue = (value: unknown): unknown => {
       ? `${flattened.slice(0, MAX_PROVIDER_STRING)}… [truncated]`
       : flattened;
   }
-  if (Array.isArray(value)) return value.map(sanitizeProviderValue);
+  if (Array.isArray(value)) return value.slice(0, 10_000).map(entry => sanitizeProviderValue(entry, depth + 1));
   if (isRecord(value)) {
     return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [
+      Object.entries(value).slice(0, 256).map(([key, entry]) => [
         key,
-        sanitizeProviderValue(entry),
+        sanitizeProviderValue(entry, depth + 1),
       ]),
     );
   }
@@ -101,7 +100,7 @@ const sanitizeProviderValue = (value: unknown): unknown => {
  * base64 transaction must survive byte for byte.
  */
 const asArray = (value: unknown, context: string): Record<string, unknown>[] => {
-  if (!Array.isArray(value) || !value.every(isRecord)) {
+  if (!Array.isArray(value) || value.length > 10_000 || !value.every(isRecord)) {
     throw new Error(`${context}: expected an array of objects`);
   }
   return value.map(
@@ -204,7 +203,7 @@ export const getJupiterSwapOrder = async (
   const value = await getJSON(url, "Jupiter swap order failed", fetcher, apiKey);
   if (!isRecord(value)) throw new Error("Jupiter swap order: expected an object");
   if (typeof value.errorMessage === "string" && value.errorMessage) {
-    throw new Error(`Jupiter swap order failed: ${value.errorMessage}`);
+    throw new Error("Jupiter swap order failed: provider rejected order");
   }
   if (
     typeof value.requestId !== "string" ||

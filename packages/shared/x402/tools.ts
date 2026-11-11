@@ -44,7 +44,13 @@ export const x402FetchTool = createTool({
     const signer = toClientEvmSigner(
       {
         address: account.address,
-        signTypedData: (msg) => account.signTypedData(msg as any),
+        signTypedData: async (msg) => {
+          // The actual server-selected authorization, not the model-selected cap,
+          // is the financial approval boundary.
+          const amountRaw = BigInt((msg as any).message?.value).toString();
+          await client.authorizeAction("payment", { url, amountRaw, authorization: msg }, walletClient.chain?.id);
+          return account.signTypedData(msg as any);
+        },
       },
       publicClient,
     );

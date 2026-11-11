@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import {
   getTokenChartTool,
   getYieldTool,
@@ -7,6 +7,7 @@ import {
   compareYieldHistoryTool,
 } from "./tools.js";
 import { defillamaTools } from "./index.js";
+import * as api from "./utils/api.js";
 import {
   createTestClient,
   validateToolStructure,
@@ -134,515 +135,152 @@ describe("DeFiLlama Tools", () => {
     }, LONG_TIMEOUT);
   });
 
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getYieldTool", () => {
-    it("should fetch yield data without filters", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, { limit: 10 })
-      );
+  describe("yield evidence semantics", () => {
+    const now = Date.parse("2026-11-11T12:00:00Z");
+    const pool = (id: string, changes = {}) => ({
+      pool: id, chain: "Ethereum", project: "aave-v3", symbol: "USDC", apy: 4,
+      apyBase: 3, apyReward: 1, tvlUsd: 2_000_000, stablecoin: true,
+      ilRisk: "no", exposure: "single", rewardTokens: null, ...changes,
+    });
+    const catalogue = () => Object.freeze([
+      Object.freeze(pool("small-high-rate", {apy: 20, tvlUsd: 50_000, project: "other"})),
+      Object.freeze(pool("large-low-rate")),
+      Object.freeze(pool("missing", {apy: null, tvlUsd: null, stablecoin: undefined})),
+      Object.freeze(pool("base-pool", {chain: "Base", apy: 8, tvlUsd: 3_000_000})),
+    ]);
+    const listed = () => vi.spyOn(api, "fetchDefiLlamaPools").mockResolvedValue({status: "success", data: catalogue()} as any);
+    const point = (daysAgo: number, apy: number | null, tvlUsd = 2_000_000) => ({
+      timestamp: new Date(now - daysAgo * 86400000).toISOString(), apy, tvlUsd, apyBase: apy, apyReward: null,
+    });
+    afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
-      expect(result.count).toBeGreaterThan(0);
-      expect(result.count).toBeLessThanOrEqual(10);
-      expect(result.yields).toBeDefined();
-      expect(Array.isArray(result.yields)).toBe(true);
+    it("uses liquidity as the default order and keeps rates, units and risk distinct", async () => {
+      listed();
+      const result = await getYieldTool.execute(client, {chainId: 1});
+      expect(result.ranking).toContain("liquidity descending");
+      expect(result.yields.map(p => p.pool)).toEqual(["large-low-rate", "small-high-rate", "missing"]);
+      expect(result.yields[0]).toMatchObject({project: "aave-v3", stablecoin: true, apy: "4.00%", apyPercent: 4, tvl: "$2000000.00", tvlUsd: 2_000_000, risk: "unverified", contractsVerified: false, sourceUpdatedAt: null});
+      expect(result.yields[0].execution).toMatchObject({deposit: "unverified", withdrawal: "unverified"});
+      expect(result.yields[2]).toMatchObject({apy: null, apyPercent: null, tvl: null, tvlUsd: null, stablecoin: null, risk: "unverified"});
+      expect(result.yields[2].warnings).toEqual(expect.arrayContaining(["APY unavailable.", "Liquidity unavailable."]));
+    });
 
-      // Verify yield data structure
-      const firstYield = result.yields[0];
-      expect(firstYield).toHaveProperty("project");
-      expect(firstYield).toHaveProperty("asset");
-      expect(firstYield).toHaveProperty("chain");
-      expect(firstYield).toHaveProperty("apy");
-      expect(firstYield).toHaveProperty("tvl");
-      expect(firstYield).toHaveProperty("risk");
-    }, LONG_TIMEOUT);
+    it("filters exact network, protocol project, stablecoin boolean and percentage-point APY", async () => {
+      listed();
+      const result = await getYieldTool.execute(client, {chainId: 1, protocol: "Aave", stablecoin: true, minApy: 3, minTvl: 1_000_000});
+      expect(result.yields.map(p => p.pool)).toEqual(["large-low-rate"]);
+      expect(result).toMatchObject({requestedChainId: 1, requestedChain: "ethereum", count: 1});
+      expect(result.yields[0].project).toBe("aave-v3");
+      expect(result.yields[0].risk).toBe("unverified");
+    });
 
-    it("should filter by chain (Ethereum)", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          chain: "Ethereum",
-          limit: 10,
-        })
-      );
+    it("treats maxRisk as a legacy APY screen and explicit APY sort as a rate ranking", async () => {
+      listed();
+      const screened = await getYieldTool.execute(client, {chainId: 1, maxRisk: "low"});
+      expect(screened.yields.map(p => p.pool)).toEqual(["large-low-rate"]);
+      expect(screened.yields[0].risk).toBe("unverified");
+      const sorted = await getYieldTool.execute(client, {chainId: 1, sortBy: "apy"});
+      expect(sorted.yields.map(p => p.pool)).toEqual(["small-high-rate", "large-low-rate", "missing"]);
+      expect(sorted.ranking).toContain("not risk-adjusted");
+    });
 
-      expect(result.count).toBeGreaterThan(0);
-      result.yields.forEach((y) => {
-        expect(y.chain.toLowerCase()).toContain("ethereum");
-      });
-    }, LONG_TIMEOUT);
-
-    it("should filter by stablecoin yields", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          stablecoin: true,
-          limit: 10,
-        })
-      );
-
-      expect(result.count).toBeGreaterThan(0);
-      result.yields.forEach((y) => {
-        expect(y.stablecoin).toBe("Yes");
-      });
-    }, LONG_TIMEOUT);
-
-    it("should filter by minimum APY", async () => {
-      const minApy = 5;
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          minApy,
-          limit: 10,
-        })
-      );
-
-      expect(result.count).toBeGreaterThan(0);
-      result.yields.forEach((y) => {
-        const apyValue = parseFloat(y.apy.replace("%", ""));
-        expect(apyValue).toBeGreaterThanOrEqual(minApy);
-      });
-    }, LONG_TIMEOUT);
-
-    it("should filter by protocol (Aave)", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          protocol: "Aave",
-          limit: 10,
-        })
-      );
-
-      expect(result.count).toBeGreaterThan(0);
-      result.yields.forEach((y) => {
-        expect(y.protocol).toBe("Aave");
-      });
-    }, LONG_TIMEOUT);
-
-    it("should filter by project name", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          project: "lido",
-          limit: 10,
-        })
-      );
-
-      expect(result.count).toBeGreaterThan(0);
-      result.yields.forEach((y) => {
-        expect(y.project.toLowerCase()).toContain("lido");
-      });
-    }, LONG_TIMEOUT);
-
-    it("should filter by symbol", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          symbol: "USDC",
-          limit: 10,
-        })
-      );
-
-      expect(result.count).toBeGreaterThan(0);
-      result.yields.forEach((y) => {
-        expect(y.asset.toLowerCase()).toContain("usdc");
-      });
-    }, LONG_TIMEOUT);
-
-    it("should filter by max risk level", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          maxRisk: "low",
-          limit: 10,
-        })
-      );
-
-      expect(result.count).toBeGreaterThan(0);
-      result.yields.forEach((y) => {
-        expect(y.risk).toBe("low");
-      });
-    }, LONG_TIMEOUT);
-
-    it("should sort yields by APY in descending order", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          limit: 20,
-        })
-      );
-
-      expect(result.count).toBeGreaterThan(1);
-      const apyValues = result.yields.map((y) =>
-        parseFloat(y.apy.replace("%", ""))
-      );
-
-      // Check that APYs are in descending order
-      for (let i = 1; i < apyValues.length; i++) {
-        expect(apyValues[i - 1]).toBeGreaterThanOrEqual(apyValues[i]);
+    it("rejects conflicting networks and invalid runtime inputs before provider reads", async () => {
+      const fetchPools = listed();
+      for (const args of [{chainId: 1, chain: "Base"}, {chainId: 999}, {limit: 0}, {minApy: Infinity}]) {
+        await expect(getYieldTool.execute(client, args)).rejects.toThrow();
       }
-    }, LONG_TIMEOUT);
+      await expect(compareYieldTool.execute(client, {assets: []})).rejects.toThrow();
+      expect(fetchPools).not.toHaveBeenCalled();
+    });
 
-    it("should include pool IDs for yield entries", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, {
-          limit: 5,
-        })
-      );
-
-      expect(result.count).toBeGreaterThan(0);
-      result.yields.forEach((y) => {
-        expect(y.pool).toBeDefined();
-        expect(typeof y.pool).toBe("string");
-      });
-    }, LONG_TIMEOUT);
-  });
-
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("compareYieldTool", () => {
-    it("should compare yields for a single asset", async () => {
-      const result = await withRetry(() =>
-        compareYieldTool.execute(client, {
-          assets: ["USDC"],
-        })
-      );
-
-      expect(result.comparisons).toBeDefined();
+    it("compares yields with numeric gross projections while preserving unknown returns", async () => {
+      listed();
+      const result = await compareYieldTool.execute(client, {chainId: 1, assets: ["USDC"], amount: 10_000, duration: 365});
       expect(result.comparisons).toHaveLength(1);
-      expect(result.comparisons[0].asset).toBe("USDC");
-      expect(result.comparisons[0].protocols).toBeDefined();
-      expect(Array.isArray(result.comparisons[0].protocols)).toBe(true);
-    }, LONG_TIMEOUT);
+      const comparison = result.comparisons[0];
+      expect(comparison.asset).toBe("USDC");
+      expect(comparison.yields).toHaveLength(3);
+      expect(comparison.yields[0].grossProjectedEarnings).toBeCloseTo(400, 8);
+      expect(comparison.yields[2].grossProjectedEarnings).toBeNull();
+      expect(result.warning).toContain("No net return estimate");
+      expect(result.warning).toContain("fees");
+      expect(comparison.yields.every(p => p.risk === "unverified")).toBe(true);
+    });
 
-    it("should compare yields for multiple assets", async () => {
-      const result = await withRetry(() =>
-        compareYieldTool.execute(client, {
-          assets: ["USDC", "ETH"],
-        })
-      );
+    it("uses dated APY observations, preserves missing points, and reports percentage-point volatility", async () => {
+      listed(); vi.spyOn(Date, "now").mockReturnValue(now);
+      vi.spyOn(api, "fetchPoolHistoricalData").mockResolvedValue({status: "success", data: [point(-1, 100), point(1, 4), point(10, 50), point(3, 2), point(2, null)]} as any);
+      const result = await getYieldHistoryTool.execute(client, {poolId: "large-low-rate", chainId: 1, days: 7});
+      expect(result).toMatchObject({poolId: "large-low-rate", chainId: 1, requestedDays: 7, dataPoints: 2, missingApyPoints: 1, averageApy: 3, minApy: 2, maxApy: 4, volatility: 1});
+      expect(result.timeline.map(p => p.apy)).toEqual([2, null, 4]);
+      expect(result.timeline.map(p => p.tvlUsd)).toEqual([2_000_000, 2_000_000, 2_000_000]);
+      expect(result.firstObservation).toBe(point(3, 2).timestamp);
+      expect(result.lastObservation).toBe(point(1, 4).timestamp);
+    });
 
-      expect(result.comparisons).toHaveLength(2);
-      expect(result.comparisons.map((c) => c.asset)).toContain("USDC");
-      expect(result.comparisons.map((c) => c.asset)).toContain("ETH");
-    }, LONG_TIMEOUT);
+    it("keeps one observation insufficient for volatility and rejects a wrong-chain pool", async () => {
+      listed(); vi.spyOn(Date, "now").mockReturnValue(now);
+      const chart = vi.spyOn(api, "fetchPoolHistoricalData").mockResolvedValue({status: "success", data: [point(1, 4)]} as any);
+      await expect(getYieldHistoryTool.execute(client, {poolId: "large-low-rate", chainId: 1, days: 7})).resolves.toMatchObject({dataPoints: 1, volatility: null});
+      chart.mockClear();
+      await expect(getYieldHistoryTool.execute(client, {poolId: "base-pool", chainId: 1, days: 7})).rejects.toThrow(/network/);
+      expect(chart).not.toHaveBeenCalled();
+    });
 
-    it("should calculate projected earnings when amount and duration provided", async () => {
-      const result = await withRetry(() =>
-        compareYieldTool.execute(client, {
-          assets: ["USDC"],
-          amount: 10000,
-          duration: 365,
-        })
-      );
-
-      expect(result.investmentDetails).toBeDefined();
-      expect(result.investmentDetails?.initialAmount).toBe("$10,000.00");
-      expect(result.investmentDetails?.duration).toBe("365 days");
-
-      // Check that projected earnings are calculated
-      const protocols = result.comparisons[0].protocols;
-      if (protocols.length > 0) {
-        expect(protocols[0]).toHaveProperty("projectedEarnings");
-        expect(protocols[0]).toHaveProperty("totalValue");
-      }
-    }, LONG_TIMEOUT);
-
-    it("should return top 5 yields per asset", async () => {
-      const result = await withRetry(() =>
-        compareYieldTool.execute(client, {
-          assets: ["ETH"],
-        })
-      );
-
-      expect(result.comparisons[0].protocols.length).toBeLessThanOrEqual(5);
-    }, LONG_TIMEOUT);
-
-    it("should include risk assessment for each protocol", async () => {
-      const result = await withRetry(() =>
-        compareYieldTool.execute(client, {
-          assets: ["USDC"],
-        })
-      );
-
-      const protocols = result.comparisons[0].protocols;
-      protocols.forEach((p) => {
-        expect(p).toHaveProperty("risk");
-        expect(["low", "medium", "high"]).toContain(p.risk);
+    it("preserves failed histories and ranks available evidence without invented safety scores", async () => {
+      listed(); vi.spyOn(Date, "now").mockReturnValue(now);
+      vi.spyOn(api, "fetchPoolHistoricalData").mockImplementation(async id => {
+        if (id === "missing") throw new Error("History unavailable");
+        return {status: "success", data: id === "large-low-rate" ? [point(2, 2), point(1, 4)] : [point(2, 10), point(1, 10)]} as any;
       });
-    }, LONG_TIMEOUT);
-  });
-
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("getYieldHistoryTool", () => {
-    // We need a known pool ID for testing. Let's first get one from the yield tool.
-    let testPoolId: string;
-
-    it("should fetch pool ID for subsequent tests", async () => {
-      const yieldResult = await withRetry(() =>
-        getYieldTool.execute(client, {
-          project: "aave",
-          chain: "Ethereum",
-          limit: 1,
-        })
-      );
-
-      expect(yieldResult.count).toBeGreaterThan(0);
-      testPoolId = yieldResult.yields[0].pool;
-      expect(testPoolId).toBeDefined();
-    }, LONG_TIMEOUT);
-
-    it("should fetch historical yield data for a pool", async () => {
-      // Use a well-known Aave USDC pool ID
-      const result = await withRetry(() =>
-        getYieldHistoryTool.execute(client, {
-          poolId: testPoolId || "747c1d2a-c668-4682-b9f9-296708a3dd90", // Fallback to known Aave V3 USDC pool
-          days: 7,
-        })
-      );
-
-      expect(result.poolId).toBeDefined();
-      expect(result.period).toBe("7 days");
-      expect(result.dataPoints).toBeGreaterThan(0);
-
-      // Check current data
-      expect(result.current).toBeDefined();
-      expect(result.current.apy).toBeDefined();
-      expect(result.current.tvl).toBeDefined();
-      expect(result.current.date).toBeDefined();
-
-      // Check statistics
-      expect(result.statistics).toBeDefined();
-      expect(result.statistics.apy).toBeDefined();
-      expect(result.statistics.apy.average).toBeDefined();
-      expect(result.statistics.apy.min).toBeDefined();
-      expect(result.statistics.apy.max).toBeDefined();
-      expect(result.statistics.apy.volatility).toBeDefined();
-
-      expect(result.statistics.tvl).toBeDefined();
-      expect(result.statistics.tvl.average).toBeDefined();
-    }, LONG_TIMEOUT);
-
-    it("should return timeline data", async () => {
-      const result = await withRetry(() =>
-        getYieldHistoryTool.execute(client, {
-          poolId: testPoolId || "747c1d2a-c668-4682-b9f9-296708a3dd90",
-          days: 7,
-        })
-      );
-
-      expect(result.timeline).toBeDefined();
-      expect(Array.isArray(result.timeline)).toBe(true);
-      if (result.timeline.length > 0) {
-        const timelinePoint = result.timeline[0];
-        expect(timelinePoint).toHaveProperty("date");
-        expect(timelinePoint).toHaveProperty("apy");
-        expect(timelinePoint).toHaveProperty("tvl");
-      }
-    }, LONG_TIMEOUT);
-
-    it("should respect the days parameter", async () => {
-      const result30 = await withRetry(() =>
-        getYieldHistoryTool.execute(client, {
-          poolId: testPoolId || "747c1d2a-c668-4682-b9f9-296708a3dd90",
-          days: 30,
-        })
-      );
-
-      const result7 = await withRetry(() =>
-        getYieldHistoryTool.execute(client, {
-          poolId: testPoolId || "747c1d2a-c668-4682-b9f9-296708a3dd90",
-          days: 7,
-        })
-      );
-
-      expect(result30.period).toBe("30 days");
-      expect(result7.period).toBe("7 days");
-      // Generally more data points for longer periods
-      expect(result30.dataPoints).toBeGreaterThanOrEqual(result7.dataPoints);
-    }, LONG_TIMEOUT);
-
-    it("should throw error for invalid pool ID", async () => {
-      await expect(
-        getYieldHistoryTool.execute(client, {
-          poolId: "invalid-pool-id-that-does-not-exist",
-          days: 7,
-        })
-      ).rejects.toThrow();
-    }, LONG_TIMEOUT);
-  });
-
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("compareYieldHistoryTool", () => {
-    let testPoolIds: string[] = [];
-
-    it("should fetch pool IDs for subsequent tests", async () => {
-      // Get multiple pool IDs from Aave on different chains
-      const ethereumPools = await withRetry(() =>
-        getYieldTool.execute(client, {
-          project: "aave",
-          chain: "Ethereum",
-          limit: 2,
-        })
-      );
-
-      testPoolIds = ethereumPools.yields.map((y) => y.pool).filter(Boolean);
-      expect(testPoolIds.length).toBeGreaterThanOrEqual(2);
-    }, LONG_TIMEOUT);
-
-    it("should compare historical yield data for multiple pools", async () => {
-      const poolsToCompare = testPoolIds.length >= 2
-        ? testPoolIds.slice(0, 2)
-        : ["747c1d2a-c668-4682-b9f9-296708a3dd90", "825688c0-c694-4a6b-8497-177e425b7348"]; // Fallback Aave pools
-
-      const result = await withRetry(() =>
-        compareYieldHistoryTool.execute(client, {
-          poolIds: poolsToCompare,
-          days: 7,
-          sortBy: "apy",
-        })
-      );
-
-      expect(result.count).toBe(poolsToCompare.length);
-      expect(result.period).toBe("7 days");
-      expect(result.sortedBy).toBe("apy");
-
-      // Check bestFor recommendations
-      expect(result.bestFor).toBeDefined();
-      expect(result.bestFor.highestAvgApy).toBeDefined();
-      expect(result.bestFor.lowestVolatility).toBeDefined();
-      expect(result.bestFor.bestStability).toBeDefined();
-
-      // Check pools data
-      expect(result.pools).toBeDefined();
-      expect(Array.isArray(result.pools)).toBe(true);
-      expect(result.pools.length).toBe(poolsToCompare.length);
-
-      const firstPool = result.pools[0];
-      expect(firstPool).toHaveProperty("poolId");
-      expect(firstPool).toHaveProperty("name");
-      expect(firstPool).toHaveProperty("currentApy");
-      expect(firstPool).toHaveProperty("avgApy");
-      expect(firstPool).toHaveProperty("volatility");
-      expect(firstPool).toHaveProperty("stabilityScore");
-    }, LONG_TIMEOUT);
-
-    it("should sort by different metrics", async () => {
-      const poolsToCompare = testPoolIds.length >= 2
-        ? testPoolIds.slice(0, 2)
-        : ["747c1d2a-c668-4682-b9f9-296708a3dd90", "825688c0-c694-4a6b-8497-177e425b7348"];
-
-      const resultByApy = await withRetry(() =>
-        compareYieldHistoryTool.execute(client, {
-          poolIds: poolsToCompare,
-          days: 7,
-          sortBy: "apy",
-        })
-      );
-
-      const resultByVolatility = await withRetry(() =>
-        compareYieldHistoryTool.execute(client, {
-          poolIds: poolsToCompare,
-          days: 7,
-          sortBy: "volatility",
-        })
-      );
-
-      const resultByStability = await withRetry(() =>
-        compareYieldHistoryTool.execute(client, {
-          poolIds: poolsToCompare,
-          days: 7,
-          sortBy: "stability",
-        })
-      );
-
-      expect(resultByApy.sortedBy).toBe("apy");
-      expect(resultByVolatility.sortedBy).toBe("volatility");
-      expect(resultByStability.sortedBy).toBe("stability");
-    }, LONG_TIMEOUT);
-
-    it("should include APY and volatility rankings", async () => {
-      const poolsToCompare = testPoolIds.length >= 2
-        ? testPoolIds.slice(0, 2)
-        : ["747c1d2a-c668-4682-b9f9-296708a3dd90", "825688c0-c694-4a6b-8497-177e425b7348"];
-
-      const result = await withRetry(() =>
-        compareYieldHistoryTool.execute(client, {
-          poolIds: poolsToCompare,
-          days: 7,
-        })
-      );
-
-      result.pools.forEach((pool) => {
-        expect(pool.apyRank).toBeDefined();
-        expect(pool.volatilityRank).toBeDefined();
-        expect(pool.apyRank).toBeGreaterThan(0);
-        expect(pool.apyRank).toBeLessThanOrEqual(poolsToCompare.length);
-      });
-    }, LONG_TIMEOUT);
-
-    it("should include detailed statistics in response", async () => {
-      const poolsToCompare = testPoolIds.length >= 2
-        ? testPoolIds.slice(0, 2)
-        : ["747c1d2a-c668-4682-b9f9-296708a3dd90", "825688c0-c694-4a6b-8497-177e425b7348"];
-
-      const result = await withRetry(() =>
-        compareYieldHistoryTool.execute(client, {
-          poolIds: poolsToCompare,
-          days: 14,
-        })
-      );
-
-      expect(result.details).toBeDefined();
-      expect(Array.isArray(result.details)).toBe(true);
-
-      const detail = result.details[0];
-      expect(detail).toHaveProperty("poolId");
-      expect(detail).toHaveProperty("current");
-      expect(detail).toHaveProperty("statistics");
-      expect(detail).toHaveProperty("performance");
-      expect(detail.statistics.apy).toHaveProperty("average");
-      expect(detail.statistics.apy).toHaveProperty("volatility");
-    }, LONG_TIMEOUT);
-  });
-
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("API Error Handling", () => {
-    it("should handle invalid token format gracefully in getTokenChartTool", async () => {
-      // Invalid format should still attempt to fetch but may fail
-      await expect(
-        getTokenChartTool.execute(client, {
-          tokens: "invalid_format",
-          period: "1d",
-        })
-      ).rejects.toThrow();
-    }, LONG_TIMEOUT);
-
-    it("should handle empty assets array in compareYieldTool", async () => {
-      // Zod validation should catch this
-      await expect(
-        compareYieldTool.execute(client, {
-          assets: [],
-        })
-      ).rejects.toThrow();
+      const ids = ["large-low-rate", "small-high-rate", "missing"];
+      const volatility = await compareYieldHistoryTool.execute(client, {chainId: 1, poolIds: ids, days: 7});
+      expect(volatility).toMatchObject({ranking: "volatility", complete: false});
+      expect(volatility.results.map(p => p.poolId)).toEqual(["small-high-rate", "large-low-rate"]);
+      expect(volatility.errors).toEqual([{poolId: "missing", error: expect.stringContaining("History unavailable")}]);
+      expect(volatility).not.toHaveProperty("bestFor");
+      expect(volatility.results[0]).not.toHaveProperty("stabilityScore");
+      const apy = await compareYieldHistoryTool.execute(client, {chainId: 1, poolIds: ids.slice(0, 2), days: 7, sortBy: "apy"});
+      expect(apy.complete).toBe(true);
+      expect(apy.results.map(p => p.averageApy)).toEqual([10, 3]);
     });
   });
 
-  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("Data Validation", () => {
-    it("should return valid APY percentages", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, { limit: 10 })
-      );
-
-      result.yields.forEach((y) => {
-        expect(y.apy).toMatch(/^-?\d+\.?\d*%$/);
-      });
+  describe.skipIf(process.env.AGENTEK_OFFLINE_TESTS === "1")("live yield evidence", () => {
+    it("returns source-listed candidates with explicit units and unverified execution", async () => {
+      const result = await withRetry(() => getYieldTool.execute(client, {chainId: 1, protocol: "Aave", stablecoin: true, limit: 5}));
+      expect(result.count).toBeGreaterThan(0);
+      expect(result.count).toBe(result.yields.length);
+      expect(result.requestedChainId).toBe(1);
+      const tvls = result.yields.map(row => row.tvlUsd ?? -Infinity);
+      expect(tvls).toEqual([...tvls].sort((a, b) => b - a));
+      for (const row of result.yields) {
+        expect(row.chainId).toBe(1);
+        expect(row.project.toLowerCase()).toContain("aave");
+        expect(row.stablecoin).toBe(true);
+        expect(row.risk).toBe("unverified");
+        expect(row.execution).toMatchObject({deposit: "unverified", withdrawal: "unverified"});
+        expect(row.apy).toBe(row.apyPercent === null ? null : `${row.apyPercent.toFixed(2)}%`);
+        expect(row.tvl).toBe(row.tvlUsd === null ? null : `$${row.tvlUsd.toFixed(2)}`);
+      }
     }, LONG_TIMEOUT);
 
-    it("should return valid TVL values", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, { limit: 10 })
-      );
-
-      result.yields.forEach((y) => {
-        expect(y.tvl).toMatch(/^\$[\d,]+\.\d{2}$/);
-      });
-    }, LONG_TIMEOUT);
-
-    it("should return valid risk levels", async () => {
-      const result = await withRetry(() =>
-        getYieldTool.execute(client, { limit: 10 })
-      );
-
-      const validRiskLevels = ["low", "medium", "high"];
-      result.yields.forEach((y) => {
-        expect(validRiskLevels).toContain(y.risk);
-      });
+    it("reports available history and failures for the selected source pool identities", async () => {
+      const source = await withRetry(() => getYieldTool.execute(client, {chainId: 1, project: "aave", limit: 2}));
+      const poolIds = source.yields.map(row => row.pool);
+      expect(poolIds).toHaveLength(2);
+      const result = await withRetry(() => compareYieldHistoryTool.execute(client, {chainId: 1, poolIds, days: 7, sortBy: "apy"}));
+      expect(result.ranking).toBe("apy");
+      expect(result.results.length + result.errors.length).toBe(poolIds.length);
+      expect(result.complete).toBe(result.errors.length === 0);
+      expect([...result.results.map(row => row.poolId), ...result.errors.map(row => row.poolId)].sort()).toEqual([...poolIds].sort());
+      for (const row of result.results) {
+        expect(row.chainId).toBe(1);
+        expect(row.requestedDays).toBe(7);
+        expect(row.dataPoints).toBeGreaterThan(0);
+        expect(Number.isFinite(row.averageApy)).toBe(true);
+        expect(row.timeline.every(point => Number.isFinite(Date.parse(point.timestamp)))).toBe(true);
+      }
     }, LONG_TIMEOUT);
   });
 });

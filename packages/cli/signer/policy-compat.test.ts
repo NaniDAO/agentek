@@ -17,7 +17,7 @@ describe("published 0.1.27 policy compatibility", () => {
     const before = JSON.stringify(keyfile);
     const { policy } = decrypt(keyfile, "fixture-passphrase");
     expect(evaluatePolicy(policy, tx)).toEqual({ allowed: true, needsApproval: false });
-    expect(evaluatePolicy(policy, { ...tx, data: "0xa9059cbb" })).toEqual({ allowed: true, needsApproval: true });
+    expect(evaluatePolicy(policy, { ...tx, data: "0xa9059cbb" })).toMatchObject({ allowed: true, needsApproval: true, reason: expect.stringContaining("not explicitly preapproved") });
     expect(evaluatePolicy(policy, { ...tx, to: "0x0000000000000000000000000000000000000001" }).needsApproval).toBe(true);
     expect(evaluatePolicy(policy, { ...tx, value: "100000000000000001" }).allowed).toBe(false);
     expect(JSON.stringify(keyfile)).toBe(before);

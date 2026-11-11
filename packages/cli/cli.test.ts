@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { execFile } from "node:child_process";
 import { resolve } from "node:path";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
@@ -31,15 +31,24 @@ function run(
   stderr: string;
   exitCode: number;
 }> {
+  // Child processes receive only OS execution settings. Credentials, custom
+  // RPCs, signer state and the user's config are never inherited by tests.
+  const temporaryConfig = env?.AGENTEK_CONFIG_DIR ? undefined : mkdtempSync(join(tmpdir(), "agentek-cli-isolated-"));
+  const cleanEnv: Record<string, string> = {};
+  for (const name of ["PATH", "SystemRoot", "WINDIR", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "TZ"]) {
+    if (process.env[name] !== undefined) cleanEnv[name] = process.env[name]!;
+  }
+  Object.assign(cleanEnv, { AGENTEK_EXECUTION_MODE: "prepare", AGENTEK_CONFIG_DIR: temporaryConfig }, env);
   return new Promise((resolve) => {
     execFile(
       "node",
       [CLI, ...args],
       {
         timeout: SUBPROCESS_TIMEOUT,
-        env: { ...process.env, ...env },
+        env: cleanEnv,
       },
       (err, stdout, stderr) => {
+        if (temporaryConfig) rmSync(temporaryConfig, { recursive: true, force: true });
         const exitCode = err && "code" in err ? (err as any).code as number : 0;
         resolve({ stdout, stderr, exitCode });
       },
@@ -255,8 +264,10 @@ describe("CLI — setup", () => {
     );
     const { stderr, exitCode } = await run(["setup"], { AGENTEK_CONFIG_DIR: tmpDir });
     expect(exitCode).toBe(0);
-    expect(stderr).toContain("configured");
-    expect(stderr).toMatch(/1\/\d+ keys configured/);
+    expect(stderr).toMatch(/PERPLEXITY_API_KEY\s+configured \(config\)/);
+    expect(stderr).toMatch(/AGENTEK_EXECUTION_MODE\s+configured \(env\)/);
+    expect(stderr).toMatch(/2\/\d+ keys configured/);
+    expect(stderr).not.toContain("pplx-test-1234567890");
   }, CONFIG_TEST_TIMEOUT);
 });
 
@@ -488,7 +499,16 @@ describe("CLI — structured errors", () => {
   }, TEST_TIMEOUT);
 
   it("key-gated tool without key should return MISSING_API_KEY with config set hint", async () => {
-    const { stderr, exitCode } = await run(["exec", "askPerplexitySearch", "--query", "test"]);
+    // Deliberately seed both credential sources in the parent to prove the
+    // subprocess cannot turn this missing-key regression into a billed call.
+    const parentConfig = mkdtempSync(join(tmpdir(), "agentek-cli-parent-credentials-"));
+    writeFileSync(join(parentConfig, "config.json"), JSON.stringify({ version: 1, keys: { PERPLEXITY_API_KEY: "parent-config-must-not-be-used" } }));
+    vi.stubEnv("PERPLEXITY_API_KEY", "parent-env-must-not-be-used");
+    vi.stubEnv("AGENTEK_CONFIG_DIR", parentConfig);
+    let result: Awaited<ReturnType<typeof run>>;
+    try { result = await run(["exec", "askPerplexitySearch", "--query", "test"]); }
+    finally { vi.unstubAllEnvs(); rmSync(parentConfig, { recursive: true, force: true }); }
+    const { stderr, exitCode } = result;
     expect(exitCode).toBe(1);
 
     const err = parseJson(stderr);
@@ -505,6 +525,15 @@ describe("CLI — strict input and configuration", () => {
     expect(unknown.exitCode).toBe(1); expect(unknown.stderr).toContain("Unknown parameter");
     const timeout = await run(["exec", "getBlockNumber", "--timeout", "Infinity"]);
     expect(timeout.exitCode).toBe(1); expect(timeout.stderr).toContain("positive number");
+  }, TEST_TIMEOUT);
+
+  it("rejects malformed or duplicate host request identifiers before execution", async () => {
+    for (const flags of [["--request-id", "bad/id"], ["--request-id=a", "--request-id=b"], ["--request-id"]]) {
+      const result = await run(["exec", "getBlockNumber", ...flags]);
+      expect(result.exitCode).toBe(1);
+      expect(parseJson(result.stderr)).toMatchObject({ code: "INVALID_ARGS", retryable: false });
+      expect(result.stderr).toContain("--request-id");
+    }
   }, TEST_TIMEOUT);
 });
 

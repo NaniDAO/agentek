@@ -1,5 +1,7 @@
+import { providerJSON, ProviderRequestError } from "../utils/fetch.js";
 import { keccak256, stringToHex } from "viem";
 import { z } from "zod";
+import { sanitizeToolOutput } from "../utils/safe-errors.js";
 
 export const continuationSchema = z.string().max(12000).optional().describe("Opaque continuation returned by this read. Bound to network, address and filters. Never invent page numbers.");
 type Obj = Record<string, any>;
@@ -13,8 +15,9 @@ export class ReadFailure extends Error {
 }
 export function safeResearchError(operation: string, err: unknown) {
   const known = err instanceof ReadFailure;
-  return { schemaVersion: 1, operation: operation.slice(0, 128), category: known ? err.category : "tool_failure",
-    retryable: known ? err.retryable : false, partialResult: false, outcome: known ? "failed" : "unknown", message: "No successful result is available." };
+  const category = known && ["record_too_large", "invalid_continuation", "upstream_http", "malformed_response", "timeout", "transport", "page_changed", "continuation_too_large", "result_too_large"].includes(err.category) ? err.category : "tool_failure";
+  return sanitizeToolOutput({ schemaVersion: 1, operation: /^[A-Za-z][A-Za-z0-9_]{0,127}$/.test(operation) ? operation : "tool", category,
+    retryable: known ? err.retryable : false, partialResult: false, outcome: known ? "failed" : "unknown", message: "No successful result is available." });
 }
 function params(value: unknown): Record<string, string> | null {
   if (!object(value) || Object.keys(value).length > 24) return null;
@@ -62,18 +65,15 @@ export async function researchPage(operation: string, kind: "transfers" | "owner
       query = params(c.params)!; skip = c.skip; expected = c.fingerprint;
     } catch { throw new ReadFailure("invalid_continuation", false); }
   }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
   let data: any;
   try {
     const suffix = Object.entries(query).map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
-    const response = await fetch(base + path + (suffix ? "?" + suffix : ""), { signal: controller.signal });
-    if (!response.ok) throw new ReadFailure("upstream_http", response.status === 429 || response.status >= 500);
-    try { data = await response.json(); } catch { throw new ReadFailure("malformed_response", false); }
+    data = await providerJSON(base + path + (suffix ? "?" + suffix : ""), {}, "Blockscout research request failed", {maximumBytes: 4 * 1024 * 1024, timeoutMs: 20000});
   } catch (e) {
     if (e instanceof ReadFailure) throw e;
-    throw new ReadFailure(controller.signal.aborted ? "timeout" : "transport", true);
-  } finally { clearTimeout(timer); }
+    if (e instanceof ProviderRequestError) throw new ReadFailure(e.category, e.retryable);
+    throw new ReadFailure("transport", true);
+  }
   if (!object(data) || !Array.isArray(data.items) || data.items.length > 1000) throw new ReadFailure("malformed_response", false);
   const records = data.items.map((v: unknown) => kind === "transfers" ? transfer(v) : ownership(v));
   const fingerprint = keccak256(stringToHex(JSON.stringify(records)));

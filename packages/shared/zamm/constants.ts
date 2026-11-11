@@ -1,65 +1,28 @@
-/**
- * ZAMM indexer. The Railway deployment this defaulted to now answers 404
- * "Application not found" for every path, REST and GraphQL alike, so all five
- * ZAMM tools returned nothing but "Failed to fetch …" — a message that reads
- * like "coin not found" rather than "the service is gone".
- *
- * Overridable so a redeployment doesn't need a new release of the tools, and
- * the errors below name the URL they actually called.
- */
+import { providerJSON } from "../utils/fetch.js";
+
+/** Trusted host override; endpoint details never appear in public failures. */
 export const ZAMM_API =
   (typeof process !== "undefined" ? process.env?.ZAMM_API_URL : undefined) ??
   "https://coinchan-indexer-production.up.railway.app";
-
 export const ZAMM_TIMEOUT_MS = 15_000;
 
-/** REST call against the indexer, with the URL named in any failure. */
 export async function zammFetch(path: string): Promise<any> {
-  const url = `${ZAMM_API}${path}`;
-  let res: Response;
-  try {
-    res = await fetch(url, { signal: AbortSignal.timeout(ZAMM_TIMEOUT_MS) });
-  } catch (err) {
-    throw new Error(
-      `ZAMM indexer unreachable at ${url}: ${err instanceof Error ? err.message : String(err)}. Set ZAMM_API_URL to point at a live indexer.`,
-    );
-  }
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(
-      `ZAMM indexer returned ${res.status} for ${url}${json?.message ? ` — ${json.message}` : ""}. Set ZAMM_API_URL to point at a live indexer.`,
-    );
-  }
-  if (!json || typeof json !== "object") throw new Error("Unreadable ZAMM indexer response");
+  const json = await providerJSON(`${ZAMM_API}${path}`, {}, "ZAMM indexer request failed", {timeoutMs: ZAMM_TIMEOUT_MS});
+  if (!json || typeof json !== "object" || Array.isArray(json)) throw new Error("Unreadable ZAMM indexer response");
   return json;
 }
 
-/** GraphQL call against the indexer, surfacing both HTTP and GraphQL errors. */
-export async function zammGraphql(query: string): Promise<any> {
-  const url = `${ZAMM_API}/graphql`;
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
-      signal: AbortSignal.timeout(ZAMM_TIMEOUT_MS),
-    });
-  } catch (err) {
-    throw new Error(
-      `ZAMM indexer unreachable at ${url}: ${err instanceof Error ? err.message : String(err)}. Set ZAMM_API_URL to point at a live indexer.`,
-    );
+export async function zammGraphql(query: string, variables?: Record<string, unknown>): Promise<any> {
+  if (query.length > 32_768 || JSON.stringify(variables ?? {}).length > 16_384) throw new Error("ZAMM query exceeds request budget");
+  const json = await providerJSON(`${ZAMM_API}/graphql`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({query, ...(variables ? {variables} : {})}),
+  }, "ZAMM GraphQL request failed", {timeoutMs: ZAMM_TIMEOUT_MS});
+  if (!json || typeof json !== "object" || Array.isArray(json) || (Object.hasOwn(json, "errors") && (!Array.isArray(json.errors) || json.errors.length > 0)) || !json.data || typeof json.data !== "object" || Array.isArray(json.data)) {
+    throw new Error("Unreadable or unsuccessful ZAMM GraphQL response");
   }
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(
-      `ZAMM indexer returned ${res.status} for ${url}. Set ZAMM_API_URL to point at a live indexer.`,
-    );
-  }
-  if (json?.errors?.length) {
-    throw new Error(`ZAMM GraphQL error: ${JSON.stringify(json.errors)}`);
-  }
-  return json?.data;
+  return json.data;
 }
 
 export const isCoinchanCoin = (coinId: bigint) => {

@@ -3,6 +3,7 @@ import { createTool } from "../client.js";
 import type { AgentekClient } from "../client.js";
 import { SLOW_ADDRESS, SLOW_CHAIN_ID, slowAbi, slowTransferChains } from "./constants.js";
 import { addressSchema } from "../utils.js";
+import { beginChainObservation, finishChainObservation, observationIdentity } from "../utils/chainObservation.js";
 
 /**
  * SLOW is deployed only on Base, and these tools declare only Base. They used
@@ -149,7 +150,7 @@ export const predictTransferId = createTool({
 
 export const canUnlockSlow = createTool({
   name: "canUnlockSlow",
-  description: "Check if a transfer can be unlocked and get info about it",
+  description: "Check a transfer's time-based unlock condition against a fresh pinned Base block timestamp. This read is not a simulation or guarantee of successful execution.",
   supportedChains: slowTransferChains,
   parameters: z.object({
     transferId: z.string().describe("The transfer ID to check"),
@@ -157,15 +158,18 @@ export const canUnlockSlow = createTool({
   execute: async (client, args) => {
     const { transferId } = args;
     const publicClient = slowClient(client);
+    const snapshot = await beginChainObservation(publicClient, SLOW_CHAIN_ID);
 
     const transfer = await publicClient.readContract({
       address: SLOW_ADDRESS,
       abi: slowAbi,
       functionName: "pendingTransfers",
       args: [BigInt(transferId)],
+      blockNumber: snapshot.blockNumber,
     });
 
-    if (Number(transfer[0]) === 0) {
+    if (transfer[0] === 0n) {
+      await finishChainObservation(publicClient, snapshot);
       return `Transfer with ID ${transferId} does not exist.`;
     }
 
@@ -175,17 +179,22 @@ export const canUnlockSlow = createTool({
       abi: slowAbi,
       functionName: "decodeId",
       args: [tokenId],
+      blockNumber: snapshot.blockNumber,
     });
 
-    const timestamp = Number(transfer[0]);
-    const delay = Number(decodedId[1]);
-    const unlockTime = timestamp + delay;
-    const currentTime = Math.floor(Date.now() / 1000);
-
-    let canUnlock = currentTime > unlockTime;
+    const timestampRaw = transfer[0], delayRaw = decodedId[1];
+    if (typeof timestampRaw !== "bigint" || timestampRaw < 0n || typeof delayRaw !== "bigint" || delayRaw < 0n) throw new Error("Transfer timing evidence is unavailable");
+    const unlockTimeRaw = timestampRaw + delayRaw;
+    const currentTime = snapshot.blockTimestamp;
+    const canUnlock = currentTime > unlockTimeRaw;
+    const timeRemainingRaw = canUnlock ? 0n : unlockTimeRaw - currentTime;
+    if ([timestampRaw, delayRaw, unlockTimeRaw, timeRemainingRaw].some(value => value > BigInt(Number.MAX_SAFE_INTEGER))) throw new Error("Transfer timing exceeds safe numeric bounds");
+    const timestamp = Number(timestampRaw), delay = Number(delayRaw), unlockTime = Number(unlockTimeRaw);
+    await finishChainObservation(publicClient, snapshot);
 
     return {
       transferId,
+      ...observationIdentity(snapshot),
       from: transfer[1],
       to: transfer[2],
       tokenId: tokenId.toString(),
@@ -193,7 +202,7 @@ export const canUnlockSlow = createTool({
       timestamp,
       delay,
       unlockTime,
-      timeRemaining: canUnlock ? 0 : unlockTime - currentTime,
+      timeRemaining: Number(timeRemainingRaw),
       canUnlock,
     };
   },

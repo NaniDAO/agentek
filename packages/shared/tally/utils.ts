@@ -1,3 +1,4 @@
+import { providerJSON } from "../utils/fetch.js";
 import { TALLY_API_URL, TALLY_TIMEOUT_MS } from "./constants.js";
 
 import { getAddress } from "viem";
@@ -38,21 +39,18 @@ export async function getGovernorBySlug(slug: string, tallyApiKey: string) {
     }
   `;
 
-  const governorResponse = await fetch(TALLY_API_URL, {
+  const governorResult = await providerJSON(TALLY_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Api-Key": tallyApiKey,
     },
-    signal: AbortSignal.timeout(TALLY_TIMEOUT_MS),
     body: JSON.stringify({
       query: getGovernorQuery,
       variables: { slug },
     }),
-  });
-
-  const governorResult = await governorResponse.json();
-  if (governorResult.errors || !governorResult.data?.governor?.id) {
+  }, "Tally request failed", {timeoutMs: TALLY_TIMEOUT_MS});
+  if (!governorResult || typeof governorResult !== "object" || governorResult.errors || !governorResult.data?.governor?.id) {
     throw new Error("DAO not supported");
   }
 

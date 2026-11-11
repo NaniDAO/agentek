@@ -1,4 +1,4 @@
-import { assertOkResponse } from "../utils/fetch.js";
+import { providerBytes } from "../utils/fetch.js";
 
 let requestId = 0;
 
@@ -91,28 +91,24 @@ export async function solanaRpc<T = any>(
   method: string,
   params: unknown[] = [],
 ): Promise<T> {
-  const response = await fetch(rpcUrl, {
+  const id = ++requestId;
+  const bytes = await providerBytes(rpcUrl, {
     method: "POST",
     // RPC state is only trusted from the endpoint the user configured. Do not
     // let a redirect silently substitute a different node or receive a URL
     // credential embedded in a private provider endpoint.
     redirect: "error",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: ++requestId, method, params }),
-  });
+    body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+  }, `Solana RPC ${method} failed`, {maximumBytes: 8 * 1024 * 1024});
 
-  await assertOkResponse(response, `Solana RPC ${method} failed`);
-
-  const body = JSON.parse(quoteUnsafeIntegers(await response.text())) as {
-    result?: T;
-    error?: { code: number; message: string };
-  };
-
-  if (body.error) {
-    throw new Error(
-      `Solana RPC ${method} failed: ${body.error.message} (code ${body.error.code})`,
-    );
+  let body: any;
+  try { body = JSON.parse(quoteUnsafeIntegers(new TextDecoder("utf-8", {fatal: true}).decode(bytes))); }
+  catch { throw new Error(`Solana RPC ${method}: malformed response`); }
+  if (!body || typeof body !== "object" || Array.isArray(body) || body.jsonrpc !== "2.0" ||
+      body.id !== id || Object.hasOwn(body, "error") || !Object.hasOwn(body, "result")) {
+    // Upstream messages may echo private endpoint URLs, keys, and arbitrary text.
+    throw new Error(`Solana RPC ${method}: failed or malformed response`);
   }
-
   return body.result as T;
 }

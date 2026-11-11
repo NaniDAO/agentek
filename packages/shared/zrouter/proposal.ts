@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeErrorMessage } from "../utils/safe-errors.js";
 import { encodeFunctionData, erc20Abi, type Address, type Hex } from "viem";
 import { zRouterAbi } from "zrouter-sdk";
 import { createTool, type AgentekClient } from "../client.js";
@@ -168,7 +169,7 @@ export async function buildNativeSwapProposal(client: AgentekClient, input: Swap
     if (endBlock.hash !== block.hash) throw new Error("Block identity changed while quoting");
     if (Date.now() - startedAt > 60000) throw new Error("Quote expired while loading");
     return deliverSwap(r, checked.ops, { observedAt, blockNumber: `0x${block.number.toString(16)}`, blockHash: block.hash.toLowerCase(), blockTimestamp: block.timestamp.toString(), amountInRaw: amountIn.toString(), amountOutRaw: amountOut.toString() });
-  } catch (err) { return unavailableSwap(r, err instanceof Error ? err.message : "Failed quote validation", r.source, "failed"); }
+  } catch (err) { return unavailableSwap(r, safeErrorMessage(err), r.source, "failed"); }
 }
 
 export const getNativeSwapProposal = createTool({ name: "getNativeSwapProposal", description: "Return a versioned unsigned swap proposal bound to a captured raw request. Unproved targets, ABI or economics fail closed. Native host owns review, signing, simulation and journals.",

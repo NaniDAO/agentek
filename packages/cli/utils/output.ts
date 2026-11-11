@@ -1,4 +1,5 @@
 import { getConfigDir, resolveKeys } from "../config.js";
+import { sanitizeToolOutput } from "@agentek/tools/client";
 
 /** Structured error codes for agent-friendly error classification. */
 export type ErrorCode =
@@ -17,24 +18,21 @@ export function bigintReplacer(_key: string, value: unknown): unknown {
 
 /** Remove configured credentials and local config paths from error output. */
 export function scrubSecrets(message: string): string {
-  let scrubbed = message;
-  const secrets = Object.entries((() => { try { return resolveKeys(); } catch { return {}; } })())
-    .filter(
-      (entry): entry is [string, string] =>
-        Boolean(entry[1]?.length && entry[1].length >= 8),
-    )
-    .sort((a, b) => b[1].length - a[1].length);
-  for (const [name, value] of secrets) {
-    // Very short values produce noisy false positives and are not useful
-    // credentials. Real private/API keys are substantially longer.
-    scrubbed = scrubbed.replaceAll(value, `[REDACTED:${name}]`);
+  const keys = configuredKeys();
+  let output = message;
+  for (const [name, value] of Object.entries(keys).sort((a, b) => (b[1]?.length ?? 0) - (a[1]?.length ?? 0))) {
+    if (value && value.length >= 8 && /PRIVATE_KEY|API_KEY|SECRET|TOKEN|PASSWORD|JWT|BEARER/.test(name)) output = output.replaceAll(value, `[REDACTED:${name}]`);
   }
-  return scrubbed.replaceAll(getConfigDir(), "[CONFIG_DIR]");
+  return sanitizeToolOutput(output, undefined, keys).replaceAll(getConfigDir(), "[CONFIG_DIR]");
+}
+
+function configuredKeys(): Record<string, string | undefined> {
+  try { return resolveKeys(); } catch { return {}; }
 }
 
 /** Write JSON to stdout and exit 0. */
 export function outputJson(data: unknown): never {
-  process.stdout.write(JSON.stringify(data, bigintReplacer, 2) + "\n");
+  process.stdout.write(JSON.stringify(sanitizeToolOutput(data, undefined, configuredKeys()), bigintReplacer, 2) + "\n");
   process.exit(0);
 }
 
@@ -44,7 +42,7 @@ export function outputError(
   opts?: { code?: ErrorCode; hint?: string; retryable?: boolean; details?: unknown },
 ): never {
   const payload: Record<string, unknown> = { error: scrubSecrets(msg) };
-  if (opts?.details !== undefined) payload.details = JSON.parse(scrubSecrets(JSON.stringify(opts.details, bigintReplacer)));
+  if (opts?.details !== undefined) payload.details = sanitizeToolOutput(opts.details, undefined, configuredKeys());
   if (opts?.code) payload.code = opts.code;
   if (opts?.hint) payload.hint = scrubSecrets(opts.hint);
   if (opts?.retryable !== undefined) payload.retryable = opts.retryable;

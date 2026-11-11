@@ -12,17 +12,20 @@ import { formatLamports, resolveSolanaMint, solanaAddressSchema } from "./utils.
 
 const priorityFeeParameter = z
   .number()
+  .finite()
   .int()
   .min(0)
+  .max(1_000_000)
   .optional()
   .describe(
-    "Priority fee in micro-lamports per compute unit. Call getSolanaPriorityFees for a value that lands under current contention.",
+    "Priority fee in micro-lamports per compute unit (0-1,000,000). Call getSolanaPriorityFees for a value that lands under current contention.",
   );
 
 const computeBudgetInstructions = async (
   priorityFeeMicroLamports?: number,
 ): Promise<TransactionInstruction[]> => {
   if (priorityFeeMicroLamports === undefined) return [];
+  priorityFeeParameter.parse(priorityFeeMicroLamports);
   const { ComputeBudgetProgram } = await import("@solana/web3.js");
   return [
     ComputeBudgetProgram.setComputeUnitPrice({
@@ -32,8 +35,8 @@ const computeBudgetInstructions = async (
 };
 
 /**
- * Mirrors the EVM intent tools: sign and submit when a key is configured,
- * otherwise hand back the unsigned transaction for the caller to sign.
+ * Mirrors EVM intents: prepare unsigned by default; explicit execution goes
+ * through the host approval and durable submission guards.
  */
 const settle = async (
   client: AgentekClient,
@@ -78,7 +81,7 @@ const intentTransferSolParameters = z.object({
 export const intentTransferSolTool = createTool({
   name: "intentTransferSol",
   description:
-    "Transfer native SOL to an address. Signs and submits when a Solana key is configured, otherwise returns an unsigned base64 transaction for you to sign.",
+    "Transfer native SOL to an address. Prepares an unsigned transaction by default. Submission requires explicit execute mode, a Solana key, trusted host approval and durable execution persistence.",
   parameters: intentTransferSolParameters,
   execute: async (
     client: AgentekClient,
@@ -133,7 +136,7 @@ const intentTransferSplTokenParameters = z.object({
 export const intentTransferSplTokenTool = createTool({
   name: "intentTransferSplToken",
   description:
-    "Transfer an SPL token (including Token-2022 mints) to a wallet address, creating the recipient's associated token account if needed. Signs and submits when a Solana key is configured, otherwise returns an unsigned base64 transaction.",
+    "Transfer an SPL token (including Token-2022 mints) to a wallet address, creating the recipient's associated token account if needed. Prepares an unsigned transaction by default. Submission requires explicit execute mode, a Solana key, trusted host approval and durable execution persistence.",
   parameters: intentTransferSplTokenParameters,
   execute: async (
     client: AgentekClient,
@@ -141,11 +144,11 @@ export const intentTransferSplTokenTool = createTool({
   ): Promise<SolanaIntent> => {
     const { PublicKey } = await import("@solana/web3.js");
     const {
-      createAssociatedTokenAccountIdempotentInstruction,
-      createTransferCheckedInstruction,
-      getAssociatedTokenAddressSync,
-      getMint,
-    } = await import("@solana/spl-token");
+      createAssociatedTokenInstruction,
+      createCheckedTransferInstruction,
+      associatedTokenAddress,
+      mintDecimals,
+    } = await import("./spl.js");
 
     const from = await client.getSolanaAddress();
     const connection = await client.getSolanaConnection();
@@ -173,18 +176,15 @@ export const intentTransferSplTokenTool = createTool({
       );
     }
 
-    const { decimals } = await client.awaitSolanaPreSubmission(
-      getMint(connection, mint, undefined, programId),
-      "getMint",
-    );
+    const decimals = mintDecimals(mintAccount, programId);
     const amount = positiveUnits(args.amount, decimals);
 
     const owner = new PublicKey(from);
     const recipient = new PublicKey(args.to);
-    // allowOwnerOffCurve stays on for the source: the configured account may
+    // PDA owners stay supported for the source: the configured account may
     // legitimately be a PDA-owned treasury, and getting it wrong only means
     // the transfer finds no balance.
-    const source = getAssociatedTokenAddressSync(mint, owner, true, programId);
+    const source = associatedTokenAddress(mint, owner, programId);
 
     // Reject the concrete pasted-token-account mistake while preserving
     // legitimate PDA-controlled treasuries and vaults as recipient owners.
@@ -201,12 +201,7 @@ export const intentTransferSplTokenTool = createTool({
         `Recipient ${args.to} is a token account, not its owner's wallet address. Pass the owner wallet instead; its associated token account is derived for you.`,
       );
     }
-    const destination = getAssociatedTokenAddressSync(
-      mint,
-      recipient,
-      true,
-      programId,
-    );
+    const destination = associatedTokenAddress(mint, recipient, programId);
 
     const sourceBalance = await client
       .awaitSolanaPreSubmission(
@@ -228,21 +223,20 @@ export const intentTransferSplTokenTool = createTool({
     const instructions = [
       ...(await computeBudgetInstructions(args.priorityFeeMicroLamports)),
       // Idempotent: a no-op when the recipient already has the account.
-      createAssociatedTokenAccountIdempotentInstruction(
+      createAssociatedTokenInstruction(
         owner,
         destination,
         recipient,
         mint,
         programId,
       ),
-      createTransferCheckedInstruction(
+      createCheckedTransferInstruction(
         source,
         mint,
         destination,
         owner,
         amount,
         decimals,
-        [],
         programId,
       ),
     ];

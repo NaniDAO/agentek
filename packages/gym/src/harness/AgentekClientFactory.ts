@@ -9,6 +9,7 @@ import {
   AgentekClient,
   type AgentekClientConfig,
   type BaseTool,
+  type ExecutionRecord,
   type Op,
 } from "@agentek/tools/client";
 import { http, type Chain } from "viem";
@@ -192,6 +193,12 @@ export async function createGymAgentekClient(
   });
 
   const observer = options.rpcObserver;
+  // This ephemeral store belongs only to one disposable, verified Anvil run.
+  // Production hosts must use durable request reservations.
+  const requests = new Map<string, { fingerprint: string; state: "pending" | "complete"; result?: unknown }>();
+  // Execution evidence is ephemeral only because this is a disposable fork
+  // whose loopback Anvil identity is independently checked before submission.
+  const executions = new Map<string, ExecutionRecord>();
 
   const transports = chains.map((chain) => {
     const requestMethods = new Map<number, string>();
@@ -221,6 +228,17 @@ export async function createGymAgentekClient(
   return new GuardedGymAgentekClient(
     {
       executionMode: "execute",
+      authorizeAction: () => true, // GuardedGymAgentekClient independently pins the fork before submission.
+      onExecutionUpdated: record => { executions.set(record.id, record); },
+      requestStore: {
+        claim: async (id, fingerprint) => {
+          const previous = requests.get(id);
+          if (previous) return previous;
+          requests.set(id, { fingerprint, state: "pending" });
+          return undefined;
+        },
+        complete: async (id, fingerprint, result) => { requests.set(id, { fingerprint, state: "complete", result }); },
+      },
       accountOrAddress: options.environment.getWalletAccount(),
       chains,
       transports,

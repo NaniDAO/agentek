@@ -5,6 +5,7 @@ import { createTool } from "../client.js";
 import { clean, addressSchema } from "../utils.js";
 import { supportedChains } from "./constants.js";
 import { erc721Abi } from "viem";
+import { safeErrorMessage } from "../utils/safe-errors.js";
 
 const MAX_METADATA_BYTES = 2 * 1024 * 1024;
 function inlineMetadata(uri: string): unknown {
@@ -68,15 +69,7 @@ export const getNFTMetadataTool = createTool({
       } catch (error) {
         return {
           chain: chainId,
-          error: `Failed to fetch NFT owner: ${
-            typeof error === "object" && error
-              ? "shortMessage" in error
-                ? error.shortMessage
-                : "message" in error
-                  ? error.message
-                  : "Unknown error"
-              : String(error)
-          }`,
+          error: `Failed to fetch NFT owner: ${safeErrorMessage(error)}`,
         };
       }
       
@@ -97,7 +90,7 @@ export const getNFTMetadataTool = createTool({
           metadata = await response.json();
           }
         } catch (error) {
-          metadataError = error instanceof Error ? error.message : "Metadata unavailable";
+          metadataError = safeErrorMessage(error);
         }
       }
       
@@ -115,15 +108,7 @@ export const getNFTMetadataTool = createTool({
     } catch (error) {
       return {
         chain: chainId,
-        error: `Failed to fetch NFT metadata: ${
-          typeof error === "object" && error
-            ? "shortMessage" in error
-              ? error.shortMessage
-              : "message" in error
-                ? error.message
-                : "Unknown error"
-            : String(error)
-        }`,
+        error: `Failed to fetch NFT metadata: ${safeErrorMessage(error)}`,
       };
     }
   },

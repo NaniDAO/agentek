@@ -60,7 +60,7 @@
   },
   "homepage": "https://nani.ooo",
   "dependencies": {
-    "ai": "^6.0.67"
+    "ai": "^6.0.322"
   },
   "peerDependencies": {
     "@agentek/tools": "workspace:^",

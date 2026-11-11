@@ -27,8 +27,12 @@ export function handleConfig(rest: string[]): void {
     const value = config.keys[key];
     if (value === undefined) {
       outputJson({ key, value: null });
+    } else if (reveal) {
+      // This explicit local command is the sole intentional credential display.
+      process.stdout.write(JSON.stringify({ key, value }) + "\n");
+      process.exit(0);
     } else {
-      outputJson({ key, value: reveal ? value : redactValue(value) });
+      outputJson({ key, value: redactValue(value) });
     }
   } else if (sub === "list") {
     const resolved = resolveAllKeys();

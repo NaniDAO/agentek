@@ -125,13 +125,13 @@ export async function handleSigner(args: string[]): Promise<void> {
       }
 
       const policy = payload.policy;
-      if (field === "maxValuePerTx") {
+      if (field === "maxValuePerTx" || field === "maxValuePerSession") {
         try {
           parseEther(value);
         } catch {
-          outputError("maxValuePerTx must be a valid ETH amount (e.g. 0.1)");
+          outputError(`${field} must be a valid ETH amount (e.g. 0.1)`);
         }
-        policy.maxValuePerTx = value;
+        policy[field] = value;
       } else if (field === "requireApproval") {
         if (!["always", "above_threshold", "never"].includes(value)) {
           outputError("requireApproval must be: always, above_threshold, or never");
@@ -154,7 +154,7 @@ export async function handleSigner(args: string[]): Promise<void> {
         }
         policy.allowContractCreation = normalized === "true";
       } else {
-        outputError(`Unknown policy field: ${field}. Known: maxValuePerTx, requireApproval, approvalThresholdPct, allowedChains, allowContractCreation`);
+        outputError(`Unknown policy field: ${field}. Known: maxValuePerTx, maxValuePerSession, requireApproval, approvalThresholdPct, allowedChains, allowContractCreation`);
       }
 
       payload.policy = validatePolicy(policy);

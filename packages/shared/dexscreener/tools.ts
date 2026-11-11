@@ -1,7 +1,7 @@
 import { mainnet, base } from "viem/chains";
 import { createTool } from "../client.js";
 import { z } from "zod";
-import { assertOkResponse, readBoundedJSON } from "../utils/fetch.js";
+import { providerJSON } from "../utils/fetch.js";
 
 const finite = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 const address = (value: unknown): value is string => typeof value === "string" && /^0x[0-9a-fA-F]{40}$/i.test(value);
@@ -45,9 +45,7 @@ export const getLatestTokens = createTool({
   execute:async(_client,args)=>{
     const chain = args.chainId===1 ? "ethereum" : args.chainId===8453 ? "base" : null;
     if (!chain) throw new Error("Unsupported Dexscreener network; no fallback network is used");
-    const response=await fetch("https://api.dexscreener.com/token-profiles/latest/v1",{signal:AbortSignal.timeout(TIMEOUT)});
-    await assertOkResponse(response,"Profile discovery failed");
-    const raw=await readBoundedJSON(response,2*1024*1024);
+    const raw=await providerJSON("https://api.dexscreener.com/token-profiles/latest/v1",{},"Profile discovery failed",{maximumBytes:2*1024*1024,timeoutMs:TIMEOUT});
     if (!Array.isArray(raw)) throw new Error("Unreadable profile discovery coverage");
     const matching=raw.filter(p=>p?.chainId===chain && address(p.tokenAddress));
     const unique=[...new Map(matching.map(p=>[p.tokenAddress.toLowerCase(),p])).values()];
@@ -55,9 +53,7 @@ export const getLatestTokens = createTool({
     for(let offset=0;offset<profiles.length;offset+=30){
       const addresses=profiles.slice(offset,offset+30).map(p=>p.tokenAddress);
       try {
-        const result=await fetch(`https://api.dexscreener.com/tokens/v1/${chain}/${addresses.join(",")}`,{signal:AbortSignal.timeout(TIMEOUT)});
-        await assertOkResponse(result,"Pair evidence failed");
-        const page=await readBoundedJSON(result,4*1024*1024);
+        const page=await providerJSON(`https://api.dexscreener.com/tokens/v1/${chain}/${addresses.join(",")}`,{},"Pair evidence failed",{maximumBytes:4*1024*1024,timeoutMs:TIMEOUT});
         if(!Array.isArray(page)||page.length>10000)throw new Error("Unreadable pair evidence");
         pairs.push(...page.filter(p=>p?.chainId===undefined||p.chainId===chain));
       } catch { errors.push({addresses,message:"Pair evidence unavailable; these candidates are not verified empty."}); }
