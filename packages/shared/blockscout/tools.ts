@@ -1,12 +1,12 @@
 import { providerJSON, ProviderRequestError } from "../utils/fetch.js";
 import { z } from "zod";
 import { createTool } from "../client.js";
-import { mainnet, polygon, arbitrum, optimism, base } from "viem/chains";
+import { mainnet, polygon, arbitrum, optimism, base, sepolia } from "viem/chains";
 import { formatEther } from "viem";
 import { addressSchema } from "../utils.js";
 import { researchPage, continuationSchema, ReadFailure, safeResearchError, scannedBlockRange } from "./research.js";
 
-const supportedChains = [mainnet, polygon, arbitrum, optimism, base];
+const supportedChains = [mainnet, polygon, arbitrum, optimism, base, sepolia];
 const chainSchema = z
   .union([
     z.enum([
@@ -15,6 +15,7 @@ const chainSchema = z
       String(arbitrum.id),
       String(optimism.id),
       String(base.id),
+      String(sepolia.id),
     ]),
     z.number().transform(String).pipe(
       z.enum([
@@ -23,14 +24,16 @@ const chainSchema = z
         String(arbitrum.id),
         String(optimism.id),
         String(base.id),
+        String(sepolia.id),
       ])
     )
   ])
   .transform(Number)
-  .describe("Chain ID for the blockchain network. Supports: 1, 137, 42161, 10, and 8453") as unknown as z.ZodNumber;
+  .describe("Chain ID for the blockchain network. Supports: 1, 137, 42161, 10, 8453, and Sepolia 11155111") as unknown as z.ZodNumber;
 
 // Note: the endpoints already include "/api/v2"
 const BLOCKSCOUT_API_ENDPOINTS = new Map([
+  [sepolia.id, "https://eth-sepolia.blockscout.com/api/v2"],
   [mainnet.id, "https://eth.blockscout.com/api/v2"],
   [polygon.id, "https://polygon.blockscout.com/api/v2"],
   [arbitrum.id, "https://arbitrum.blockscout.com/api/v2"],

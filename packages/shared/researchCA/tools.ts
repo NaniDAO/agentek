@@ -1,5 +1,5 @@
 import { type Address, type Hex, formatUnits } from "viem";
-import { arbitrum, base, mainnet, optimism, polygon } from "viem/chains";
+import { arbitrum, base, mainnet, optimism, polygon, sepolia } from "viem/chains";
 import { z } from "zod";
 import { type AgentekClient, createTool } from "../client.js";
 import { robinhood } from "../chains/robinhood.js";
@@ -7,12 +7,13 @@ import { addressSchema } from "../utils.js";
 import { providerJSON } from "../utils/fetch.js";
 import { safeErrorMessage } from "../utils/safe-errors.js";
 
-const supportedChains = [mainnet, optimism, arbitrum, polygon, base, robinhood];
+const supportedChains = [mainnet, optimism, arbitrum, polygon, base, robinhood, sepolia];
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const MAX_TRANSFER_PAGES = 5;
 const MAX_RESPONSE_BYTES = 2_000_000;
 
-const chainInfo: Record<number, { name: string; blockscout: string; dex: string }> = {
+const chainInfo: Record<number, { name: string; blockscout: string; dex: string | null }> = {
+  [sepolia.id]: { name: "Sepolia", blockscout: "https://eth-sepolia.blockscout.com/api/v2", dex: null },
   [mainnet.id]: { name: "Ethereum", blockscout: "https://eth.blockscout.com/api/v2", dex: "ethereum" },
   [optimism.id]: { name: "Optimism", blockscout: "https://optimism.blockscout.com/api/v2", dex: "optimism" },
   [arbitrum.id]: { name: "Arbitrum", blockscout: "https://arbitrum.blockscout.com/api/v2", dex: "arbitrum" },
@@ -186,12 +187,13 @@ export const researchCA = createTool({
       contract: queryUrl(info.blockscout, `/smart-contracts/${address}`),
       token: queryUrl(info.blockscout, `/tokens/${address}`),
       holders: queryUrl(info.blockscout, `/tokens/${address}/holders`),
-      market: `https://api.dexscreener.com/tokens/v1/${info.dex}/${address}`,
+      market: info.dex ? `https://api.dexscreener.com/tokens/v1/${info.dex}/${address}` : null,
     };
 
     const [codeResult, addressResult, contractResult, tokenResult, holdersResult, marketResult, transferScan] = await Promise.all([
       publicClient.getCode({ address }).then((data: Hex | undefined) => ({ ok: true as const, data })).catch((error: unknown) => ({ ok: false as const, error })),
-      fetchJson(urls.address), fetchJson(urls.contract), fetchJson(urls.token), fetchJson(urls.holders), fetchJson(urls.market),
+      fetchJson(urls.address), fetchJson(urls.contract), fetchJson(urls.token), fetchJson(urls.holders),
+      urls.market ? fetchJson(urls.market) : Promise.resolve({ok: false, url: "", error: "Testnet trading-market data is unsupported"} as SourceResult),
       scanTransfers(info.blockscout, address),
     ]);
 

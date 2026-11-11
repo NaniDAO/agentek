@@ -18,9 +18,9 @@ export const supportedChains = [
 
 /**
  * Blockscout v2 API base URLs for ABI auto-fetch.
- * Sepolia is excluded since Blockscout coverage varies.
  */
 export const BLOCKSCOUT_API_ENDPOINTS: Record<number, string> = {
+  [sepolia.id]: "https://eth-sepolia.blockscout.com/api/v2",
   [mainnet.id]: "https://eth.blockscout.com/api/v2",
   [polygon.id]: "https://polygon.blockscout.com/api/v2",
   [arbitrum.id]: "https://arbitrum.blockscout.com/api/v2",
