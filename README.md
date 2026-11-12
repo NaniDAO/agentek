@@ -63,8 +63,8 @@ Solana, x402 payments, server-side HTML scraping, and X tools are explicit opt-i
 | Integration | Import | Additional packages to install |
 |---|---|---|
 | Solana | `@agentek/tools/solana` | `@solana/web3.js@1.98.4` |
-| x402 payments | `@agentek/tools/x402` | `@x402/evm@^2.4.0`, `@x402/fetch@^2.4.0` |
-| HTML scraping | `@agentek/tools/web` | `cheerio@^1.1.2` |
+| x402 payments | `@agentek/tools/x402` | `@x402/evm@2.4.0`, `@x402/fetch@2.4.0` |
+| HTML scraping | `@agentek/tools/web` | `cheerio@1.1.2` |
 | X/Twitter | `@agentek/tools/twitter` | None |
 
 ```typescript
