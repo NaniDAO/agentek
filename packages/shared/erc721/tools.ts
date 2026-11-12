@@ -1,6 +1,6 @@
 import { publicFetch } from "../utils/public-fetch.js";
 import { quantitySchema } from "../utils/exact.js";
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { clean, addressSchema } from "../utils.js";
 import { supportedChains } from "./constants.js";

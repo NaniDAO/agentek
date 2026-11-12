@@ -1,6 +1,6 @@
 import { mainnet, base } from "viem/chains";
 import { createTool } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 import { providerJSON } from "../utils/fetch.js";
 
 const finite = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;

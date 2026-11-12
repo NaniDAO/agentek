@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from "zod";
 import { createTool } from '../client.js';
 import { SUPPORTED_CHAINS } from './constants.js';
 import { chainIdMap, getChainName, getProjectFilter } from './utils/helpers.js';

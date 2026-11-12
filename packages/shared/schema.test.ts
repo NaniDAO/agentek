@@ -36,10 +36,11 @@ describe("model-facing input schemas", () => {
   it("keeps union, record and pipeline input semantics", () => {
     expect(toolInputSchema(z.string().pipe(z.coerce.number()))).toEqual({type: "string"});
     expect(toolInputSchema(z.union([z.literal("all"), z.number()])).anyOf).toHaveLength(2);
-    expect(toolInputSchema(z.record(z.string().regex(/^0x/), z.boolean()))).toEqual({type: "object", additionalProperties: {type: "boolean"}, propertyNames: {pattern: "^0x"}});
+    expect(toolInputSchema(z.record(z.string().regex(/^0x/), z.boolean()))).toEqual({type: "object", additionalProperties: {type: "boolean"}, propertyNames: {type: "string", pattern: "^0x"}});
   });
-  it("rejects unsupported schemas rather than silently weakening validation", () => {
-    expect(() => toolInputSchema(z.date())).toThrow(/Unsupported tool schema/);
-    expect(() => toolInputSchema(z.lazy(() => z.string()))).toThrow(/Unsupported tool schema/);
+  it("rejects unsupported and recursive schemas", () => {
+    expect(() => toolInputSchema(z.date())).toThrow(/cannot be represented/);
+    const recursive: z.ZodType = z.lazy(() => z.object({child: recursive}));
+    expect(() => toolInputSchema(recursive)).toThrow(/cycle/i);
   });
 });

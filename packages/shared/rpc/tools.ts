@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { Address, formatEther, Hex, formatUnits, parseEther } from "viem";
 import {
@@ -279,6 +279,7 @@ const getFeeHistory = createTool({
       ),
     rewardPercentiles: z
       .array(z.number())
+      .max(1024)
       .optional()
       .describe(
         "A monotonically increasing list of percentile values to sample from each block's effective priority fees per gas in ascending order, weighted by gas used.",

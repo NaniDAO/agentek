@@ -17,6 +17,6 @@
   "dependencies": {
     "@agentek/tools": "workspace:*",
     "viem": "2.33.2",
-    "zod": "3.25.76"
+    "zod": "4.6.6"
   }
 }

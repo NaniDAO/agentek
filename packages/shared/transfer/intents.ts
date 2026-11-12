@@ -1,5 +1,5 @@
 import { additionalFeeReserve, opFeeChains } from "../gasestimator/network-fees.js";
-import { z } from "zod";
+import * as z from "zod";
 import { AgentekClient, createTool, type Intent, type Op } from "../client.js";
 import { arbitrum, base, mainnet, optimism, sepolia } from "viem/chains";
 import { type Address, encodeFunctionData, erc20Abi } from "viem";

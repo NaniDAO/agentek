@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { formatUnits, parseUnits, type Address, type Hex } from "viem";
 import { getCryptoPriceTool } from "../cryptoprices/tools.js";

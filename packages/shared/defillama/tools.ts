@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from "zod";
 import { createTool } from '../client.js';
 import { providerJSON } from '../utils/fetch.js';
 import { safeErrorMessage } from '../utils/safe-errors.js';
@@ -24,7 +24,7 @@ interface TokenChartResult {
 // Schema for getTokenChartTool parameters
 const getTokenChartToolSchema = z.object({
   tokens: z
-    .union([z.string(), z.array(z.string())])
+    .union([z.string(), z.array(z.string()).max(1024)])
     .describe('Token identifier in format "chain:address" (e.g., "ethereum:0x...", "coingecko:ethereum") or array of such identifiers'),
   period: z
     .string()

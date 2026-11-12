@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { safeErrorMessage } from "../utils/safe-errors.js";
 import { encodeFunctionData, erc20Abi, type Address, type Hex } from "viem";
 import { zRouterAbi } from "zrouter-sdk";

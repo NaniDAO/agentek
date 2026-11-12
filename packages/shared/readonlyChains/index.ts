@@ -1,3 +1,4 @@
+import { assertToolInput } from "../utils/tool-input.js";
 import { type BaseTool } from "../client.js";
 import { btcRpcTools } from "../btc-rpc/index.js";
 import {
@@ -22,6 +23,7 @@ export function readOnlyChainTools(): BaseTool[] {
       ? " Read-only Bitcoin mainnet lookup. Requires an explicit Bitcoin address where applicable; never use an EVM address."
       : " Read-only Solana lookup. Address-specific reads require an explicit Solana public key; never use an EVM address."),
     execute: async (client, args) => {
+      assertToolInput(args);
       const request = tool.parameters.parse(args);
       const network = bitcoin.includes(tool) ? "bitcoin" : "solana";
       // Prevent path/query injection in the older Bitcoin tools' URL interpolation.

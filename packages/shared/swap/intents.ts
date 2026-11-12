@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool, type BaseTool } from "../client.js";
 import { unavailableSwap } from "../zrouter/proposal.js";
 

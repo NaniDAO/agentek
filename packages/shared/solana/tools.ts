@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { formatUnits } from "viem";
 import { AgentekClient, createTool } from "../client.js";
 import { clean } from "../utils.js";

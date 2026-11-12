@@ -1,5 +1,5 @@
 import { createTool } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 import { CoinchanAbi, CoinchanAddress, supportedChains } from "./constants.js";
 
 export const coinchanGetCoins = createTool({

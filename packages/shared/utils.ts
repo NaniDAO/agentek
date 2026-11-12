@@ -1,5 +1,5 @@
 import { Address, getAddress } from "viem";
-import { z } from "zod";
+import * as z from "zod";
 import { isAddress } from "viem/utils";
 
 export const addressSchema = z.string().transform((val, ctx) => {

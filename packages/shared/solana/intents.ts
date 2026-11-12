@@ -1,5 +1,5 @@
 import { positiveUnits } from "../utils/exact.js";
-import { z } from "zod";
+import * as z from "zod";
 import type { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { AgentekClient, createTool, SolanaIntent } from "../client.js";
 import {

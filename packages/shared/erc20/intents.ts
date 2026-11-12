@@ -1,6 +1,6 @@
 import { parseExactUnits } from "../utils/exact.js";
 import { identityAddress } from "../utils/exact.js";
-import { z } from "zod";
+import * as z from "zod";
 import { AgentekClient, createTool, Intent } from "../client.js";
 import {
   Address,

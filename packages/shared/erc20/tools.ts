@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { Address, erc20Abi, formatUnits, getAddress } from "viem";
 import { erc20Chains } from "./constants.js";

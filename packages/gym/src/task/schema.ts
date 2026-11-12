@@ -1,5 +1,5 @@
 import { isAddress } from "viem";
-import { z } from "zod";
+import * as z from "zod";
 import type { GymChainName } from "../environment/types.js";
 
 const TASK_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -123,7 +123,7 @@ const assetMetadataSchema = z.object({
 
 const walletChainSchema = z.object({
   balances: walletBalancesSchema,
-  assets: z.record(assetMetadataSchema).optional(),
+  assets: z.record(z.string(), assetMetadataSchema).optional(),
 }).strict();
 
 const forkChainSchema = z.object({
@@ -138,7 +138,7 @@ const multiChainEnvironmentSchema = z.object({
     chains: z.array(z.object({
       chain: chainSchema,
       spokePool: addressSchema,
-      assets: z.record(assetMetadataSchema.omit({ address: true })).optional(),
+      assets: z.record(z.string(), assetMetadataSchema.omit({ address: true })).optional(),
     }).strict()).min(2).max(5),
   }).strict(),
 }).strict();
@@ -174,11 +174,11 @@ export const mvpTaskSchema = z
     wallet: z
       .object({
         balances: walletBalancesSchema.optional(),
-        chains: z.record(chainSchema, walletChainSchema).optional(),
+        chains: z.partialRecord(chainSchema, walletChainSchema).optional(),
       })
       .strict(),
     safety: z.object({
-      allowedTransactionTargets: z.record(chainSchema, z.array(addressSchema)).optional(),
+      allowedTransactionTargets: z.partialRecord(chainSchema, z.array(addressSchema)).optional(),
       maxGasUsed: z.string().regex(/^(0|[1-9][0-9]*)$/).optional(),
       maxReverts: z.number().int().nonnegative().optional(),
       balanceFloors: z.array(balanceGraderSchema.refine((grader) => grader.operator === "gte",

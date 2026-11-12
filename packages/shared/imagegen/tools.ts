@@ -1,6 +1,6 @@
 import { providerBytes, providerJSON } from "../utils/fetch.js";
 import { createTool } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 import { ImageGenToolOptions } from "./index.js";
 
 /**

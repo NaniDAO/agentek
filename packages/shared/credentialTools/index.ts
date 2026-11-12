@@ -1,3 +1,4 @@
+import { assertToolInput } from "../utils/tool-input.js";
 import { providerJSON } from "../utils/fetch.js";
 import type { BaseTool } from "../client.js";
 import { credentialTools as baseCredentialTools } from "./base.js";
@@ -27,7 +28,7 @@ export function credentialTools(enabled: string[] = []): BaseTool[] {
       },
     }} as any));
   }
-  return [...baseCredentialTools(enabled), ...tools.map(tool => ({...tool, execute: async (client, args) => tool.execute(client, tool.parameters.parse(args))}))];
+  return [...baseCredentialTools(enabled), ...tools.map(tool => ({...tool, execute: async (client, args) => { assertToolInput(args); return tool.execute(client, tool.parameters.parse(args)); }}))];
 }
 export function installCredentialTransport(host: (request: unknown) => Promise<any>, protocol: 0 | 1 = 1) {
   return installTransport(host, protocol, allCredentialOrigins);

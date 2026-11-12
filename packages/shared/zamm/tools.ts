@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { zammFetch, zammGraphql } from "./constants.js";
 import { formatEther } from "viem";

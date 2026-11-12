@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { safeErrorMessage } from "../utils/safe-errors.js";
 import { createTool } from "../client.js";
 import { AmountSchema, SymbolOrTokenSchema } from "./types.js";

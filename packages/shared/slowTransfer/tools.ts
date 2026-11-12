@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import type { AgentekClient } from "../client.js";
 import { SLOW_ADDRESS, SLOW_CHAIN_ID, slowAbi, slowTransferChains } from "./constants.js";

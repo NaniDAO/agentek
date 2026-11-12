@@ -30,11 +30,8 @@ overrides:
   source-map-js: 1.2.2
   proxy-addr: 2.0.8
   '@solana/web3.js>jayson': 5.0.0
-
-patchedDependencies:
-  zod@3.25.76:
-    hash: 2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6
-    path: packages/shared/patches/zod@3.25.76.patch
+  abitype: 1.2.3
+  '@x402/evm>viem': 2.48.11
 
 importers:
 
@@ -48,13 +45,13 @@ importers:
         version: 5.9.2
       viem:
         specifier: 2.33.2
-        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
       vitest:
         specifier: 4.1.12
         version: 4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.1.0)(vite@6.4.5(@types/node@24.1.0)(yaml@2.8.4))
       zod:
-        specifier: 3.25.76
-        version: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+        specifier: 4.6.6
+        version: 4.6.6
 
   examples:
     dependencies:
@@ -66,16 +63,16 @@ importers:
         version: link:../packages/shared
       '@openrouter/ai-sdk-provider':
         specifier: 2.10.0
-        version: 2.10.0(ai@6.0.322(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)))(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.10.0(ai@6.0.322(zod@4.6.6))(zod@4.6.6)
       ai:
         specifier: 6.0.322
-        version: 6.0.322(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 6.0.322(zod@4.6.6)
       cheerio:
         specifier: 1.1.2
         version: 1.1.2
       viem:
         specifier: 2.33.2
-        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
 
   packages/ai-sdk:
     dependencies:
@@ -84,17 +81,17 @@ importers:
         version: link:../shared
       viem:
         specifier: 2.33.2
-        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
       zod:
-        specifier: 3.25.76
-        version: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+        specifier: 4.6.6
+        version: 4.6.6
     devDependencies:
       '@types/node':
         specifier: 24.1.0
         version: 24.1.0
       ai:
         specifier: 6.0.322
-        version: 6.0.322(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 6.0.322(zod@4.6.6)
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -106,10 +103,10 @@ importers:
         version: link:../shared
       viem:
         specifier: 2.33.2
-        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
       zod:
-        specifier: 3.25.76
-        version: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+        specifier: 4.6.6
+        version: 4.6.6
     devDependencies:
       '@types/node':
         specifier: 22.14.1
@@ -125,10 +122,10 @@ importers:
         version: link:../shared
       viem:
         specifier: 2.33.2
-        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
       zod:
-        specifier: 3.25.76
-        version: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+        specifier: 4.6.6
+        version: 4.6.6
     devDependencies:
       '@types/node':
         specifier: 24.1.0
@@ -150,13 +147,13 @@ importers:
         version: link:../shared
       '@modelcontextprotocol/sdk':
         specifier: 1.32.2
-        version: 1.32.2(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 1.32.2(zod@4.6.6)
       viem:
         specifier: 2.33.2
-        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
       zod:
-        specifier: 3.25.76
-        version: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+        specifier: 4.6.6
+        version: 4.6.6
     devDependencies:
       '@types/node':
         specifier: 22.14.1
@@ -175,25 +172,25 @@ importers:
         version: link:../shared
       viem:
         specifier: 2.33.2
-        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
       zod:
-        specifier: 3.25.76
-        version: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+        specifier: 4.6.6
+        version: 4.6.6
 
   packages/shared:
     dependencies:
       viem:
         specifier: 2.33.2
-        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+        version: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
       wns-utils:
         specifier: 0.2.1
         version: 0.2.1
       zod:
-        specifier: 3.25.76
-        version: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+        specifier: 4.6.6
+        version: 4.6.6
       zrouter-sdk:
         specifier: 0.0.27
-        version: 0.0.27(viem@2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)))
+        version: 0.0.27(viem@2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6))
     devDependencies:
       '@solana/web3.js':
         specifier: 1.98.4
@@ -202,11 +199,11 @@ importers:
         specifier: 22.14.1
         version: 22.14.1
       '@x402/evm':
-        specifier: 2.4.0
-        version: 2.4.0(bufferutil@4.1.0)(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(typescript@5.9.2)(utf-8-validate@6.0.6)
+        specifier: 2.30.0
+        version: 2.30.0(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)
       '@x402/fetch':
-        specifier: 2.4.0
-        version: 2.4.0(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)
+        specifier: 2.30.0
+        version: 2.30.0
       cheerio:
         specifier: 1.1.2
         version: 1.1.2
@@ -218,9 +215,6 @@ importers:
         version: 4.1.12(@opentelemetry/api@1.9.0)(@types/node@22.14.1)(vite@6.4.5(@types/node@22.14.1)(yaml@2.8.4))
 
 packages:
-
-  '@adraffy/ens-normalize@1.10.1':
-    resolution: {integrity: sha512-96Z2IP3mYmF1Xg2cDm8f1gWGf/HUVedQ3FMifV4kG/PQ4yEP51xDtRAEfhVNt5f/uzpNkZHwWQuUcu6D6K+Ekw==}
 
   '@adraffy/ens-normalize@1.11.0':
     resolution: {integrity: sha512-/3DDPKHqqIqxUULp8yP4zODUY1i+2xvVWsv8A79xGWdCAG+8sb0hRh0Rk2QyOJUnnbyPUAZYcpBuRe3nS2OIUg==}
@@ -418,16 +412,13 @@ packages:
     resolution: {integrity: sha512-2I0gnIVPtfnMw9ee9h1dJG7tp81+8Ob3OJb3Mv37rx5L40/b0i7djjCVvGOVqc9AEIQyvyu1i6ypKdFw8R8gQw==}
     engines: {node: ^14.21.3 || >=16}
 
-  '@noble/curves@1.2.0':
-    resolution: {integrity: sha512-oYclrNgRaM9SsBUBVbb8M6DTV7ZHRTKugureoYEncY5c65HOmRzvSiTE3y5CYaPYJA/GVkrhXEoF0M3Ya9PMnw==}
+  '@noble/curves@1.9.1':
+    resolution: {integrity: sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA==}
+    engines: {node: ^14.21.3 || >=16}
 
   '@noble/curves@1.9.2':
     resolution: {integrity: sha512-HxngEd2XUcg9xi20JkwlLCtYwfoFw4JGkuZpT+WlsPD4gB/cxkvTD8fSsoAnphGZhFdZYKeQIPCuFlWPm1uE0g==}
     engines: {node: ^14.21.3 || >=16}
-
-  '@noble/hashes@1.3.2':
-    resolution: {integrity: sha512-MVC8EAQp7MvEcm30KWENFjgR+Mkmf+D189XJTkFIlwohU5hcBbn1ZkKq7KVTi2Hme3PMGF390DaL52beVrIihQ==}
-    engines: {node: '>= 16'}
 
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
@@ -617,21 +608,6 @@ packages:
   '@solana/web3.js@1.98.4':
     resolution: {integrity: sha512-vv9lfnvjUsRiq//+j5pBdXig0IQdtzA0BRZ3bXEP4KaIyF1CcaydWqgyzQgfZMNIsWNWmG+AUHwPy4AHOD6gpw==}
 
-  '@spruceid/siwe-parser@2.1.2':
-    resolution: {integrity: sha512-d/r3S1LwJyMaRAKQ0awmo9whfXeE88Qt00vRj91q5uv5ATtWIQEGJ67Yr5eSZw5zp1/fZCXZYuEckt8lSkereQ==}
-
-  '@stablelib/binary@1.0.1':
-    resolution: {integrity: sha512-ClJWvmL6UBM/wjkvv/7m5VP3GMr9t0osr4yVgLZsLCOz4hGN9gIAFEqnJ0TsSMAN+n840nf2cHZnA5/KFqHC7Q==}
-
-  '@stablelib/int@1.0.1':
-    resolution: {integrity: sha512-byr69X/sDtDiIjIV6m4roLVWnNNlRGzsvxw+agj8CIEazqWGOQp2dTYgQhtyVXV9wpO6WyXRQUzLV/JRNumT2w==}
-
-  '@stablelib/random@1.0.2':
-    resolution: {integrity: sha512-rIsE83Xpb7clHPVRlBj8qNe5L8ISQOzjghYQm/dZ7VaM2KHYwMW5adjQjrzTZCchFnNCNhkwtnOBa9HTMJCI8w==}
-
-  '@stablelib/wipe@1.0.1':
-    resolution: {integrity: sha512-WfqfX/eXGiAd3RJe4VU2snh/ZPwtSjLG4ynQ/vYzvghTh7dHFcI1wl+nrkWG6lGhukOxOsUHfv8dUXr58D0ayg==}
-
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
@@ -655,9 +631,6 @@ packages:
 
   '@types/node@22.14.1':
     resolution: {integrity: sha512-u0HuPQwe/dHrItgHHpmw3N2fYCR6x4ivMNbPHRkBVP4CvN+kiRrKHWk3i8tXiO/joPwXLMYvF9TTF0eqgHIuOw==}
-
-  '@types/node@22.7.5':
-    resolution: {integrity: sha512-jML7s2NAzMWc//QSJ1a3prpk78cOPchGvXJsC3C6R6PSMoooztvRVQEz89gmBTBY1SPMaqo5teB4uNHPdetShQ==}
 
   '@types/node@24.1.0':
     resolution: {integrity: sha512-ut5FthK5moxFKH2T1CUOC6ctR67rQRvvHdFLCD2Ql6KXmMuCrjsSsRI9UsLCm9M18BMwClv4pn327UvB7eeO1w==}
@@ -704,28 +677,14 @@ packages:
   '@vitest/utils@4.1.12':
     resolution: {integrity: sha512-Q3awXrwOfEV+qc3WmO5ONyE0yO7Q1gQ9/oyHxGLZ/pl7N3NO/ZztqQwKLuwMkV+CA1JYSIeO3gkHnRDIo4AVaA==}
 
-  '@x402/core@2.4.0':
-    resolution: {integrity: sha512-g4K5dAVjevQftxCcpFlUDjO2AHE43FkO43VxwLCQ8ET3ki4aj2fzCcgvnXEj2eloJoocFS/Evt4pSTnP/4cFJw==}
+  '@x402/core@2.30.0':
+    resolution: {integrity: sha512-gvMxCum2QlNI6jI/3NL1jdrmOgtX9sWEWxSIOmeI67/5ndOJvYOtP7JZLSO8o8af+O+A+Vhhjza1NCda0yVppg==}
 
-  '@x402/evm@2.4.0':
-    resolution: {integrity: sha512-k9qIEhJ5m8jZLPA44hcLEP9I1WC8nF375A7pX/3XGPA+H2UPUoY8fzBaQA2U+4lMv/eIyfz05klSj/8LzP1saA==}
+  '@x402/evm@2.30.0':
+    resolution: {integrity: sha512-/iaEB820OPJb1JkUqaCTq90FwjbmBB/rAFaH7ZAL2AmcesSVPO/FjdHD2wmXqBzXkEnPG9f6m1SuNpCtVlA9LQ==}
 
-  '@x402/extensions@2.4.0':
-    resolution: {integrity: sha512-tg/mSAS+NgwUaOdjt8agSjVkO1s9NYy+kSPubVlZf/Fy884qu7dSW81Ixu1NRYEz+vBk0rtz6b+eEvS0v72tMQ==}
-
-  '@x402/fetch@2.4.0':
-    resolution: {integrity: sha512-OOMaPAT85qcKnKWRvB4zZlC/CUod0YogCpbLmi555Puxeh7u69mA30MWkNsyzMfhKS1y+GHiG9eZZbpYFmLMTg==}
-
-  abitype@1.0.8:
-    resolution: {integrity: sha512-ZeiI6h3GnW06uYDLx0etQtX/p8E24UaHHBj57RSjK7YBFe7iuVn07EDpOeP451D06sF27VOz9JJPlIKJmXgkEg==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-      zod: ^3 >=3.22.0
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-      zod:
-        optional: true
+  '@x402/fetch@2.30.0':
+    resolution: {integrity: sha512-rEC8CHQN5ZFn2W9b1mZ8ZvRyEw9Zkc5LuuVXo1CBU9w3PCtQO3c7+ChS7Ht9MvF66JTicK3ja0KgUF+fpChvNA==}
 
   abitype@1.2.3:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
@@ -741,9 +700,6 @@ packages:
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
     engines: {node: '>= 0.6'}
-
-  aes-js@4.0.0-beta.5:
-    resolution: {integrity: sha512-G965FqalsNyrPqgEGON7nIx1e/OVENSgiEIzyC63haUMuvNnwIgIjMs52hlTCKhkBny7A2ORNlfY9Zu+jmGk1Q==}
 
   agentkeepalive@4.6.0:
     resolution: {integrity: sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ==}
@@ -765,9 +721,6 @@ packages:
 
   ajv@8.18.0:
     resolution: {integrity: sha512-PlXPeEWMXMZ7sPYOHqmDyCJzcfNrUr3fGNKtezX14ykXOEIvyK81d+qydx89KY5O71FKMPaQ2vBfBFI5NHR63A==}
-
-  apg-js@4.4.0:
-    resolution: {integrity: sha512-fefmXFknJmtgtNEXfPwZKYkMFX4Fyeyz+fNF6JWp87biGOPslJbCBVU158zvKRZfHBKnJDy8CMM40oLFGkXT8Q==}
 
   base-x@3.0.11:
     resolution: {integrity: sha512-xz7wQ8xDhdyP7tQxwdteLYeFfS68tSMNCZ/Y37WJ4bhGfKPpqEIlmIyueQHqOyoPhE6xNUqjzRr8ra0eF9VRvA==}
@@ -957,10 +910,6 @@ packages:
   etag@1.8.1:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
-
-  ethers@6.16.0:
-    resolution: {integrity: sha512-U1wulmetNymijEhpSEQ7Ct/P/Jw9/e7R1j5XIbPRydgV2DjLVMsULDlNksq3RQnFgKoLlZf88ijYtWEXcPa07A==}
-    engines: {node: '>=14.0.0'}
 
   eventemitter3@5.0.1:
     resolution: {integrity: sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==}
@@ -1187,6 +1136,14 @@ packages:
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
 
+  ox@0.14.20:
+    resolution: {integrity: sha512-rby38C3nDn8eQkf29Zgw4hkCZJ64Qqi0zRPWL8ENUQ7JVuoITqrVtwWQgM/He19SCMUEc7hS/Sjw0jIOSLJhOw==}
+    peerDependencies:
+      typescript: '>=5.4.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   ox@0.8.6:
     resolution: {integrity: sha512-eiKcgiVVEGDtEpEdFi1EGoVVI48j6icXHce9nFwCNM7CKG3uoCXKdr4TPhS00Iy1TR2aWSF1ltPD0x/YgqIL9w==}
     peerDependencies:
@@ -1236,10 +1193,6 @@ packages:
   proxy-addr@2.0.8:
     resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
-
-  punycode@2.3.1:
-    resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
-    engines: {node: '>=6'}
 
   qs@6.16.1:
     resolution: {integrity: sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==}
@@ -1313,11 +1266,6 @@ packages:
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
 
-  siwe@2.3.2:
-    resolution: {integrity: sha512-aSf+6+Latyttbj5nMu6GF3doMfv2UYj83hhwZgUF20ky6fTS83uVhkQABdIVnEuS8y1bBdk7p6ltb9SmlhTTlA==}
-    peerDependencies:
-      ethers: ^5.6.8 || ^6.0.8
-
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
@@ -1361,14 +1309,8 @@ packages:
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
-  tslib@2.7.0:
-    resolution: {integrity: sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==}
-
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
-
-  tweetnacl@1.0.3:
-    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
 
   type-is@2.1.0:
     resolution: {integrity: sha512-faYHw0anBbc/kWF3zFTEnxSFOAGUX9GFbOBthvDdLsIlEoWOFOtS0zgCiQYwIskL9iGXZL3kAXD8OoZ4GmMATA==}
@@ -1378,9 +1320,6 @@ packages:
     resolution: {integrity: sha512-CWBzXQrc/qOkhidw1OzBTQuYRbfyxDXJMVJ1XNwUHGROVmuaeiEm3OslpZ1RV96d7SKKjZKrSJu3+t/xlw3R9A==}
     engines: {node: '>=14.17'}
     hasBin: true
-
-  undici-types@6.19.8:
-    resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
@@ -1396,9 +1335,6 @@ packages:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
     engines: {node: '>= 0.8'}
 
-  uri-js@4.4.1:
-    resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
-
   utf-8-validate@6.0.6:
     resolution: {integrity: sha512-q3l3P9UtEEiAHcsgsqTgf9PPjctrDWoIXW3NpOHFdRDbLvu4DLIcxHangJ4RLrWkBcKjmcs/6NkerI8T/rE4LA==}
     engines: {node: '>=6.14.2'}
@@ -1407,15 +1343,20 @@ packages:
     resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
 
-  valid-url@1.0.9:
-    resolution: {integrity: sha512-QQDsV8OnSf5Uc30CKSwG9lnhMPe6exHtTXLRYX8uMwKENy640pU+2BgBL0LRbDh/eYRahNCS7aewCx0wf3NYVA==}
-
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
   viem@2.33.2:
     resolution: {integrity: sha512-/720OaM4dHWs8vXwNpyet+PRERhPaW+n/1UVSCzyb9jkmwwVfaiy/R6YfCFb4v+XXbo8s3Fapa3DM5yCRSkulA==}
+    peerDependencies:
+      typescript: '>=5.0.4'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  viem@2.48.11:
+    resolution: {integrity: sha512-+WZ5E0dBS6GtKb+1wEk5DeYRRRW42+pFnXCo67Ydodf42sBwO+hu3wnQy66lc4MKmHz+llPVdbyehYr9oTE2iw==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -1556,8 +1497,8 @@ packages:
     peerDependencies:
       zod: ^3.25 || ^4
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+  zod@4.6.6:
+    resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
   zrouter-sdk@0.0.27:
     resolution: {integrity: sha512-gV798i1bVYhcAShQ/CDiki7RdSn5cZ9F5YlhPJRjoXBxr9d0x4evLHSSiDL5eakS5t/3ZtqxhfWb5aCFSl1/LA==}
@@ -1567,24 +1508,22 @@ packages:
 
 snapshots:
 
-  '@adraffy/ens-normalize@1.10.1': {}
-
   '@adraffy/ens-normalize@1.11.0': {}
 
-  '@ai-sdk/gateway@3.0.228(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))':
+  '@ai-sdk/gateway@3.0.228(zod@4.6.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.19
-      '@ai-sdk/provider-utils': 4.0.64(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+      '@ai-sdk/provider-utils': 4.0.64(zod@4.6.6)
       '@vercel/oidc': 3.2.0
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+      zod: 4.6.6
 
-  '@ai-sdk/provider-utils@4.0.64(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))':
+  '@ai-sdk/provider-utils@4.0.64(zod@4.6.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.19
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.1
       undici: 7.30.1
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+      zod: 4.6.6
 
   '@ai-sdk/provider@3.0.19':
     dependencies:
@@ -1673,7 +1612,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
 
-  '@modelcontextprotocol/sdk@1.32.2(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))':
+  '@modelcontextprotocol/sdk@1.32.2(zod@4.6.6)':
     dependencies:
       '@hono/node-server': 2.1.3(hono@4.13.11)
       ajv: 8.18.0
@@ -1690,29 +1629,27 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
-      zod-to-json-schema: 3.25.1(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+      zod: 4.6.6
+      zod-to-json-schema: 3.25.1(zod@4.6.6)
     transitivePeerDependencies:
       - supports-color
 
   '@noble/ciphers@1.3.0': {}
 
-  '@noble/curves@1.2.0':
+  '@noble/curves@1.9.1':
     dependencies:
-      '@noble/hashes': 1.3.2
+      '@noble/hashes': 1.8.0
 
   '@noble/curves@1.9.2':
     dependencies:
       '@noble/hashes': 1.8.0
 
-  '@noble/hashes@1.3.2': {}
-
   '@noble/hashes@1.8.0': {}
 
-  '@openrouter/ai-sdk-provider@2.10.0(ai@6.0.322(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)))(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))':
+  '@openrouter/ai-sdk-provider@2.10.0(ai@6.0.322(zod@4.6.6))(zod@4.6.6)':
     dependencies:
-      ai: 6.0.322(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+      ai: 6.0.322(zod@4.6.6)
+      zod: 4.6.6
 
   '@opentelemetry/api@1.9.0': {}
 
@@ -1848,26 +1785,6 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@spruceid/siwe-parser@2.1.2':
-    dependencies:
-      '@noble/hashes': 1.8.0
-      apg-js: 4.4.0
-      uri-js: 4.4.1
-      valid-url: 1.0.9
-
-  '@stablelib/binary@1.0.1':
-    dependencies:
-      '@stablelib/int': 1.0.1
-
-  '@stablelib/int@1.0.1': {}
-
-  '@stablelib/random@1.0.2':
-    dependencies:
-      '@stablelib/binary': 1.0.1
-      '@stablelib/wipe': 1.0.1
-
-  '@stablelib/wipe@1.0.1': {}
-
   '@standard-schema/spec@1.1.0': {}
 
   '@swc/helpers@0.5.23':
@@ -1891,10 +1808,6 @@ snapshots:
   '@types/node@22.14.1':
     dependencies:
       undici-types: 6.21.0
-
-  '@types/node@22.7.5':
-    dependencies:
-      undici-types: 6.19.8
 
   '@types/node@24.1.0':
     dependencies:
@@ -1961,75 +1874,45 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.2.0
 
-  '@x402/core@2.4.0':
+  '@x402/core@2.30.0':
     dependencies:
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+      zod: 4.6.6
 
-  '@x402/evm@2.4.0(bufferutil@4.1.0)(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(typescript@5.9.2)(utf-8-validate@6.0.6)':
+  '@x402/evm@2.30.0(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)':
     dependencies:
-      '@x402/core': 2.4.0
-      '@x402/extensions': 2.4.0(bufferutil@4.1.0)(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(typescript@5.9.2)(utf-8-validate@6.0.6)
-      viem: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
-    transitivePeerDependencies:
-      - bufferutil
-      - ethers
-      - typescript
-      - utf-8-validate
-
-  '@x402/extensions@2.4.0(bufferutil@4.1.0)(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(typescript@5.9.2)(utf-8-validate@6.0.6)':
-    dependencies:
-      '@scure/base': 1.2.6
-      '@x402/core': 2.4.0
-      ajv: 8.18.0
-      siwe: 2.3.2(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
-      tweetnacl: 1.0.3
-      viem: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
-    transitivePeerDependencies:
-      - bufferutil
-      - ethers
-      - typescript
-      - utf-8-validate
-
-  '@x402/fetch@2.4.0(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)':
-    dependencies:
-      '@x402/core': 2.4.0
-      viem: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+      '@x402/core': 2.30.0
+      viem: 2.48.11(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)
+      zod: 4.6.6
     transitivePeerDependencies:
       - bufferutil
       - typescript
       - utf-8-validate
 
-  abitype@1.0.8(typescript@5.9.2)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)):
+  '@x402/fetch@2.30.0':
+    dependencies:
+      '@x402/core': 2.30.0
+
+  abitype@1.2.3(typescript@5.9.2)(zod@4.6.6):
     optionalDependencies:
       typescript: 5.9.2
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
-
-  abitype@1.2.3(typescript@5.9.2)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)):
-    optionalDependencies:
-      typescript: 5.9.2
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+      zod: 4.6.6
 
   accepts@2.0.0:
     dependencies:
       mime-types: 3.0.1
       negotiator: 1.0.0
 
-  aes-js@4.0.0-beta.5: {}
-
   agentkeepalive@4.6.0:
     dependencies:
       humanize-ms: 1.2.1
 
-  ai@6.0.322(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)):
+  ai@6.0.322(zod@4.6.6):
     dependencies:
-      '@ai-sdk/gateway': 3.0.228(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+      '@ai-sdk/gateway': 3.0.228(zod@4.6.6)
       '@ai-sdk/provider': 3.0.19
-      '@ai-sdk/provider-utils': 4.0.64(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+      '@ai-sdk/provider-utils': 4.0.64(zod@4.6.6)
       '@opentelemetry/api': 1.9.0
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+      zod: 4.6.6
 
   ajv-formats@3.0.1(ajv@8.18.0):
     optionalDependencies:
@@ -2041,8 +1924,6 @@ snapshots:
       fast-uri: 3.1.9
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
-
-  apg-js@4.4.0: {}
 
   base-x@3.0.11:
     dependencies:
@@ -2262,19 +2143,6 @@ snapshots:
       '@types/estree': 1.0.8
 
   etag@1.8.1: {}
-
-  ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6):
-    dependencies:
-      '@adraffy/ens-normalize': 1.10.1
-      '@noble/curves': 1.2.0
-      '@noble/hashes': 1.3.2
-      '@types/node': 22.7.5
-      aes-js: 4.0.0-beta.5
-      tslib: 2.7.0
-      ws: 8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   eventemitter3@5.0.1: {}
 
@@ -2501,7 +2369,22 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  ox@0.8.6(typescript@5.9.2)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)):
+  ox@0.14.20(typescript@5.9.2)(zod@4.6.6):
+    dependencies:
+      '@adraffy/ens-normalize': 1.11.0
+      '@noble/ciphers': 1.3.0
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.2.3(typescript@5.9.2)(zod@4.6.6)
+      eventemitter3: 5.0.1
+    optionalDependencies:
+      typescript: 5.9.2
+    transitivePeerDependencies:
+      - zod
+
+  ox@0.8.6(typescript@5.9.2)(zod@4.6.6):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
       '@noble/ciphers': 1.3.0
@@ -2509,7 +2392,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@5.9.2)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+      abitype: 1.2.3(typescript@5.9.2)(zod@4.6.6)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 5.9.2
@@ -2553,8 +2436,6 @@ snapshots:
     dependencies:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
-
-  punycode@2.3.1: {}
 
   qs@6.16.1:
     dependencies:
@@ -2693,14 +2574,6 @@ snapshots:
 
   siginfo@2.0.0: {}
 
-  siwe@2.3.2(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)):
-    dependencies:
-      '@spruceid/siwe-parser': 2.1.2
-      '@stablelib/random': 1.0.2
-      ethers: 6.16.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-      uri-js: 4.4.1
-      valid-url: 1.0.9
-
   source-map-js@1.2.2: {}
 
   stackback@0.0.2: {}
@@ -2728,11 +2601,7 @@ snapshots:
 
   tr46@0.0.3: {}
 
-  tslib@2.7.0: {}
-
   tslib@2.8.1: {}
-
-  tweetnacl@1.0.3: {}
 
   type-is@2.1.0:
     dependencies:
@@ -2742,8 +2611,6 @@ snapshots:
 
   typescript@5.9.2: {}
 
-  undici-types@6.19.8: {}
-
   undici-types@6.21.0: {}
 
   undici-types@7.8.0: {}
@@ -2752,10 +2619,6 @@ snapshots:
 
   unpipe@1.0.0: {}
 
-  uri-js@4.4.1:
-    dependencies:
-      punycode: 2.3.1
-
   utf-8-validate@6.0.6:
     dependencies:
       node-gyp-build: 4.8.4
@@ -2763,19 +2626,34 @@ snapshots:
 
   uuid@11.1.1: {}
 
-  valid-url@1.0.9: {}
-
   vary@1.1.2: {}
 
-  viem@2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)):
+  viem@2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6):
     dependencies:
       '@noble/curves': 1.9.2
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.0.8(typescript@5.9.2)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+      abitype: 1.2.3(typescript@5.9.2)(zod@4.6.6)
       isows: 1.0.7(ws@8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
-      ox: 0.8.6(typescript@5.9.2)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+      ox: 0.8.6(typescript@5.9.2)(zod@4.6.6)
+      ws: 8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+    optionalDependencies:
+      typescript: 5.9.2
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - zod
+
+  viem@2.48.11(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6):
+    dependencies:
+      '@noble/curves': 1.9.1
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+      abitype: 1.2.3(typescript@5.9.2)(zod@4.6.6)
+      isows: 1.0.7(ws@8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))
+      ox: 0.14.20(typescript@5.9.2)(zod@4.6.6)
       ws: 8.21.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     optionalDependencies:
       typescript: 5.9.2
@@ -2899,12 +2777,12 @@ snapshots:
 
   yaml@2.8.4: {}
 
-  zod-to-json-schema@3.25.1(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)):
+  zod-to-json-schema@3.25.1(zod@4.6.6):
     dependencies:
-      zod: 3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6)
+      zod: 4.6.6
 
-  zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6): {}
+  zod@4.6.6: {}
 
-  zrouter-sdk@0.0.27(viem@2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))):
+  zrouter-sdk@0.0.27(viem@2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)):
     dependencies:
-      viem: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@3.25.76(patch_hash=2fea1c305fc920ca0f4128aa6d3587ceebf8069cafa8bf551a65d864b74e01e6))
+      viem: 2.33.2(bufferutil@4.1.0)(typescript@5.9.2)(utf-8-validate@6.0.6)(zod@4.6.6)

@@ -1,6 +1,6 @@
 import { providerJSON, ProviderRequestError } from "../utils/fetch.js";
 import { keccak256, stringToHex } from "viem";
-import { z } from "zod";
+import * as z from "zod";
 import { sanitizeToolOutput } from "../utils/safe-errors.js";
 
 export const continuationSchema = z.string().max(12000).optional().describe("Opaque continuation returned by this read. Bound to network, address and filters. Never invent page numbers.");

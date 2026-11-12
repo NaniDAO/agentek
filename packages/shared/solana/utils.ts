@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { formatUnits } from "viem";
 import { decodeBase58 } from "./base58.js";
 import { SOLANA_TOKENS, SOL_DECIMALS } from "./constants.js";

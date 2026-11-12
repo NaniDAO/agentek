@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import type { Hex } from "viem";
 
 export const MAX_UINT256 = (1n << 256n) - 1n;

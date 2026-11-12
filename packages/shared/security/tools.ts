@@ -1,6 +1,6 @@
 /** ScamSniffer scam-database, GPL-3.0. Existing delayed blacklist coverage only. */
 import { createTool } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 import { identityAddress } from "../utils/exact.js";
 import { providerJSON } from "../utils/fetch.js";
 

@@ -1,5 +1,5 @@
 import { createTool } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants.js";
 import { formatUnits, maxUint256 } from "viem";
 

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool, AgentekClient } from "../client.js";
 import { providerJSON } from "../utils/fetch.js";
 

@@ -1,6 +1,6 @@
 import { positiveEther } from "../utils/exact.js";
 import { createTool, AgentekClient } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 import { encodeFunctionData, } from "viem";
 import { coinsAbi, COINS_ADDRESS } from "./constants.js";
 import { addressSchema } from "../utils.js";

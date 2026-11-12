@@ -1,6 +1,6 @@
 import { type Address, type Hex, formatUnits } from "viem";
 import { arbitrum, base, mainnet, optimism, polygon, sepolia } from "viem/chains";
-import { z } from "zod";
+import * as z from "zod";
 import { type AgentekClient, createTool } from "../client.js";
 import { robinhood } from "../chains/robinhood.js";
 import { addressSchema } from "../utils.js";

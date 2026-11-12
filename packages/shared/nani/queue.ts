@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { safeErrorMessage } from "../utils/safe-errors.js";
 import { decodeFunctionData, hashTypedData, parseAbi, type Address, type Hex } from "viem";
 import { createTool } from "../client.js";

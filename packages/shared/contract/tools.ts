@@ -1,6 +1,6 @@
 import { providerJSON, ProviderRequestError } from "../utils/fetch.js";
 import { identityAddress, quantitySchema } from "../utils/exact.js";
-import { z } from "zod";
+import * as z from "zod";
 import type { Abi, Address } from "viem";
 import { encodeFunctionData } from "viem";
 import type { AgentekClient, Intent } from "../client.js";
@@ -10,6 +10,7 @@ import { supportedChains, BLOCKSCOUT_API_ENDPOINTS } from "./constants.js";
 
 const abiSchema = z
   .array(z.any())
+  .max(512)
   .describe(
     "Contract ABI as a JSON array. If omitted, the ABI will be auto-fetched from Blockscout for verified contracts.",
   )
@@ -17,6 +18,7 @@ const abiSchema = z
 
 const argsSchema = z
   .array(z.any())
+  .max(256)
   .describe(
     "Arguments to pass to the function. Use strings for addresses and uint256 values. Order must match the function signature.",
   )

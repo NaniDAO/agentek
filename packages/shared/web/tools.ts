@@ -1,5 +1,5 @@
 import { publicFetch } from "../utils/public-fetch.js";
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import * as cheerio from "cheerio";
 import { assertOkResponse } from "../utils/fetch.js";

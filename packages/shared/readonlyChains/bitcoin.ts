@@ -1,3 +1,4 @@
+import { assertToolInput } from "../utils/tool-input.js";
 import type { BaseTool } from "../client.js";
 import { btcRpcTools } from "../btc-rpc/index.js";
 
@@ -7,6 +8,7 @@ export function bitcoinReadOnlyTools(): BaseTool[] {
     ...tool,
     description: tool.description + " Read-only Bitcoin mainnet lookup. Requires an explicit Bitcoin address where applicable; never use an EVM address.",
     execute: async (client, args) => {
+      assertToolInput(args);
       const request = tool.parameters.parse(args);
       for (const field of ["blockHash", "txid"]) {
         if (request[field] !== undefined && !/^[a-fA-F0-9]{64}$/.test(request[field])) {

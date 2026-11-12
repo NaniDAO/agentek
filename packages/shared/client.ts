@@ -13,7 +13,8 @@ import {
   TypedDataDomain,
   keccak256, hashMessage, hashTypedData, bytesToHex
 } from "viem";
-import { z } from "zod";
+import * as z from "zod";
+import { assertToolInput } from "./utils/tool-input.js";
 import { wireValue } from "./utils/wire.js";
 import { identityAddress, uint256, byteHex, parseExactUnits } from "./utils/exact.js";
 import type { SolanaRuntime, SolanaSigner, SolanaTransaction } from "./solana-runtime.js";
@@ -106,7 +107,7 @@ export interface BaseTool<TArgs = any, TResult = any> {
   capabilities?: ToolCapabilities;
   name: string;
   description: string;
-  parameters: z.ZodObject<any, any, any, any>;
+  parameters: z.ZodObject<Record<string, z.ZodType<any, any>>>;
   execute: (client: AgentekClient, args: TArgs) => Promise<TResult>;
   supportedChains?: Chain[];
 }
@@ -662,6 +663,8 @@ export class AgentekClient {
       throw new Error(`Tool ${method} not found`);
     }
 
+    assertToolInput(args);
+
     // An empty supportedChains means "not chain-specific", which is how every
     // tool that declares one uses it. Read literally it meant "supports no
     // chain", so a chain-agnostic tool rejected any chainId the model passed.
@@ -678,7 +681,8 @@ export class AgentekClient {
     const validatedArgs = tool.parameters.safeParse(args);
 
     if (!validatedArgs.success) {
-      throw new Error(JSON.stringify(validatedArgs.error));
+      // Zod 4 keeps issues non-enumerable; preserve the CLI/host error envelope.
+      throw new Error(JSON.stringify({name: "ZodError", issues: validatedArgs.error.issues}));
     }
 
     const capability = tool.capabilities ?? toolCapabilities(method);
@@ -712,7 +716,7 @@ export function createAgentekClient(
   return new AgentekClient(config);
 }
 
-export function createTool<T extends z.ZodObject<any, any, any, any>, R>({
+export function createTool<T extends z.ZodObject<any>, R>({
   name,
   description,
   parameters,
@@ -730,9 +734,10 @@ export function createTool<T extends z.ZodObject<any, any, any, any>, R>({
     description,
     parameters,
     execute: async (client, args) => {
+      assertToolInput(args);
       const parsed = parameters.parse(args);
       if (parsed.chainId !== undefined) {
-        if (!Number.isSafeInteger(parsed.chainId) || parsed.chainId <= 0) throw new Error("Invalid chainId");
+        if (typeof parsed.chainId !== "number" || !Number.isSafeInteger(parsed.chainId) || parsed.chainId <= 0) throw new Error("Invalid chainId");
         if (supportedChains?.length && !supportedChains.some(chain => chain.id === parsed.chainId)) throw new Error("Chain not supported by tool");
       }
       try {
@@ -757,6 +762,7 @@ export function createToolCollection(tools: BaseTool[]): BaseTool[] {
 }
 
 export { wireValue, failedResult } from "./utils/wire.js";
+export { assertToolInput, parseToolInputJSON, TOOL_INPUT_LIMITS } from "./utils/tool-input.js";
 
 export { parseExactUnits } from "./utils/exact.js";
 export { safeErrorMessage, sanitizeToolOutput, sanitizeToolError } from "./utils/safe-errors.js";

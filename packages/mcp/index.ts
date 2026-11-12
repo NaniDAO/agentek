@@ -1,9 +1,9 @@
 import { loadIntegrations, parseIntegrations } from "@agentek/tools/integrations";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
+import * as z from "zod";
 import { type Hex, isHex, zeroAddress } from "viem";
-import { createAgentekClient, isNonCancellableTool, TransactionExecutionError, OperationExecutionError, SolanaExecutionError, failedResult, safeErrorMessage, sanitizeToolOutput, type BaseTool } from "@agentek/tools/client";
+import { createAgentekClient, isNonCancellableTool, TransactionExecutionError, OperationExecutionError, SolanaExecutionError, failedResult, safeErrorMessage, sanitizeToolOutput, TOOL_INPUT_LIMITS, type BaseTool } from "@agentek/tools/client";
 import {
   allTools,
   DEFAULT_CHAINS,
@@ -108,7 +108,7 @@ async function main() {
   const server = new McpServer({
     name: "agentek-mcp-server",
     version: VERSION,
-  });
+  }, {maxToolInputElements: TOOL_INPUT_LIMITS.nodes});
 
   // Register each agentek tool as an MCP tool.
   // McpServer.registerTool handles:

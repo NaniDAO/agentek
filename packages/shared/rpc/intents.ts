@@ -1,5 +1,5 @@
 import { parseExactUnits, byteHex } from "../utils/exact.js";
-import { z } from "zod";
+import * as z from "zod";
 import { AgentekClient, createTool, Intent } from "../client.js";
 import {
   Address,
@@ -37,6 +37,7 @@ const intentSendTransactionParameters = z.object({
     .describe("ETH value to send in ether (e.g. '0.1' for 0.1 ETH)"),
   abi: z
     .array(z.string())
+    .max(512)
     .optional()
     .describe(
       "Human-readable ABI signatures for the function to call, e.g. ['function transfer(address to, uint256 amount) returns (bool)']"
@@ -47,6 +48,7 @@ const intentSendTransactionParameters = z.object({
     .describe("The function name to call, e.g. 'transfer'"),
   args: z
     .array(z.any())
+    .max(256)
     .optional()
     .describe(
       "The arguments to pass to the function, e.g. ['0x1234...', '1000000000000000000']"

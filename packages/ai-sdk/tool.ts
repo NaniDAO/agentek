@@ -1,6 +1,7 @@
 import type { Tool, ToolExecutionOptions } from "ai";
-import { z } from "zod";
-import { failedResult, type BaseTool, type AgentekClient } from "@agentek/tools/client";
+import * as z from "zod";
+import { assertToolInput, failedResult, type BaseTool, type AgentekClient } from "@agentek/tools/client";
+import { toolInputSchema } from "@agentek/tools/schema";
 
 export default function AgentekTool(
   agentekClient: AgentekClient,
@@ -8,7 +9,23 @@ export default function AgentekTool(
 ): Tool {
   const definition = {
     description: baseTool.description,
-    inputSchema: baseTool.parameters,
+    // The SDK validates before execute(). Apply budgets at that boundary too.
+    inputSchema: {
+      "~standard": {
+        version: 1 as const,
+        vendor: "agentek",
+        validate: async (value: unknown) => {
+          try { assertToolInput(value); }
+          catch { return {issues: [{message: "Tool input exceeds supported resource limits"}]}; }
+          const result = await baseTool.parameters.safeParseAsync(value);
+          return result.success ? {value: result.data} : {issues: result.error.issues};
+        },
+        jsonSchema: {
+          input: () => toolInputSchema(baseTool.parameters),
+          output: () => { throw new Error("Agentek tool inputs do not define an output JSON schema"); },
+        },
+      },
+    },
     execute: async (args: z.infer<typeof baseTool.parameters>, options?: ToolExecutionOptions) => {
       // Errors are rethrown rather than returned as the result. Returning
       // `e.message` made a failure indistinguishable from data: the AI SDK saw

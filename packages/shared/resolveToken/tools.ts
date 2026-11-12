@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import type { Address } from "viem";
 import { erc20Abi } from "viem";
 import { precision } from "../utils/exact.js";
@@ -31,7 +31,7 @@ async function fetchCoinGeckoList() {
   );
   const parsed = z.array(z.object({
     id: z.string().max(160), symbol: z.string().max(160), name: z.string().max(512),
-    platforms: z.record(z.string().max(256)),
+    platforms: z.record(z.string(), z.string().max(256)),
   })).max(100_000).safeParse(list);
   if (!parsed.success) throw new Error("Malformed CoinGecko coin list");
   coinListCache = parsed.data as typeof coinListCache;

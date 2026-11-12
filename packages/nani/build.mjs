@@ -7,7 +7,9 @@ const collection = new URL(process.argv[3] ?? `./${profile}-tools.ts`, import.me
 const result = await Bun.build({
   entrypoints: ['./jsc-entry.ts'], target: 'browser', minify: true,
   plugins: [{name: 'embedded-dependency-boundary', setup(build) {
-    build.onResolve({filter: /./}, args => {
+    // Limit interception to guarded imports so Bun can tree-shake ordinary
+    // dependencies using their package sideEffects metadata.
+    build.onResolve({filter: /selected-tools\.js$|^@agentek\/|(?:^|\/)twitter(?:\/|$)|@solana\/|@x402\/|cheerio|twitter-api-v2|zod-to-json-schema|(?:^|\/)solana\//}, args => {
       if (args.path === "./selected-tools.js") return {path: collection};
       if (/^@agentek\//.test(args.path)) throw new Error(`Native profiles must import committed source: ${args.path}`);
       if (profile === 'nani-chan' && /(?:^|\/)twitter(?:\/|$)/.test(args.path)) throw new Error(`X is excluded from nani-chan: ${args.path}`);

@@ -1,6 +1,6 @@
 import { providerJSON } from "../utils/fetch.js";
 import { createTool } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 
 const BASE_URL = "https://blockstream.info/api";
 

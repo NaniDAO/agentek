@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { providerJSON } from "../utils/fetch.js";
 import { safeErrorMessage } from "../utils/safe-errors.js";

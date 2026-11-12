@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { getPositionManagerAddress, supportedChains } from "./constants.js";
 

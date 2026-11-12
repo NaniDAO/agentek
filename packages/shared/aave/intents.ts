@@ -1,7 +1,7 @@
 import { identityAddress } from "../utils/exact.js";
 import { positiveUnits } from "../utils/exact.js";
 import { createTool } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 import {
   erc20Abi,
   Address,

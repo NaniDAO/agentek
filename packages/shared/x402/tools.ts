@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { x402Client, wrapFetchWithPayment } from "@x402/fetch";
 import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
@@ -7,6 +7,15 @@ import { publicFetch } from "../utils/public-fetch.js";
 import { TOKEN_REGISTRY } from "../resolveToken/constants.js";
 import { uint256 } from "../utils/exact.js";
 import { assertOkResponse } from "../utils/fetch.js";
+import { assertToolInput } from "../utils/tool-input.js";
+
+// SDKs may validate this record before the client guard. Check resources before
+// parsing any header values; metadata preserves the model-facing input shape.
+const headersSchema = z.unknown().superRefine((value, context) => {
+  try { assertToolInput(value); }
+  catch { context.addIssue({code: "custom", message: "Headers exceed tool input limits", fatal: true}); }
+}).pipe(z.record(z.string(), z.string()))
+  .meta({type: "object", additionalProperties: {type: "string"}});
 
 export const x402FetchTool = createTool({
   name: "x402Fetch",
@@ -15,8 +24,7 @@ export const x402FetchTool = createTool({
   parameters: z.object({
     url: z.string().describe("The URL to fetch"),
     method: z.string().optional().describe("HTTP method (default GET)"),
-    headers: z
-      .record(z.string())
+    headers: headersSchema
       .optional()
       .describe("Additional request headers"),
     body: z.string().optional().describe("Request body for POST/PUT"),

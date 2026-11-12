@@ -1,5 +1,5 @@
 import { providerJSON } from "../utils/fetch.js";
-import { z } from "zod";
+import * as z from "zod";
 import type { Address } from "viem";
 import { erc20Abi, formatUnits, maxUint256, encodeFunctionData } from "viem";
 import type { AgentekClient, Intent } from "../client.js";

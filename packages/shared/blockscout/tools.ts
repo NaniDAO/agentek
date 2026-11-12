@@ -1,5 +1,5 @@
 import { providerJSON, ProviderRequestError } from "../utils/fetch.js";
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { mainnet, polygon, arbitrum, optimism, base, sepolia } from "viem/chains";
 import { formatEther } from "viem";

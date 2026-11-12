@@ -1,4 +1,5 @@
-import { z } from "zod";
+import * as z from "zod";
+import { parseToolInputJSON } from "@agentek/tools/client";
 import { outputError } from "./output.js";
 
 /**
@@ -33,7 +34,7 @@ export function parseFlags(argv: string[], schema: z.ZodObject<any>): Record<str
       const jsonStr = inlineValue ?? argv[++i];
       if (jsonStr === undefined) outputError("--json requires a value");
       try {
-        const parsed = JSON.parse(jsonStr);
+        const parsed = parseToolInputJSON(jsonStr);
         if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
           outputError("--json value must be a JSON object");
         }
@@ -100,13 +101,13 @@ export function parseFlags(argv: string[], schema: z.ZodObject<any>): Record<str
 }
 
 /** Check if a Zod schema (possibly wrapped) expects a number. */
-export function isNumericSchema(schema: z.ZodTypeAny): boolean {
+export function isNumericSchema(schema: z.core.$ZodType): boolean {
   const inner = unwrapSchema(schema);
   return inner instanceof z.ZodNumber;
 }
 
 /** Check if a Zod schema (possibly wrapped in optional/default) is an array type. */
-export function isArraySchema(schema: z.ZodTypeAny): boolean {
+export function isArraySchema(schema: z.core.$ZodType): boolean {
   if (schema instanceof z.ZodArray) return true;
   if (schema instanceof z.ZodOptional) return isArraySchema(schema.unwrap());
   if (schema instanceof z.ZodDefault) return isArraySchema(schema.removeDefault());
@@ -114,14 +115,14 @@ export function isArraySchema(schema: z.ZodTypeAny): boolean {
 }
 
 /** Unwrap optional/default to get the inner schema. */
-export function unwrapSchema(schema: z.ZodTypeAny): z.ZodTypeAny {
+export function unwrapSchema(schema: z.core.$ZodType): z.core.$ZodType {
   if (schema instanceof z.ZodOptional) return unwrapSchema(schema.unwrap());
   if (schema instanceof z.ZodDefault) return unwrapSchema(schema.removeDefault());
   return schema;
 }
 
 /** Coerce a raw string value based on the Zod schema type. */
-export function coerceValue(raw: string, schema?: z.ZodTypeAny): unknown {
+export function coerceValue(raw: string, schema?: z.core.$ZodType): unknown {
   if (!schema) return raw;
 
   let inner = unwrapSchema(schema);

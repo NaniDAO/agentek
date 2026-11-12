@@ -1,5 +1,5 @@
 import { providerJSON } from "../utils/fetch.js";
-import { z } from "zod";
+import * as z from "zod";
 import { createTool, AgentekClient } from "../client.js";
 
 const getMarketEventsParams = z.object({

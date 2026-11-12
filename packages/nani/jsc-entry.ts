@@ -29,6 +29,7 @@ import { DEFAULT_CHAINS, resolveTransports } from "../shared/chains/config.js";
 import { createAgentekClient, TransactionExecutionError, OperationExecutionError, SolanaExecutionError, type BaseTool } from "../shared/client.js";
 import { sanitizeToolOutput } from "../shared/utils/safe-errors.js";
 import { toolInputSchema } from "../shared/schema.js";
+import { parseToolInputJSON } from "../shared/utils/tool-input.js";
 
 import { installCredentialTransport } from "../shared/credentialTools/transport.js";
 import { safeResearchError } from "../shared/blockscout/research.js";
@@ -118,7 +119,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   }
 
   try {
-    const args = JSON.parse(argsJSON);
+    const args = parseToolInputJSON(argsJSON);
     const result = await withTimeout(
       agentekClient.execute(name, args),
       TOOL_TIMEOUT_MS,

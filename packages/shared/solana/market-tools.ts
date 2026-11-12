@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { type AgentekClient, type BaseTool, createTool } from "../client.js";
 import { clean } from "../utils.js";
 import {

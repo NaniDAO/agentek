@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 import { Address } from "viem";
 import { validateENSName } from "./bounds.js";

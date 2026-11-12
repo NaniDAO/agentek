@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { createTool } from "../client.js";
 
 // Runs in a native host's isolated WebKit content world. No network or wallet access.

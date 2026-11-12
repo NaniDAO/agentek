@@ -63,7 +63,7 @@ Solana, x402 payments, server-side HTML scraping, and X tools are explicit opt-i
 | Integration | Import | Additional packages to install |
 |---|---|---|
 | Solana | `@agentek/tools/solana` | `@solana/web3.js@1.98.4` |
-| x402 payments | `@agentek/tools/x402` | `@x402/evm@2.4.0`, `@x402/fetch@2.4.0` |
+| x402 payments | `@agentek/tools/x402` | `@x402/evm@2.30.0`, `@x402/fetch@2.30.0` |
 | HTML scraping | `@agentek/tools/web` | `cheerio@1.1.2` |
 | X/Twitter | `@agentek/tools/twitter` | None |
 
@@ -108,6 +108,25 @@ Gym loads JSON tasks without YAML. Install `yaml@2.8.4` to use YAML tasks.
 AI examples have their own private workspace under `examples`; OpenRouter and AI
 SDK dependencies are development/example dependencies, not core requirements.
 Package builds use TypeScript directly, with no tsup dependency.
+
+### Zod 4 migration and input limits
+
+Agentek requires `zod@4.6.6`; custom tools must use Zod 4 schemas. Model-facing
+schemas use Zod's built-in JSON Schema conversion in input mode. The Zod 3
+package-manager backport is no longer required.
+
+Client and direct tool calls reject input deeper than 32 levels, collections
+with more than 1,024 entries, more than 16,384 total nodes, or more than 8 MiB of
+cumulative UTF-8 text. Encoded native/CLI JSON input also has an 8 MiB envelope
+limit before parsing. ABI lists allow 512 entries and function argument lists
+allow 256 entries. BigInt ABI arguments and 32-call batches with 64 KiB of
+calldata per call remain supported. Native hosts may impose smaller limits on
+assistant calls. AI SDK input validation applies the same preflight, and MCP
+sets an element ceiling before its own schema validation.
+
+The optional x402 integration uses `@x402/evm@2.30.0` and
+`@x402/fetch@2.30.0`, which use fixed Zod 4. Its EVM SDK uses pinned
+`viem@2.48.11`; the core and Nani bundle retain `viem@2.33.2`.
 
 ## Usage
 

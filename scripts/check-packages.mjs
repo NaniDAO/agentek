@@ -46,8 +46,8 @@ try {
   }
 
   const shared = packages.find(p => p.packed.name === '@agentek/tools');
-  const zodPatch = 'patches/zod@3.25.76.patch';
-  assert.equal(readFileSync(join(shared.destination, zodPatch), 'utf8'), readFileSync(join(shared.source, zodPatch), 'utf8'), 'Packed tools must include the exact Zod security backport');
+  assert.equal(shared.packed.peerDependencies.zod, '4.6.6', 'Packed tools must require the fixed, pinned Zod release');
+  assert.ok(!shared.packed.files.includes('patches'), 'Consumers must not need a package-manager backport');
 
   // Use installed external dependencies, but resolve all @agentek packages to
   // the extracted tarballs so workspace links cannot hide packaging failures.

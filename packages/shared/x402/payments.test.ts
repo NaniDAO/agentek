@@ -15,6 +15,12 @@ function fixture(requirement = valid) {
   return {client, signTypedData};
 }
 describe("x402 signing boundary", () => {
+  it("rejects oversized header records before accumulating child issues", () => {
+    const result = x402FetchTool.parameters.safeParse({url: "https://paid.example",
+      headers: Object.fromEntries(Array.from({length: 2048}, (_, index) => [String(index), null]))});
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues).toMatchObject([{code: "custom", path: ["headers"]}]);
+  });
   it.each([
     {...valid, asset: address}, {...valid, network: "eip155:1"}, {...valid, amount: "1000001"},
     {...valid, amount: "-1"}, {...valid, amount: "0"}, {...valid, amount: "1e3"},

@@ -5,8 +5,8 @@ import { z } from "zod";
 const require = createRequire(import.meta.url);
 const cjs = require("zod").z as typeof z;
 
-describe.each([["ESM", z], ["CommonJS", cjs]] as const)("patched Zod 3 collection bounds (%s)", (_format, schema) => {
-  for (const kind of ["array max", "array length", "set max", "set size"] as const) {
+describe.each([["ESM", z], ["CommonJS", cjs]] as const)("Zod 4 collection bounds (%s)", (_format, schema) => {
+  for (const kind of ["array max", "array length", "set max", "set size", "map max", "map size"] as const) {
     for (const asynchronous of [false, true]) {
       it(`${kind} rejects oversized collections before parsing children (${asynchronous ? "async" : "sync"})`, async () => {
         const child = vi.fn((value: unknown) => value);
@@ -14,10 +14,13 @@ describe.each([["ESM", z], ["CommonJS", cjs]] as const)("patched Zod 3 collectio
         const element = schema.preprocess(child, schema.number());
         const bounded = kind === "array max" ? schema.array(element).max(2)
           : kind === "array length" ? schema.array(element).length(2)
-          : kind === "set max" ? schema.set(element).max(2) : schema.set(element).size(2);
+          : kind === "set max" ? schema.set(element).max(2)
+          : kind === "set size" ? schema.set(element).size(2)
+          : kind === "map max" ? schema.map(element, element).max(2) : schema.map(element, element).size(2);
         const guarded = bounded.refine(refinement);
         const values = Array.from({ length: 4096 }, (_, index) => index);
-        const input = kind.startsWith("array") ? values : new Set(values);
+        const input = kind.startsWith("array") ? values : kind.startsWith("set") ? new Set(values)
+          : new Map(values.map(value => [value, value]));
         const result = asynchronous ? await guarded.safeParseAsync(input) : guarded.safeParse(input);
         expect(result.success).toBe(false);
         if (!result.success) expect(result.error.issues).toMatchObject([{ code: "too_big", maximum: 2 }]);

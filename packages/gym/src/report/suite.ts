@@ -2,7 +2,7 @@ import { implementationFingerprint } from "../runner/provenance.js";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, stat, writeFile, open, unlink, rename } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { z } from "zod";
+import * as z from "zod";
 import { formatUnits, parseUnits } from "viem";
 import { loadTask } from "../task/loadTask.js";
 import { selectMvpAgentekTools } from "../harness/AgentekClientFactory.js";

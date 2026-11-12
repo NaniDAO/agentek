@@ -1,7 +1,7 @@
 import { uint256, quantitySchema } from "../utils/exact.js";
 import { parseExactUnits } from "../utils/exact.js";
 import { createTool, Op } from "../client.js";
-import { z } from "zod";
+import * as z from "zod";
 import { CoinchanAbi, CoinchanAddress, supportedChains } from "./constants.js";
 import { Address, encodeFunctionData, Hex, } from "viem";
 import { addressSchema } from "../utils.js";
@@ -179,8 +179,8 @@ export const intentCoinchanAirdrop = createTool({
   parameters: z.object({
     chainId: z.number().int().positive().safe().describe("Chain ID for execution (e.g. 8453 for Base)"),
     coinId: quantitySchema.describe("The Coinchan token ID as a decimal string"),
-    recipients: z.array(addressSchema).describe("Array of recipient Ethereum addresses"),
-    amounts: z.array(z.string()).describe("Array of token amounts in wei as decimal strings, one per recipient"),
+    recipients: z.array(addressSchema).max(1024).describe("Array of recipient Ethereum addresses"),
+    amounts: z.array(z.string()).max(1024).describe("Array of token amounts in wei as decimal strings, one per recipient"),
     totalSum: quantitySchema.describe("Total sum of all amounts in wei as a decimal string"),
   }),
   execute: async (client, args) => {

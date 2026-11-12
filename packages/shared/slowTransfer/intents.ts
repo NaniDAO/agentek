@@ -1,6 +1,6 @@
 import { uint256, quantitySchema } from "../utils/exact.js";
 import { positiveUnits, positiveEther } from "../utils/exact.js";
-import { z } from "zod";
+import * as z from "zod";
 import { createTool, Intent } from "../client.js";
 import { SLOW_ADDRESS, slowAbi, slowTransferChains } from "./constants.js";
 import { encodeFunctionData, erc20Abi, } from "viem";

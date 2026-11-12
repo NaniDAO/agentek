@@ -119,8 +119,7 @@
     }
   },
   "files": [
-    "dist",
-    "patches"
+    "dist"
   ],
   "scripts": {
     "build": "rm -rf dist && tsc && tsc -p tsconfig.cjs.json && node -e \"require('fs').writeFileSync('dist/cjs/package.json', JSON.stringify({type:'commonjs'}))\" && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",
@@ -131,11 +130,11 @@
   },
   "peerDependencies": {
     "viem": "2.33.2",
-    "zod": "3.25.76",
+    "zod": "4.6.6",
     "zrouter-sdk": "0.0.27",
     "@solana/web3.js": "1.98.4",
-    "@x402/evm": "2.4.0",
-    "@x402/fetch": "2.4.0",
+    "@x402/evm": "2.30.0",
+    "@x402/fetch": "2.30.0",
     "cheerio": "1.1.2"
   },
   "devDependencies": {
@@ -143,8 +142,8 @@
     "typescript": "5.9.2",
     "vitest": "4.1.12",
     "@solana/web3.js": "1.98.4",
-    "@x402/evm": "2.4.0",
-    "@x402/fetch": "2.4.0",
+    "@x402/evm": "2.30.0",
+    "@x402/fetch": "2.30.0",
     "cheerio": "1.1.2"
   },
   "keywords": [

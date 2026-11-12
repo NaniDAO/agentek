@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { encodeFunctionData, formatUnits, isAddress, type Address } from "viem";
 import { createTool } from "../client.js";
 import { aavePoolAbi, getAavePoolAddress, supportedChains } from "./constants.js";

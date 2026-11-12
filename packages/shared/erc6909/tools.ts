@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { AgentekClient, createTool} from "../client.js";
 import { coinsAbi, COINS_ADDRESS } from "./constants.js";
 import { addressSchema } from "../utils.js";

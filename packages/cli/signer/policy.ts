@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { parseExactUnits } from "@agentek/tools/client";
 import type { PolicyConfig } from "./protocol.js";
 

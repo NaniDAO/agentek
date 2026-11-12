@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { keccak256, stringToHex } from "viem";
 import { createTool } from "../client.js";
 import { bufferedGas, feeCap, quoteNaniBatchTool, uint } from "./batch.js";

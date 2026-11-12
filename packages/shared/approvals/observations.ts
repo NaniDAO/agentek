@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { encodeFunctionData, erc20Abi, erc721Abi, isAddress, type Address, type Hex } from "viem";
 import { createTool, type AgentekClient } from "../client.js";
 

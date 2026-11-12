@@ -1,5 +1,5 @@
 import { providerJSON } from '../utils/fetch.js';
-import { z } from 'zod';
+import * as z from "zod";
 import { encodeFunctionData, erc20Abi, parseUnits, type Address } from 'viem';
 import { mainnet, optimism, arbitrum, base, polygon } from 'viem/chains';
 import { createTool } from '../client.js';

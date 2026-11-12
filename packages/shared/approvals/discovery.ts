@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod";
 import { isAddress, keccak256, toBytes } from "viem";
 import { createTool } from "../client.js";
 import { decodeWord, observeAllowance } from "./observations.js";
