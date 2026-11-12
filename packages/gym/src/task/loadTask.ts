@@ -1,7 +1,6 @@
 import { readFile, stat } from "node:fs/promises";
 import { extname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseAllDocuments, visit } from "yaml";
 import { ZodError } from "zod";
 import { mvpTaskSchema, type MvpTask } from "./schema.js";
 
@@ -47,7 +46,12 @@ export function parseTask(input: unknown): MvpTask {
   }
 }
 
-function parseYaml(source: string, sourceName: string): unknown {
+async function parseYaml(source: string, sourceName: string): Promise<unknown> {
+  let yaml: typeof import("yaml");
+  try { yaml = await import("yaml"); } catch {
+    throw new TaskFileError("YAML tasks require the optional yaml package; install yaml or use a JSON task");
+  }
+  const {parseAllDocuments, visit} = yaml;
   const documents = parseAllDocuments(source, {
     merge: false,
     prettyErrors: true,
@@ -131,7 +135,7 @@ export async function loadTask(pathOrUrl: string | URL): Promise<MvpTask> {
       });
     }
   } else {
-    input = parseYaml(source, path);
+    input = await parseYaml(source, path);
   }
   return parseTask(input);
 }

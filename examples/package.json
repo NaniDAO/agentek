@@ -1,0 +1,13 @@
+{
+  "name": "@agentek/examples",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@agentek/ai-sdk": "workspace:*",
+    "@agentek/tools": "workspace:*",
+    "@openrouter/ai-sdk-provider": "2.10.0",
+    "ai": "6.0.322",
+    "viem": "2.33.2",
+    "cheerio": "1.1.2"
+  }
+}

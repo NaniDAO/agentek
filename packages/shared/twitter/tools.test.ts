@@ -15,7 +15,7 @@ import {
 } from "../test-helpers.js";
 import type { BaseTool, AgentekClient } from "../client.js";
 
-import { TwitterApi } from "twitter-api-v2";
+import { boundedHomeTimelineClient } from "./transport.js";
 
 const BEARER_TOKEN = process.env.X_BEARER_TOKEN || "test-token";
 const HAS_TOKEN = hasEnvVar("X_BEARER_TOKEN");
@@ -33,7 +33,7 @@ const getUserTool = createGetUserByUsernameTool(BEARER_TOKEN);
 const getUserTweetsTool = createGetUserTweetsTool(BEARER_TOKEN);
 
 // Home timeline tool requires a TwitterApi instance (use dummy for structure tests)
-const dummyTwitterClient = new TwitterApi({
+const dummyTwitterClient = boundedHomeTimelineClient({
   appKey: "test",
   appSecret: "test",
   accessToken: "test",
@@ -326,7 +326,7 @@ describe("Twitter Tools", () => {
     it.skipIf(!HAS_USER_KEYS)(
       "getHomeTimeline should fetch the authenticated user's feed",
       async () => {
-        const userClient = new TwitterApi({
+        const userClient = boundedHomeTimelineClient({
           appKey: process.env.X_API_KEY!,
           appSecret: process.env.X_API_KEY_SECRET!,
           accessToken: process.env.X_ACCESS_TOKEN!,

@@ -16,14 +16,7 @@ import {
 import { z } from "zod";
 import { wireValue } from "./utils/wire.js";
 import { identityAddress, uint256, byteHex, parseExactUnits } from "./utils/exact.js";
-import type {
-  Connection,
-  Keypair,
-  TransactionInstruction,
-  VersionedTransaction,
-} from "@solana/web3.js";
-import { DEFAULT_SOLANA_RPC_URL } from "./solana/constants.js";
-import { decodeBase58, encodeBase58 } from "./solana/base58.js";
+import type { SolanaRuntime, SolanaSigner, SolanaTransaction } from "./solana-runtime.js";
 import { sanitizeToolOutput, sanitizeToolError, safeErrorMessage } from "./utils/safe-errors.js";
 import { normalizeTypedData } from "./utils/signing.js";
 
@@ -60,7 +53,7 @@ export class SolanaExecutionError extends Error {
   constructor(message: string, public readonly execution: SolanaExecutionRecord) { super(message); this.name = "SolanaExecutionError"; }
 }
 
-const SOLANA_RPC_OUTCOME_TIMEOUT_MS = 120_000;
+const RPC_OUTCOME_TIMEOUT_MS = 120_000;
 
 type RpcStageResult<T> =
   | { kind: "value"; value: T }
@@ -72,9 +65,9 @@ type RpcStageResult<T> =
  * request may still finish, so callers receive the locally-derived signature
  * and an explicit ambiguous status rather than a retryable timeout error.
  */
-async function awaitSolanaRpcStage<T>(
+async function awaitRpcStage<T>(
   promise: Promise<T>,
-  timeoutMs = SOLANA_RPC_OUTCOME_TIMEOUT_MS,
+  timeoutMs = RPC_OUTCOME_TIMEOUT_MS,
 ): Promise<RpcStageResult<T>> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<RpcStageResult<T>>((resolve) => {
@@ -168,6 +161,8 @@ export type Intent = RequestIntent | CompletedIntent;
  * `privateKey`, and `address` alone gives a watch-only account.
  */
 export interface SolanaConfig {
+  /** Installed by createSolanaConfig from the optional /solana entry point. */
+  createRuntime?: (client: AgentekClient, observer?: (record: SolanaExecutionRecord) => void | Promise<void>) => SolanaRuntime;
   /** JSON-RPC endpoint. Falls back to SOLANA_RPC_URL, then the public mainnet-beta endpoint. */
   rpcUrl?: string;
   /**
@@ -207,25 +202,6 @@ export interface SolanaExecutionResult {
   /** Derived locally from the signed transaction, so it survives RPC errors. */
   signature: string;
   confirmationStatus: SolanaConfirmationStatus;
-}
-
-/** Accepts base58, a JSON byte array, or raw bytes. */
-function toSolanaSecretKey(
-  privateKey: string | number[] | Uint8Array,
-): Uint8Array {
-  if (privateKey instanceof Uint8Array) return privateKey;
-  if (Array.isArray(privateKey)) return Uint8Array.from(privateKey);
-
-  const trimmed = privateKey.trim();
-  if (trimmed.startsWith("[")) {
-    return Uint8Array.from(JSON.parse(trimmed) as number[]);
-  }
-  // A 64-byte ed25519 secret is at most 88 base58 characters. Bound the
-  // attacker-controlled text before the quadratic decoder runs.
-  if (trimmed.length > 88) {
-    throw new Error("Invalid Solana private key - base58 value is too long");
-  }
-  return decodeBase58(trimmed);
 }
 
 export interface ExecutionRecord {
@@ -292,16 +268,13 @@ export class AgentekClient {
   private executionQueues = new Map<number, Promise<unknown>>();
   private executions = new Map<string, ExecutionRecord>();
   private solanaConfig?: SolanaConfig;
-  private solanaConnection?: Connection;
-  private solanaKeypair?: Keypair;
+  private solanaRuntime?: SolanaRuntime;
   private readonly actionApprover?: AgentekClientConfig["authorizeAction"];
   private readonly requestStore?: ToolRequestStore;
   private readonly solanaObserver?: AgentekClientConfig["onSolanaExecutionUpdated"];
   private paymentRemaining: bigint;
   private publicationRemaining: number;
   private approvalQueue: Promise<unknown> = Promise.resolve();
-  private solanaOutcomeUnknown = false;
-  private solanaExecutionQueue: Promise<unknown> = Promise.resolve();
 
   constructor(config: AgentekClientConfig) {
     this.publicClients = new Map();
@@ -502,7 +475,7 @@ export class AgentekClient {
     for (const op of ops) { identityAddress.parse(op.target); uint256(op.value); byteHex(op.data); }
     if ([...this.executions.values()].some(record => record.chainId === chainId && record.status === "unknown")) throw new Error("Reconcile the earlier unknown execution first");
     const bounded = async <T>(promise: Promise<T>): Promise<T> => {
-      const outcome = await awaitSolanaRpcStage(promise);
+      const outcome = await awaitRpcStage(promise);
       if (outcome.kind === "timeout") throw new Error("RPC outcome deadline exceeded");
       if (outcome.kind === "error") throw outcome.error;
       return outcome.value;
@@ -647,7 +620,7 @@ export class AgentekClient {
     if (this.solanaConfig?.rpcUrl) return this.solanaConfig.rpcUrl;
     const fromEnv =
       typeof process !== "undefined" ? process.env?.SOLANA_RPC_URL : undefined;
-    return fromEnv || DEFAULT_SOLANA_RPC_URL;
+    return fromEnv || "https://api.mainnet-beta.solana.com";
   }
 
   /** Jupiter credentials stay in client configuration, outside model-visible schemas. */
@@ -658,190 +631,29 @@ export class AgentekClient {
       : undefined;
   }
 
-  public async getSolanaConnection(): Promise<Connection> {
-    if (!this.solanaConnection) {
-      const { Connection } = await import("@solana/web3.js");
-      this.solanaConnection = new Connection(
-        this.getSolanaRpcUrl(),
-        "confirmed",
-      );
+  private getSolanaRuntime(): SolanaRuntime {
+    if (!this.solanaRuntime) {
+      if (!this.solanaConfig?.createRuntime) throw new Error("Solana transactions require createSolanaConfig from @agentek/tools/solana");
+      this.solanaRuntime = this.solanaConfig.createRuntime(this, this.solanaObserver);
     }
-    return this.solanaConnection;
+    return this.solanaRuntime;
   }
 
-  /** The Solana signer, or undefined when the client is watch-only. */
-  public async getSolanaKeypair(): Promise<Keypair | undefined> {
-    if (this.solanaKeypair) return this.solanaKeypair;
-
-    const privateKey = this.solanaConfig?.privateKey;
-    if (!privateKey) return undefined;
-
-    const { Keypair } = await import("@solana/web3.js");
-    this.solanaKeypair = Keypair.fromSecretKey(toSolanaSecretKey(privateKey));
-    return this.solanaKeypair;
+  public getSolanaConnection(): Promise<unknown> { return this.getSolanaRuntime().getSolanaConnection(); }
+  public async getSolanaKeypair(): Promise<SolanaSigner | undefined> {
+    if (!this.solanaConfig?.privateKey) return undefined;
+    return this.getSolanaRuntime().getSolanaKeypair();
   }
-
-  /** Base58 address of the configured Solana signer, or of the watched account. */
   public async getSolanaAddress(): Promise<string> {
     const keypair = await this.getSolanaKeypair();
     if (keypair) return keypair.publicKey.toBase58();
     if (this.solanaConfig?.address) return this.solanaConfig.address;
-
-    throw new Error(
-      "No Solana account configured - pass solana.privateKey to sign transactions, or solana.address for read-only access",
-    );
+    throw new Error("No Solana account configured - pass solana.privateKey to sign transactions, or solana.address for read-only access");
   }
-
-  /** Compile instructions into an unsigned v0 transaction paid for by the configured account. */
-  public async buildSolanaTransaction(
-    instructions: TransactionInstruction[],
-  ): Promise<{
-    transaction: VersionedTransaction;
-    blockhash: string;
-    lastValidBlockHeight: number;
-  }> {
-    const { PublicKey, TransactionMessage, VersionedTransaction } =
-      await import("@solana/web3.js");
-
-    const connection = await this.getSolanaConnection();
-    const payerKey = new PublicKey(await this.getSolanaAddress());
-    const { blockhash, lastValidBlockHeight } = await this.awaitSolanaPreSubmission(
-      connection.getLatestBlockhash(),
-      "getLatestBlockhash",
-    );
-
-    const message = new TransactionMessage({
-      payerKey,
-      recentBlockhash: blockhash,
-      instructions,
-    }).compileToV0Message();
-
-    return {
-      transaction: new VersionedTransaction(message),
-      blockhash,
-      lastValidBlockHeight,
-    };
-  }
-
-  /** Bound RPC work before signing, where an ordinary retry is still safe. */
-  public async awaitSolanaPreSubmission<T>(
-    promise: Promise<T>,
-    label: string,
-  ): Promise<T> {
-    const outcome = await awaitSolanaRpcStage(promise);
-    if (outcome.kind === "timeout") {
-      throw new Error(
-        `Solana RPC ${label} timed out before transaction signing; it is safe to retry`,
-      );
-    }
-    if (outcome.kind === "error") throw outcome.error;
-    return outcome.value;
-  }
-
-  /** Sign, submit and confirm a Solana transaction. Throws when the client is watch-only. */
-  public async executeSolanaTransaction(
-    transaction: VersionedTransaction,
-    blockhash: string,
-    lastValidBlockHeight: number,
-  ): Promise<SolanaExecutionResult> {
-    const previous = this.solanaExecutionQueue;
-    const next = previous.catch(() => undefined).then(() => this.submitSolanaTransaction(transaction, blockhash, lastValidBlockHeight));
-    this.solanaExecutionQueue = next;
-    return next;
-  }
-
-  private async submitSolanaTransaction(
-    transaction: VersionedTransaction, blockhash: string, lastValidBlockHeight: number,
-  ): Promise<SolanaExecutionResult> {
-    if (this.executionMode === "prepare") throw new Error("Client is in prepare mode");
-    if (this.solanaOutcomeUnknown) throw new Error("Reconcile the earlier Solana signature before submitting another transaction");
-    if (!this.solanaObserver) throw new Error("Durable onSolanaExecutionUpdated persistence is required before signing");
-    const keypair = await this.getSolanaKeypair();
-    if (!keypair) {
-      throw new Error(
-        "No Solana signer available - pass solana.privateKey to send transactions",
-      );
-    }
-
-    const connection = await this.getSolanaConnection();
-    if (!Number.isSafeInteger(lastValidBlockHeight) || lastValidBlockHeight < 0 || blockhash !== transaction.message.recentBlockhash) throw new Error("Solana confirmation lifetime does not match the transaction");
-    const unsigned = new Uint8Array(transaction.serialize());
-    const { VersionedTransaction } = await import("@solana/web3.js");
-    const capturedTransaction = VersionedTransaction.deserialize(unsigned);
-    const [genesisHash, fee] = await Promise.all([
-      this.awaitSolanaPreSubmission(connection.getGenesisHash(), "getGenesisHash"),
-      this.awaitSolanaPreSubmission(connection.getFeeForMessage(capturedTransaction.message), "getFeeForMessage"),
-    ]);
-    if (!Number.isSafeInteger(fee?.value) || fee.value < 0 || fee.value > 10_000_000) throw new Error("Solana fee is unknown or exceeds the 0.01 SOL fee ceiling");
-    await this.authorizeAction("solana_transaction", { transaction: Buffer.from(unsigned).toString("base64"), genesisHash, feeLamports: String(fee.value), blockhash, lastValidBlockHeight });
-    if (Buffer.from(transaction.serialize()).toString("base64") !== Buffer.from(unsigned).toString("base64")) throw new Error("Solana transaction changed during approval");
-    transaction.sign([keypair]);
-
-    // The signature is deterministic and already present locally. Preserve it
-    // across every RPC failure so callers can reconcile instead of rebuilding
-    // with a new blockhash and accidentally paying twice.
-    const signature = encodeBase58(transaction.signatures[0]);
-    const signedBytes = new Uint8Array(transaction.serialize());
-    const record: SolanaExecutionRecord = { id: signature, signature, transaction: Buffer.from(signedBytes).toString("base64"), status: "signed", account: keypair.publicKey.toBase58(), genesisHash, blockhash, lastValidBlockHeight };
-    const save = async () => {
-      try { await this.solanaObserver!(wireValue(record)); }
-      catch { throw new SolanaExecutionError("Solana persistence failed; reconcile the stored signature before retrying", wireValue(record)); }
-    };
-    // Even a failed persistence callback can have written durable state or
-    // exposed signed bytes. Keep this client locked until reconciliation.
-    this.solanaOutcomeUnknown = true;
-    await save();
-    record.status = "unknown";
-    await save();
-
-    const executionStartedAt = Date.now();
-    const sendOutcome = await awaitSolanaRpcStage(
-      connection.sendRawTransaction(
-        signedBytes,
-        { maxRetries: 3 },
-      ),
-    );
-    if (sendOutcome.kind === "timeout") {
-      return { signature, confirmationStatus: "unknown" };
-    }
-    if (sendOutcome.kind === "error") {
-      // web3.js uses SendTransactionError for every send RPC error, including
-      // unavailable nodes and "already processed" responses. Its class (or
-      // action=simulate message) does not prove that no submission occurred.
-      return { signature, confirmationStatus: "unknown" };
-    }
-    const rpcSignature = sendOutcome.value;
-
-    if (rpcSignature !== signature) {
-      // A conforming RPC returns the transaction's first signature. Treat a
-      // mismatch as an ambiguous submission and retain the locally verifiable
-      // identity rather than trusting RPC-controlled output.
-      return { signature, confirmationStatus: "unknown" };
-    }
-    record.status = "submitted"; await save();
-
-    const confirmationOutcome = await awaitSolanaRpcStage(
-      connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "confirmed",
-      ),
-      Math.max(
-        1,
-        SOLANA_RPC_OUTCOME_TIMEOUT_MS - (Date.now() - executionStartedAt),
-      ),
-    );
-    if (confirmationOutcome.kind !== "value") {
-      return { signature, confirmationStatus: "submitted" };
-    }
-    const confirmation = confirmationOutcome.value;
-    const confirmationError = confirmation?.value?.err;
-    if (confirmationError === undefined || (confirmationError !== null && typeof confirmationError !== "object" && typeof confirmationError !== "string")) return { signature, confirmationStatus: "submitted" };
-    if (confirmationError !== null) {
-      record.status = "failed"; await save(); this.solanaOutcomeUnknown = false;
-      throw new SolanaExecutionError("Solana transaction failed; reconcile fees and effects before retrying", wireValue(record));
-    }
-    record.status = "confirmed"; await save(); this.solanaOutcomeUnknown = false;
-    return { signature, confirmationStatus: "confirmed" };
+  public buildSolanaTransaction(instructions: unknown[]) { return this.getSolanaRuntime().buildSolanaTransaction(instructions); }
+  public awaitSolanaPreSubmission<T>(promise: Promise<T>, label: string): Promise<T> { return this.getSolanaRuntime().awaitSolanaPreSubmission(promise, label); }
+  public executeSolanaTransaction(transaction: SolanaTransaction, blockhash: string, lastValidBlockHeight: number): Promise<SolanaExecutionResult> {
+    return this.getSolanaRuntime().executeSolanaTransaction(transaction, blockhash, lastValidBlockHeight);
   }
 
   public async execute(method: string, args: any, context?: { requestId: string }): Promise<any> {

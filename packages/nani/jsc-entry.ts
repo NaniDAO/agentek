@@ -1,11 +1,4 @@
-import { aaveTools } from "../shared/aave/index.js";
-import { uniV3Tools } from "../shared/uniV3/index.js";
-import { webTools } from "../shared/web/index.js";
-import { thinkTools } from "../shared/think/index.js";
-import { zrouterTools } from "../shared/zrouter/index.js";
-import { approvalTools } from "../shared/approvals/index.js";
-import { solanaMarketTools } from "../shared/solana/market-tools.js";
-import { macosToolNames } from "./profiles.js";
+import { embeddedTools, embeddedProfile, credentialOrigins } from "./selected-tools.js";
 import { hostCapabilities, installPublicTransport } from "./native-transport.js";
 /**
  * WKWebView entry point shared by the iPhone and Mac apps.
@@ -20,13 +13,13 @@ import { hostCapabilities, installPublicTransport } from "./native-transport.js"
  * before returning base64 data; see the root README for the protocol.
  *
  * Exports:
- *   __naniInit(account?, rpcUrlsByChainId?, solana?) -> number (tool count)
+ *   __naniInit(account?, rpcUrlsByChainId?, legacySolana?, enabledCredentials?) -> number (tool count)
  *     - account: 0x address; defaults to zeroAddress
  *     - rpcUrlsByChainId: e.g. { "1": "https://...", "11155111": "https://..." }
  *       Per-chain RPC URLs the user configured in Settings. Falls back to the
  *       shared bounded public RPC fallback when a chain is not present in the map.
- *     - solana: optional public address, RPC URL and Jupiter API key. The key
- *       remains client configuration and never appears in a tool schema.
+ *     - legacySolana: reserved, ignored for compatibility with existing hosts.
+ *       Embedded builds omit Solana tools.
  *   __naniList() -> string (JSON array of {name, description, schema})
  *   __naniCall(name, argsJSON) -> Promise<string> (JSON {result} or {error})
  */
@@ -35,52 +28,18 @@ import { type Hex, isHex, zeroAddress } from "viem";
 import { DEFAULT_CHAINS, resolveTransports } from "../shared/chains/config.js";
 import { createAgentekClient, TransactionExecutionError, OperationExecutionError, SolanaExecutionError, type BaseTool } from "../shared/client.js";
 import { sanitizeToolOutput } from "../shared/utils/safe-errors.js";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { toolInputSchema } from "../shared/schema.js";
 
-import { ensTools } from "../shared/ens/index.js";
-import { erc20Tools } from "../shared/erc20/index.js";
-import { rpcTools } from "../shared/rpc/index.js";
-import { transferTools } from "../shared/transfer/index.js";
-import { blockscoutTools } from "../shared/blockscout/index.js";
-import { getAaveReserveData } from "../shared/aave/tools.js";
-import { acrossTools } from "../shared/across/index.js";
-import { getUniV3Pool, getPoolFeeData } from "../shared/uniV3/tools.js";
-import { wethTools } from "../shared/weth/index.js";
-import { naniTools } from "../shared/nani/index.js";
-import { securityTools } from "../shared/security/index.js";
-import { webPageExtractor, webPageResult } from "../shared/web/page.js";
-import { fearGreedIndexTools } from "../shared/feargreed/index.js";
-import { nftTools } from "../shared/erc721/index.js";
-import { cryptoPriceTools } from "../shared/cryptoprices/index.js";
-import { gasEstimatorTools } from "../shared/gasestimator/index.js";
-import { defillamaTools } from "../shared/defillama/index.js";
-import { dexscreenerTools } from "../shared/dexscreener/index.js";
-import { zammTools } from "../shared/zamm/index.js";
-import { getQuote } from "../shared/zrouter/tools.js";
-import { getNativeSwapProposal } from "../shared/zrouter/proposal.js";
-import { wnsTools } from "../shared/wns/index.js";
-import { credentialTools, installCredentialTransport } from "../shared/credentialTools/index.js";
-import { resolveTokenTools } from "../shared/resolveToken/index.js";
-import { discoverTokenPermissionsTool } from "../shared/approvals/discovery.js";
-import { observeTokenPermissionTool, observeNFTOperatorTool, planSelectedRevocationsTool } from "../shared/approvals/observations.js";
-import { contractTools } from "../shared/contract/index.js";
-import { readOnlyChainTools } from "../shared/readonlyChains/index.js";
-import { researchCATools } from "../shared/researchCA/index.js";
+import { installCredentialTransport } from "../shared/credentialTools/transport.js";
 import { safeResearchError } from "../shared/blockscout/research.js";
 
-interface NaniSolanaConfig {
-  address?: string;
-  rpcUrl?: string;
-  jupiterApiKey?: string;
-}
-
 if ((globalThis as any).webkit?.messageHandlers?.agentekCredentials) {
-  installCredentialTransport(request => (globalThis as any).webkit.messageHandlers.agentekCredentials.postMessage(request), hostCapabilities().credentials === 1 ? 1 : 0);
+  installCredentialTransport(request => (globalThis as any).webkit.messageHandlers.agentekCredentials.postMessage(request), hostCapabilities().credentials === 1 ? 1 : 0, credentialOrigins);
 }
 
 installPublicTransport();
 (globalThis as any).__naniCapabilities = () => ({schemaVersion: 1, publicFetch: hostCapabilities().publicFetch === 1,
-  credentialProtocol: hostCapabilities().credentials === 1 ? 1 : 0, profile: hostCapabilities().platform === "macos" ? "macos" : "iphone"});
+  credentialProtocol: hostCapabilities().credentials === 1 ? 1 : 0, solana: false, profile: embeddedProfile === "universal" ? (hostCapabilities().platform === "macos" ? "macos" : "iphone") : embeddedProfile});
 
 const TOOL_TIMEOUT_MS = 120_000;
 
@@ -104,7 +63,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 (globalThis as any).__naniInit = (
   accountAddress?: string,
   rpcUrlsByChainId?: Record<string, string>,
-  solana?: NaniSolanaConfig,
+  _legacySolana?: unknown,
   enabledCredentials: string[] = [],
 ): number => {
   const chains = DEFAULT_CHAINS;
@@ -114,27 +73,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
     ? accountAddress as Hex
     : zeroAddress;
 
-  const tools = hostCapabilities().platform === "macos" ? [
-    ...ensTools(), ...erc20Tools(), ...rpcTools(), ...transferTools(),
-    ...blockscoutTools(), ...aaveTools(), ...acrossTools(), ...uniV3Tools(),
-    ...wethTools(), ...naniTools(), ...securityTools(), ...webTools(),
-    ...fearGreedIndexTools(), ...nftTools(), ...cryptoPriceTools(),
-    ...gasEstimatorTools(), ...defillamaTools(), ...dexscreenerTools(),
-    ...thinkTools(), ...zammTools(), ...zrouterTools(), ...wnsTools(),
-    ...resolveTokenTools(), ...approvalTools(), ...contractTools(), ...researchCATools(),
-    ...solanaMarketTools({includeJupiter: true, includeIntents: false}),
-  ].filter(tool => macosToolNames.has(tool.name)) : [
-    ...ensTools(), ...erc20Tools(), ...rpcTools(), ...transferTools(),
-    ...blockscoutTools(), getAaveReserveData, ...acrossTools(), getUniV3Pool, getPoolFeeData,
-    ...wethTools(), ...naniTools(), ...securityTools(), webPageExtractor, webPageResult,
-    ...fearGreedIndexTools(), ...nftTools(), ...cryptoPriceTools(),
-    ...gasEstimatorTools(), ...defillamaTools(), ...dexscreenerTools(),
-    ...zammTools(), getQuote, getNativeSwapProposal, ...wnsTools(),
-    ...resolveTokenTools(), discoverTokenPermissionsTool, observeTokenPermissionTool, observeNFTOperatorTool, planSelectedRevocationsTool, ...contractTools(),
-    ...researchCATools(),
-    ...readOnlyChainTools(),
-    ...credentialTools(enabledCredentials),
-  ];
+  const tools = embeddedTools(enabledCredentials, hostCapabilities().platform);
 
   agentekClient = createAgentekClient({
     executionMode: "prepare",
@@ -142,7 +81,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
     chains,
     accountOrAddress: account,
     tools,
-    solana,
   });
 
   toolsMap = agentekClient.getTools() as Map<string, BaseTool>;
@@ -158,7 +96,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   const list = Array.from(toolsMap.entries()).map(([name, tool]) => {
     let schema: Record<string, unknown> = {};
     try {
-      const full = zodToJsonSchema(tool.parameters, { target: "jsonSchema7" }) as Record<string, unknown>;
+      const full = toolInputSchema(tool.parameters) as Record<string, unknown>;
       schema = { properties: full.properties ?? {}, required: full.required ?? [] };
     } catch {}
     return { name, description: tool.description, schema };

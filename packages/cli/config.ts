@@ -10,6 +10,7 @@ export interface KnownKey {
 }
 
 export const KNOWN_KEYS: KnownKey[] = [
+  { name: "AGENTEK_INTEGRATIONS", description: "Optional integrations: solana,x402,web,twitter (comma-separated; empty by default)" },
   { name: "AGENTEK_EXECUTION_MODE", description: "prepare (default) or execute; submission also requires the signer daemon and request ID" },
   { name: "PRIVATE_KEY", description: "Hex EVM key for address context; CLI submission uses the signer daemon" },
   { name: "ACCOUNT", description: "Hex address to use as the sender (read-only)" },

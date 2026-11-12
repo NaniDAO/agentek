@@ -1,3 +1,4 @@
+import { loadIntegrations, parseIntegrations } from "@agentek/tools/integrations";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -78,18 +79,18 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+  const integrations = await loadIntegrations(parseIntegrations(process.env.AGENTEK_INTEGRATIONS), {
+    solana: {rpcUrl: SOLANA_RPC_URL, privateKey: SOLANA_PRIVATE_KEY, address: SOLANA_ACCOUNT, jupiterApiKey: JUPITER_API_KEY},
+    twitter: {xBearerToken: X_BEARER_TOKEN, xApiKey: X_API_KEY, xApiKeySecret: X_API_KEY_SECRET, xAccessToken: X_ACCESS_TOKEN, xAccessTokenSecret: X_ACCESS_TOKEN_SECRET},
+  });
   const agentekClient = createAgentekClient({
     executionMode,
     transports,
     chains,
     accountOrAddress: account,
-    solana: {
-      rpcUrl: SOLANA_RPC_URL,
-      privateKey: SOLANA_PRIVATE_KEY,
-      address: SOLANA_ACCOUNT,
-      jupiterApiKey: JUPITER_API_KEY,
-    },
+    solana: integrations.solana,
     tools: await allTools({
+      additionalTools: integrations.tools,
       perplexityApiKey: PERPLEXITY_API_KEY,
       zeroxApiKey: ZEROX_API_KEY,
       tallyApiKey: TALLY_API_KEY,
@@ -97,13 +98,6 @@ async function main() {
       coinMarketCalApiKey: COINMARKETCAL_API_KEY,
       fireworksApiKey: FIREWORKS_API_KEY,
       pinataJWT: PINATA_JWT,
-      xBearerToken: X_BEARER_TOKEN,
-      xApiKey: X_API_KEY,
-      xApiKeySecret: X_API_KEY_SECRET,
-      // Forwarded so getHomeTimeline, which needs OAuth 1.0a user
-      // credentials, can register over MCP as it does in the CLI.
-      xAccessToken: X_ACCESS_TOKEN,
-      xAccessTokenSecret: X_ACCESS_TOKEN_SECRET,
     }),
   });
 

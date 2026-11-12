@@ -5,7 +5,7 @@ import { createPublicClient, http, parseEther } from "viem";
 import { AnvilForkEnvironment, createGymAgentekClient } from "../dist/index.js";
 
 const require = createRequire(import.meta.url);
-const { zodToJsonSchema } = require("../../cli/node_modules/zod-to-json-schema");
+const { toolInputSchema } = require("../../shared/dist/cjs/schema.js");
 
 const MODEL = "google/gemini-3.8-flash";
 const RECIPIENT = "0x000000000000000000000000000000000000bEEF";
@@ -77,7 +77,7 @@ async function runModel(client, key) {
     function: {
       name: tool.name,
       description: tool.description,
-      parameters: zodToJsonSchema(tool.parameters, { target: "openApi3" }),
+      parameters: toolInputSchema(tool.parameters),
     },
   }));
   const messages = [

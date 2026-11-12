@@ -20,24 +20,30 @@
     "bin"
   ],
   "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly",
+    "build": "node ../../scripts/build-package.mjs",
     "test": "vitest run"
   },
   "dependencies": {
     "@agentek/tools": "workspace:*",
     "viem": "2.33.2",
-    "yaml": "2.8.4",
-    "zod": "3.25.76",
-    "zod-to-json-schema": "3.25.1"
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^24.1.0",
-    "tsup": "^8.5.0",
-    "typescript": "^5.9.2",
-    "vitest": "^4.1.12"
+    "@types/node": "24.1.0",
+    "typescript": "5.9.2",
+    "vitest": "4.1.12",
+    "yaml": "2.8.4"
   },
   "engines": {
     "node": ">=20.18.1"
   },
-  "license": "AGPL-3.0"
+  "license": "AGPL-3.0",
+  "peerDependencies": {
+    "yaml": "2.8.4"
+  },
+  "peerDependenciesMeta": {
+    "yaml": {
+      "optional": true
+    }
+  }
 }

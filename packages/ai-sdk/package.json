@@ -42,8 +42,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "build:watch": "tsup --watch"
+    "build": "node ../../scripts/build-package.mjs",
+    "build:watch": "node ../../scripts/watch-package.mjs"
   },
   "keywords": [
     "ai",
@@ -59,20 +59,23 @@
     "url": "git+https://github.com/NaniDAO/agentek.git"
   },
   "homepage": "https://nani.ooo",
-  "dependencies": {
-    "ai": "^6.0.322"
-  },
   "peerDependencies": {
     "@agentek/tools": "workspace:^",
-    "viem": "^2.33.2",
-    "zod": "^3.25.76",
-    "zrouter-sdk": "^0.0.27"
+    "viem": "2.33.2",
+    "zod": "3.25.76",
+    "ai": "6.0.322"
   },
   "devDependencies": {
-    "@types/node": "^24.1.0",
-    "typescript": "^5.9.2"
+    "@types/node": "24.1.0",
+    "typescript": "5.9.2",
+    "ai": "6.0.322"
   },
   "engines": {
     "node": ">=20.18.1"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    }
   }
 }

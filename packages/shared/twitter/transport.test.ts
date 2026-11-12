@@ -1,4 +1,6 @@
 import https from "node:https";
+import { createHmac } from "node:crypto";
+import { signOAuthGet } from "./transport.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AgentekClient } from "../client.js";
 import { twitterTools } from "./index.js";
@@ -9,12 +11,12 @@ const credentials = {xApiKey: "consumer-key", xApiKeySecret: "consumer-secret", 
 const json = (value: unknown) => new Response(JSON.stringify(value));
 afterEach(() => {vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks();});
 
-// The SDK signs through its public request hook, but must never buffer HTTP.
+// The signer must leave HTTP to the bounded provider transport.
 const forbidSDKNetwork = () => vi.spyOn(https, "request").mockImplementation(() => {throw new Error("Unexpected SDK network request");});
 const homeTool = async () => (await twitterTools(credentials)).find(tool => tool.name === "getHomeTimeline")!;
 
-describe("bounded SDK-signed X timeline", () => {
-  it("uses SDK OAuth headers with bounded fetch for the account and timeline", async () => {
+describe("bounded locally signed X timeline", () => {
+  it("uses OAuth headers with bounded fetch for the account and timeline", async () => {
     const sdkNetwork = forbidSDKNetwork();
     vi.stubGlobal("fetch", vi.fn(async (input, init) => {
       const url = new URL(String(input));
@@ -45,6 +47,7 @@ describe("bounded SDK-signed X timeline", () => {
     const sdkNetwork = forbidSDKNetwork(), cancel = vi.fn();
     vi.stubGlobal("fetch", vi.fn(async () => new Response(new ReadableStream({cancel}))));
     const operation = expect((await homeTool()).execute(client, {})).rejects.toThrow(/^X timeline request failed: unavailable or invalid response$/);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
     await vi.advanceTimersByTimeAsync(15_001);
     await operation;
     expect(cancel).toHaveBeenCalledOnce();
@@ -74,4 +77,20 @@ describe("bounded SDK-signed X timeline", () => {
     await expect(tools.find(tool => tool.name === "getHomeTimeline")!.execute(client, {})).resolves.toMatchObject({tweets: [{id: "55", text: "Native tweet"}]});
     expect(sdkNetwork).not.toHaveBeenCalled();
   });
+});
+
+it("matches the published OAuth GET signing vector", async () => {
+  // OAuth 1.0 example: photos.example.net/photos?file=vacation.jpg&size=original.
+  const header = await signOAuthGet(new URL("http://photos.example.net/photos?file=vacation.jpg&size=original"), {
+    appKey: "dpf43f3p2l4k3l03", appSecret: "kd94hf93k423kf44", accessToken: "nnch734d00sl2jdk", accessSecret: "pfkkdhi9sl3r4s00",
+  }, "kllo9940pd9333jh", "1191242096");
+  expect(header).toContain('oauth_signature="tR3%2BTy81lMeYAr%2FFid0kMTYa%2FWM%3D"');
+});
+it("signs encoded and repeated query parameters in canonical order", async () => {
+  const url = new URL("https://api.x.com/2/users/me?a=z&a=%21&b=hello+world");
+  const header = await signOAuthGet(url, {appKey: "key", appSecret: "secret!", accessToken: "token", accessSecret: "access&"}, "nonce", "123");
+  const normalized = "a=%21&a=z&b=hello%20world&oauth_consumer_key=key&oauth_nonce=nonce&oauth_signature_method=HMAC-SHA1&oauth_timestamp=123&oauth_token=token&oauth_version=1.0";
+  const encode = (s: string) => encodeURIComponent(s).replace(/[!'()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  const expected = createHmac("sha1", "secret%21&access%26").update(`GET&${encode(url.origin + url.pathname)}&${encode(normalized)}`).digest("base64");
+  expect(header).toContain(`oauth_signature="${encode(expected)}"`);
 });

@@ -1,3 +1,4 @@
+import type { BaseTool } from "./client.js";
 import { transferTools } from "./transfer/index.js";
 import { ensTools } from "./ens/index.js";
 import { dexscreenerTools } from "./dexscreener/index.js";
@@ -12,7 +13,6 @@ import { blockscoutTools } from "./blockscout/index.js";
 import { tallyTools } from "./tally/index.js";
 import { aaveTools } from "./aave/index.js";
 import { securityTools } from "./security/index.js";
-import { webTools } from "./web/index.js";
 import { coindeskTools } from "./coindesk/index.js";
 import { fearGreedIndexTools } from "./feargreed/index.js";
 import { createCoinMarketCalTools } from "./coinmarketcal/index.js";
@@ -30,12 +30,9 @@ import { coinchanTools } from "./coinchan/index.js";
 import { zammTools } from "./zamm/index.js";
 import { zrouterTools } from "./zrouter/index.js";
 import { wnsTools } from "./wns/index.js";
-import { x402Tools } from "./x402/index.js";
-import { twitterTools } from "./twitter/index.js";
 import { resolveTokenTools } from "./resolveToken/index.js";
 import { approvalTools } from "./approvals/index.js";
 import { contractTools } from "./contract/index.js";
-import { solanaTools } from "./solana/index.js";
 import { researchCATools } from "./researchCA/index.js";
 import { assertOkResponse } from "./utils/fetch.js";
 import {
@@ -45,6 +42,8 @@ import {
   parseRpcUrlsEnv,
 } from "./chains/config.js";
 
+import { webPageExtractor, webPageResult } from "./web/page.js";
+
 const allTools = async ({
   perplexityApiKey,
   zeroxApiKey,
@@ -53,11 +52,7 @@ const allTools = async ({
   coinMarketCalApiKey,
   fireworksApiKey,
   pinataJWT,
-  xBearerToken,
-  xApiKey,
-  xApiKeySecret,
-  xAccessToken,
-  xAccessTokenSecret,
+  additionalTools = [],
 }: {
   perplexityApiKey?: string;
   zeroxApiKey?: string;
@@ -66,11 +61,8 @@ const allTools = async ({
   coinMarketCalApiKey?: string;
   fireworksApiKey?: string;
   pinataJWT?: string;
-  xBearerToken?: string;
-  xApiKey?: string;
-  xApiKeySecret?: string;
-  xAccessToken?: string;
-  xAccessTokenSecret?: string;
+  /** Explicitly imported optional integrations. Core never loads them implicitly. */
+  additionalTools?: readonly BaseTool[];
 }) => {
   let tools = [
     ...ensTools(),
@@ -85,7 +77,7 @@ const allTools = async ({
     ...blockscoutTools(),
     ...aaveTools(),
     ...securityTools(),
-    ...webTools(),
+    webPageExtractor, webPageResult,
     ...fearGreedIndexTools(),
     ...slowTransferTools(),
     ...nftTools(),
@@ -98,11 +90,9 @@ const allTools = async ({
     ...zammTools(),
     ...zrouterTools(),
     ...wnsTools(),
-    ...x402Tools(),
     ...resolveTokenTools(),
     ...approvalTools(),
     ...contractTools(),
-    ...solanaTools(),
     ...researchCATools(),
   ];
 
@@ -135,9 +125,7 @@ const allTools = async ({
     }))
   }
 
-  if (xBearerToken || (xApiKey && xApiKeySecret)) {
-    tools.push(...await twitterTools({xBearerToken, xApiKey, xApiKeySecret, xAccessToken, xAccessTokenSecret}));
-  }
+  tools.push(...additionalTools);
 
   return tools;
 };
@@ -160,7 +148,6 @@ export {
   tallyTools,
   aaveTools,
   securityTools,
-  webTools,
   coindeskTools,
   fearGreedIndexTools,
   createCoinMarketCalTools,
@@ -178,12 +165,9 @@ export {
   zammTools,
   zrouterTools,
   wnsTools,
-  x402Tools,
-  twitterTools,
   resolveTokenTools,
   approvalTools,
   contractTools,
-  solanaTools,
   researchCATools,
   assertOkResponse,
 

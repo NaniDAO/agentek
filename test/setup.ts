@@ -1,6 +1,8 @@
 import { beforeAll } from "vitest";
-import dotenv from "dotenv";
+import { loadEnvFile } from "node:process";
 
 beforeAll(() => {
-  dotenv.config({ path: ".env.test" });
+  try { loadEnvFile(".env.test"); } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 });

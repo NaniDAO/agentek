@@ -36,6 +36,86 @@
         "types": "./dist/cjs/execution/journal.d.ts",
         "default": "./dist/cjs/execution/journal.js"
       }
+    },
+    "./solana": {
+      "import": {
+        "types": "./dist/esm/solana/index.d.ts",
+        "default": "./dist/esm/solana/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/solana/index.d.ts",
+        "default": "./dist/cjs/solana/index.js"
+      }
+    },
+    "./solana/market": {
+      "import": {
+        "types": "./dist/esm/solana/market-tools.d.ts",
+        "default": "./dist/esm/solana/market-tools.js"
+      },
+      "require": {
+        "types": "./dist/cjs/solana/market-tools.d.ts",
+        "default": "./dist/cjs/solana/market-tools.js"
+      }
+    },
+    "./x402": {
+      "import": {
+        "types": "./dist/esm/x402/index.d.ts",
+        "default": "./dist/esm/x402/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/x402/index.d.ts",
+        "default": "./dist/cjs/x402/index.js"
+      }
+    },
+    "./web": {
+      "import": {
+        "types": "./dist/esm/web/index.d.ts",
+        "default": "./dist/esm/web/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/web/index.d.ts",
+        "default": "./dist/cjs/web/index.js"
+      }
+    },
+    "./twitter": {
+      "import": {
+        "types": "./dist/esm/twitter/index.d.ts",
+        "default": "./dist/esm/twitter/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/twitter/index.d.ts",
+        "default": "./dist/cjs/twitter/index.js"
+      }
+    },
+    "./schema": {
+      "import": {
+        "types": "./dist/esm/schema.d.ts",
+        "default": "./dist/esm/schema.js"
+      },
+      "require": {
+        "types": "./dist/cjs/schema.d.ts",
+        "default": "./dist/cjs/schema.js"
+      }
+    },
+    "./integrations": {
+      "import": {
+        "types": "./dist/esm/integrations.d.ts",
+        "default": "./dist/esm/integrations.js"
+      },
+      "require": {
+        "types": "./dist/cjs/integrations.d.ts",
+        "default": "./dist/cjs/integrations.js"
+      }
+    },
+    "./web/page": {
+      "import": {
+        "types": "./dist/esm/web/page.d.ts",
+        "default": "./dist/esm/web/page.js"
+      },
+      "require": {
+        "types": "./dist/cjs/web/page.d.ts",
+        "default": "./dist/cjs/web/page.js"
+      }
     }
   },
   "files": [
@@ -47,23 +127,25 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@solana/web3.js": "1.98.4",
-    "@x402/core": "^2.4.0",
-    "@x402/evm": "^2.4.0",
-    "@x402/fetch": "^2.4.0",
-    "cheerio": "^1.1.2",
-    "twitter-api-v2": "^1.29.0",
-    "wns-utils": "^0.2.1"
+    "wns-utils": "0.2.1"
   },
   "peerDependencies": {
     "viem": "2.33.2",
     "zod": "3.25.76",
-    "zrouter-sdk": "0.0.27"
+    "zrouter-sdk": "0.0.27",
+    "@solana/web3.js": "1.98.4",
+    "@x402/evm": "2.4.0",
+    "@x402/fetch": "2.4.0",
+    "cheerio": "1.1.2"
   },
   "devDependencies": {
     "@types/node": "22.14.1",
     "typescript": "5.9.2",
-    "vitest": "4.1.12"
+    "vitest": "4.1.12",
+    "@solana/web3.js": "1.98.4",
+    "@x402/evm": "2.4.0",
+    "@x402/fetch": "2.4.0",
+    "cheerio": "1.1.2"
   },
   "keywords": [
     "blockchain",
@@ -84,5 +166,19 @@
   },
   "engines": {
     "node": ">=20.18.1"
+  },
+  "peerDependenciesMeta": {
+    "@solana/web3.js": {
+      "optional": true
+    },
+    "@x402/evm": {
+      "optional": true
+    },
+    "@x402/fetch": {
+      "optional": true
+    },
+    "cheerio": {
+      "optional": true
+    }
   }
 }

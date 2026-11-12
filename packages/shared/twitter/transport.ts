@@ -1,43 +1,45 @@
-import { TwitterApi, type TwitterApiTokens } from "twitter-api-v2";
 import { providerJSON } from "../utils/fetch.js";
 
-/** Private control flow: signed credentials never enter a model-visible error. */
-class SignedGet extends Error {
-  constructor(readonly url: string, readonly headers: Record<string, string>) {
-    super("Signed request ready");
-  }
+export interface TwitterTokens {
+  appKey: string;
+  appSecret: string;
+  accessToken: string;
+  accessSecret: string;
+}
+export interface HomeTimelineClient {
+  v2: {
+    me(): Promise<{data: {id: string}}>;
+    homeTimeline(query: Record<string, unknown>): Promise<{data: any}>;
+  };
+}
+const encode = (value: string) => encodeURIComponent(value).replace(/[!'()*]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+
+/** RFC 5849 HMAC-SHA1 signing for GET requests, with no SDK HTTP path. */
+export async function signOAuthGet(url: URL, tokens: TwitterTokens, nonce: string, timestamp: string): Promise<string> {
+  const oauth: Record<string, string> = {oauth_consumer_key: tokens.appKey, oauth_nonce: nonce,
+    oauth_signature_method: "HMAC-SHA1", oauth_timestamp: timestamp, oauth_token: tokens.accessToken, oauth_version: "1.0"};
+  const pairs = [...url.searchParams.entries(), ...Object.entries(oauth)]
+    .map(([key, value]) => [encode(key), encode(value)])
+    .sort(([ak, av], [bk, bv]) => ak < bk ? -1 : ak > bk ? 1 : av < bv ? -1 : av > bv ? 1 : 0);
+  const base = ["GET", encode(`${url.origin}${url.pathname}`), encode(pairs.map(([k, v]) => `${k}=${v}`).join("&"))].join("&");
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(`${encode(tokens.appSecret)}&${encode(tokens.accessSecret)}`), {name: "HMAC", hash: "SHA-1"}, false, ["sign"]);
+  const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(base)));
+  oauth.oauth_signature = btoa(String.fromCharCode(...signature));
+  return "OAuth " + Object.entries(oauth).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${encode(k)}="${encode(v)}"`).join(", ");
 }
 
-/**
- * twitter-api-v2 1.29 signs in getHttpRequestArgs, then invokes onBeforeRequest
- * before constructing its HTTP request. Capture that signed GET and stop SDK
- * execution at that hook: providerJSON owns redirects, decoded byte limits,
- * deadlines and cancellation. Keep OAuth implementation entirely in the SDK.
- */
-async function signedJSON(tokens: TwitterApiTokens, path: string, query: Record<string, any> = {}): Promise<any> {
-  const sdk = new TwitterApi(tokens, {plugins: [{
-    onBeforeRequest({computedParams}) {
-      const url = computedParams.url;
-      if (computedParams.method !== "GET" || computedParams.body !== undefined ||
-          url.origin !== "https://api.x.com" || !url.pathname.startsWith("/2/") || url.username || url.password) {
-        throw new Error("Unsupported X timeline request");
-      }
-      throw new SignedGet(url.toString(), {...computedParams.headers});
-    },
-  }]});
-  let signed: SignedGet;
-  try {
-    await sdk.get(`https://api.x.com/2/${path}`, query);
-    throw new Error("X request signing hook was not invoked");
-  } catch (error) {
-    if (!(error instanceof SignedGet)) throw new Error("Unable to authorize X timeline request");
-    signed = error;
+async function signedJSON(tokens: TwitterTokens, path: string, query: Record<string, unknown> = {}): Promise<any> {
+  const url = new URL(`https://api.x.com/2/${path}`);
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) url.searchParams.set(key, Array.isArray(value) ? value.join(",") : String(value));
   }
-  return providerJSON(signed.url, {headers: signed.headers}, "X timeline request failed", {maximumBytes: 2 * 1024 * 1024});
+  const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("");
+  const authorization = await signOAuthGet(url, tokens, nonce, Math.floor(Date.now() / 1000).toString());
+  return providerJSON(url.toString(), {headers: {Authorization: authorization}}, "X timeline request failed", {maximumBytes: 2 * 1024 * 1024});
 }
 
-/** The same minimal v2 interface used by the native credential transport. */
-export function boundedHomeTimelineClient(tokens: TwitterApiTokens): TwitterApi {
+export function boundedHomeTimelineClient(tokens: TwitterTokens): HomeTimelineClient {
   let userId: string | undefined;
   const me = async () => {
     const result = await signedJSON(tokens, "users/me");
@@ -47,10 +49,9 @@ export function boundedHomeTimelineClient(tokens: TwitterApiTokens): TwitterApi 
   };
   return {v2: {
     me,
-    homeTimeline: async (query: Record<string, any>) => {
+    homeTimeline: async query => {
       if (!userId) await me();
-      const result = await signedJSON(tokens, `users/${userId}/timelines/reverse_chronological`, query);
-      return {data: result};
+      return {data: await signedJSON(tokens, `users/${userId}/timelines/reverse_chronological`, query)};
     },
-  }} as unknown as TwitterApi;
+  }};
 }

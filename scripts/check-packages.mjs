@@ -53,6 +53,7 @@ try {
   // the extracted tarballs so workspace links cannot hide packaging failures.
   for (const { source, packed } of packages) {
     for (const name of Object.keys({ ...packed.dependencies, ...packed.peerDependencies })) {
+      if (packed.peerDependenciesMeta?.[name]?.optional) continue;
       const target = join(modules, name);
       if (existsSync(target)) continue;
       mkdirSync(dirname(target), { recursive: true });
@@ -62,6 +63,7 @@ try {
   for (const name of ['@agentek/tools', '@agentek/ai-sdk']) {
     const { packed } = packages.find(p => p.packed.name === name);
     for (const subpath of Object.keys(packed.exports)) {
+      if (name === "@agentek/tools" && ["./solana", "./solana/market", "./x402", "./web"].includes(subpath)) continue;
       const specifier = name + (subpath === '.' ? '' : subpath.slice(1));
       run(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(specifier)})`], { cwd: temp });
       run(process.execPath, ['-e', `require(${JSON.stringify(specifier)})`], { cwd: temp });
@@ -84,7 +86,22 @@ try {
     const response = output.trim().split('\n').filter(Boolean).map(line => JSON.parse(line)).find(message => message.id === 1);
     assert.equal(response?.result?.serverInfo?.version, mcp.packed.version, `Packed MCP ${condition} must initialize with manifest version`);
   }
-  console.log('Package checks passed: five tarballs, SDK ESM/CommonJS exports, CLI, and MCP initialization.');
+  // Only after proving that core/CLI/MCP work without optional peers, verify
+  // the installed integrations and their ESM/CommonJS exports separately.
+  for (const {source, packed} of packages) {
+    for (const name of Object.keys(packed.peerDependenciesMeta ?? {})) {
+      const target = join(modules, name);
+      if (existsSync(target)) continue;
+      mkdirSync(dirname(target), {recursive: true});
+      symlinkSync(realpathSync(join(source, 'node_modules', name)), target, 'dir');
+    }
+  }
+  for (const subpath of ['./solana', './solana/market', './x402', './web']) {
+    const specifier = '@agentek/tools' + subpath.slice(1);
+    run(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(specifier)})`], {cwd: temp});
+    run(process.execPath, ['-e', `require(${JSON.stringify(specifier)})`], {cwd: temp});
+  }
+  console.log('Package checks passed: five tarballs, core/CLI/MCP without optional peers, and optional ESM/CommonJS exports.');
 } finally {
   rmSync(temp, { recursive: true, force: true });
 }

@@ -1,4 +1,4 @@
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { toolInputSchema } from "@agentek/tools/schema";
 import type { z } from "zod";
 import { GymLimitError } from "../harness/ToolHarness.js";
 import type { AgentAdapter, AgentContext, AgentRunResult } from "../runner/runEvaluation.js";
@@ -39,7 +39,7 @@ export interface OpenRouterGenerationMetadata {
   totalCostUsd?: string;
 }
 
-// zod-to-json-schema emits an array without `items` for z.array(z.any()).
+// Unconstrained array items need a concrete model-facing shape for Gemini.
 // Gemini's function-calling endpoint rejects that otherwise valid tool schema.
 // This only narrows the model-facing description; Agentek still validates and
 // executes the original tool arguments.
@@ -63,7 +63,7 @@ function providerToolSchema(value: unknown, key?: string): unknown {
   if (Array.isArray(value)) return value.map((item) => providerToolSchema(item));
   if (!value || typeof value !== "object") return value;
   const schema = { ...value } as Record<string, unknown>;
-  if (schema.type === "array" && schema.items === undefined) {
+  if (schema.type === "array" && (schema.items === undefined || Object.keys(schema.items as object).length === 0)) {
     schema.items = key === "abi" ? abiParameter : { type: "string" };
   }
   if (schema.properties && typeof schema.properties === "object") {
@@ -126,9 +126,8 @@ export class OpenRouterAgentAdapter implements AgentAdapter {
       function: {
         name: entry.name,
         description: entry.description,
-        parameters: providerToolSchema(zodToJsonSchema(
+        parameters: providerToolSchema(toolInputSchema(
           entry.parameters as z.ZodTypeAny,
-          { target: "openApi3" },
         )),
       },
     }));

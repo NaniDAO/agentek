@@ -1,6 +1,6 @@
 import { Hex, http } from "viem";
 import { base, mainnet } from "viem/chains";
-import { webTools } from "@agentek/tools";
+import { webTools } from "@agentek/tools/web";
 import AgentekToolkit from "@agentek/ai-sdk/toolkit";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";

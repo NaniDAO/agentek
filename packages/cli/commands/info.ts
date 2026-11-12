@@ -1,5 +1,5 @@
 import type { BaseTool } from "@agentek/tools/client";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { toolInputSchema } from "@agentek/tools/schema";
 import { outputJson, outputError } from "../utils/output.js";
 import { unknownToolError } from "../utils/errors.js";
 
@@ -14,7 +14,7 @@ export function handleInfo(toolsMap: Map<string, BaseTool>, rest: string[]): nev
     name: tool!.name,
     description: tool!.description,
     capabilities: tool!.capabilities,
-    parameters: zodToJsonSchema(tool!.parameters),
+    parameters: toolInputSchema(tool!.parameters),
     supportedChains: tool!.supportedChains?.map((c) => ({ id: c.id, name: c.name })),
   });
 }

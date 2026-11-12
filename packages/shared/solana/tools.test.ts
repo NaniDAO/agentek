@@ -11,7 +11,7 @@ import {
   type AgentekClient,
   type SolanaConfig,
 } from "../client.js";
-import { solanaTools } from "./index.js";
+import { solanaTools, createSolanaConfig } from "./index.js";
 import { SOLANA_TOKENS } from "./constants.js";
 import {
   getSolBalanceTool,
@@ -48,7 +48,7 @@ const createSolanaTestClient = (solana: SolanaConfig = {}) =>
     chains: [mainnet],
     accountOrAddress: privateKeyToAccount(generatePrivateKey()),
     tools: solanaTools(),
-    solana: { rpcUrl: process.env.SOLANA_RPC_URL, ...solana },
+    solana: createSolanaConfig({ rpcUrl: process.env.SOLANA_RPC_URL, ...solana }),
   });
 
 const client = createSolanaTestClient();

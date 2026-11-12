@@ -7,14 +7,16 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "pnpm typecheck && bun build --minify --external @solana/web3.js jsc-entry.ts --outfile dist/nani-tools.js",
-    "typecheck": "tsc -p tsconfig.check.json"
+    "build": "pnpm typecheck && bun build.mjs iphone",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "build:macos": "pnpm typecheck && bun build.mjs macos",
+    "build:universal": "pnpm typecheck && bun build.mjs universal",
+    "build:minimal": "pnpm typecheck && bun build.mjs minimal",
+    "build:nani-chan": "pnpm typecheck && bun build.mjs nani-chan"
   },
   "dependencies": {
     "@agentek/tools": "workspace:*",
     "viem": "2.33.2",
-    "zod": "3.25.76",
-    "zod-to-json-schema": "3.25.1",
-    "zrouter-sdk": "0.0.27"
+    "zod": "3.25.76"
   }
 }

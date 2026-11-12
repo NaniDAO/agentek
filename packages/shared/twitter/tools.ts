@@ -2,7 +2,7 @@ import { providerJSON } from "../utils/fetch.js";
 import z from "zod";
 import { createTool } from "../client.js";
 import type { BaseTool, AgentekClient } from "../client.js";
-import type { TwitterApi } from "twitter-api-v2";
+import type { HomeTimelineClient } from "./transport.js";
 
 const X_API_BASE = "https://api.x.com/2";
 
@@ -172,7 +172,7 @@ export function createGetUserTweetsTool(
 }
 
 export function createGetHomeTimelineTool(
-  twitterClient: TwitterApi,
+  twitterClient: HomeTimelineClient,
 ): BaseTool {
   return createTool({
     name: "getHomeTimeline",

@@ -70,3 +70,5 @@ export {
   solanaAddressSchema,
   solanaSignatureSchema,
 } from "./utils.js";
+
+export { createSolanaConfig } from "./runtime.js";

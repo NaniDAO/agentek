@@ -1,3 +1,4 @@
+import { loadIntegrations, parseIntegrations } from "@agentek/tools/integrations";
 import { createExecutionJournal, createRequestJournal } from "@agentek/tools/journal";
 import { join } from "node:path";
 import { getConfigDir } from "../config.js";
@@ -84,6 +85,10 @@ export async function createClientFromEnv() {
   // ── Agentek client ───────────────────────────────────────────────────
   const executionMode = keys.AGENTEK_EXECUTION_MODE ?? "prepare";
   if (executionMode !== "prepare" && executionMode !== "execute") throw new Error("AGENTEK_EXECUTION_MODE must be prepare or execute");
+  const integrations = await loadIntegrations(parseIntegrations(keys.AGENTEK_INTEGRATIONS), {
+    solana: {rpcUrl: SOLANA_RPC_URL, privateKey: SOLANA_PRIVATE_KEY, address: SOLANA_ACCOUNT, jupiterApiKey: JUPITER_API_KEY},
+    twitter: {xBearerToken: X_BEARER_TOKEN, xApiKey: X_API_KEY, xApiKeySecret: X_API_KEY_SECRET, xAccessToken: X_ACCESS_TOKEN, xAccessTokenSecret: X_ACCESS_TOKEN_SECRET},
+  });
   const agentekClient = createAgentekClient({
     executionMode,
     onExecutionUpdated: createExecutionJournal(join(getConfigDir(), "executions")),
@@ -94,13 +99,9 @@ export async function createClientFromEnv() {
     transports,
     chains,
     accountOrAddress: account,
-    solana: {
-      rpcUrl: SOLANA_RPC_URL,
-      privateKey: SOLANA_PRIVATE_KEY,
-      address: SOLANA_ACCOUNT,
-      jupiterApiKey: JUPITER_API_KEY,
-    },
+    solana: integrations.solana,
     tools: await allTools({
+      additionalTools: integrations.tools,
       perplexityApiKey: PERPLEXITY_API_KEY,
       zeroxApiKey: ZEROX_API_KEY,
       tallyApiKey: TALLY_API_KEY,
@@ -108,11 +109,6 @@ export async function createClientFromEnv() {
       coinMarketCalApiKey: COINMARKETCAL_API_KEY,
       fireworksApiKey: FIREWORKS_API_KEY,
       pinataJWT: PINATA_JWT,
-      xBearerToken: X_BEARER_TOKEN,
-      xApiKey: X_API_KEY,
-      xApiKeySecret: X_API_KEY_SECRET,
-      xAccessToken: X_ACCESS_TOKEN,
-      xAccessTokenSecret: X_ACCESS_TOKEN_SECRET,
     }),
   });
 

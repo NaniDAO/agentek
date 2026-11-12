@@ -55,6 +55,60 @@ pnpm add @agentek/tools viem zod
 pnpm add @agentek/ai-sdk @agentek/tools viem zod
 ```
 
+## Optional integrations and smaller bundles
+
+The default catalogue contains EVM tools and dependency-free page extraction.
+Solana, x402 payments, server-side HTML scraping, and X tools are explicit opt-ins:
+
+| Integration | Import | Additional packages to install |
+|---|---|---|
+| Solana | `@agentek/tools/solana` | `@solana/web3.js@1.98.4` |
+| x402 payments | `@agentek/tools/x402` | `@x402/evm@^2.4.0`, `@x402/fetch@^2.4.0` |
+| HTML scraping | `@agentek/tools/web` | `cheerio@^1.1.2` |
+| X/Twitter | `@agentek/tools/twitter` | None |
+
+```typescript
+import { allTools } from '@agentek/tools';
+import { solanaTools, createSolanaConfig } from '@agentek/tools/solana';
+
+const tools = await allTools({ additionalTools: solanaTools() });
+// Pass both tools and solana to createAgentekClient / AgentekToolkit:
+const solana = createSolanaConfig({ address: 'YOUR_BASE58_ADDRESS' });
+```
+
+Import collections from their individual entry points so bundlers can exclude
+unused integrations. `allTools({})` does not load them, and their SDK packages are
+optional peers. `zrouter-sdk` and `wns-utils` remain supported core dependencies.
+Existing consumers importing optional collections from the package root must
+switch to the entry points above; Solana transaction clients must wrap settings
+with `createSolanaConfig`. Add X tools with `await twitterTools(config)` and
+`additionalTools`; credentials alone no longer enable them in `allTools`.
+
+For CLI and MCP, set `AGENTEK_INTEGRATIONS=solana,x402,web,twitter` to select the
+integrations you installed. Leave it empty for the core catalogue. Missing SDKs
+produce an installation error when the corresponding integration is selected.
+X still requires its existing credential environment variables.
+
+The embedded Nani bundle excludes all Solana tools, payment SDKs, and the HTML
+scraper. `pnpm --filter @agentek/nani build` builds the iPhone profile;
+`build:macos` and `build:universal` select Mac or combined tool profiles.
+`build:minimal` includes only RPC reads, ERC20 tools and transfer preparation.
+For an app-owned tool set, run `bun build.mjs iphone ./my-tools.ts` from
+`packages/nani`; export `embeddedTools` and `embeddedProfile` as in
+`minimal-tools.ts`. Only the selected collection enters the bundle. The build
+rejects imports of unsupported integrations rather than leaving unresolved SDK
+imports in the artifact. The legacy third `__naniInit` argument is ignored.
+
+The `build:nani-chan` profile excludes X and Solana even with legacy credentials.
+External dependency and override versions are exact pins; `pnpm check:pins` and
+the native builder enforce them. Bun is pinned by `.bun-version` and pnpm by
+`packageManager`.
+
+Gym loads JSON tasks without YAML. Install `yaml@2.8.4` to use YAML tasks.
+AI examples have their own private workspace under `examples`; OpenRouter and AI
+SDK dependencies are development/example dependencies, not core requirements.
+Package builds use TypeScript directly, with no tsup dependency.
+
 ## Usage
 
 ### Using with Vercel AI SDK

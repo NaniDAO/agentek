@@ -1,5 +1,4 @@
 import type { Tool, ToolExecutionOptions } from "ai";
-import { tool } from "ai";
 import { z } from "zod";
 import { failedResult, type BaseTool, type AgentekClient } from "@agentek/tools/client";
 
@@ -7,7 +6,7 @@ export default function AgentekTool(
   agentekClient: AgentekClient,
   baseTool: BaseTool,
 ): Tool {
-  return tool({
+  const definition = {
     description: baseTool.description,
     inputSchema: baseTool.parameters,
     execute: async (args: z.infer<typeof baseTool.parameters>, options?: ToolExecutionOptions) => {
@@ -20,7 +19,8 @@ export default function AgentekTool(
       if (failedResult(result)) throw new Error("Tool returned no successful result");
       return result;
     },
-  });
+  };
+  return definition as unknown as Tool;
 }
 
 /** @deprecated Use BaseTool. */

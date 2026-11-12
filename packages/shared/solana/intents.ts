@@ -1,6 +1,6 @@
 import { positiveUnits } from "../utils/exact.js";
 import { z } from "zod";
-import type { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import type { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { AgentekClient, createTool, SolanaIntent } from "../client.js";
 import {
   SOLANA_MINT_SYMBOLS,
@@ -92,7 +92,7 @@ export const intentTransferSolTool = createTool({
     const from = await client.getSolanaAddress();
     const lamports = positiveUnits(args.amount, SOL_DECIMALS);
 
-    const connection = await client.getSolanaConnection();
+    const connection = await client.getSolanaConnection() as Connection;
     const balance = await client.awaitSolanaPreSubmission(
       connection.getBalance(new PublicKey(from)),
       "getBalance",
@@ -151,7 +151,7 @@ export const intentTransferSplTokenTool = createTool({
     } = await import("./spl.js");
 
     const from = await client.getSolanaAddress();
-    const connection = await client.getSolanaConnection();
+    const connection = await client.getSolanaConnection() as Connection;
     const mint = new PublicKey(resolveSolanaMint(args.token));
 
     // Token and Token-2022 mints are owned by different programs, and both the

@@ -25,25 +25,24 @@
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsup",
-    "dev": "tsup --watch",
+    "build": "node ../../scripts/build-package.mjs",
+    "dev": "node ../../scripts/watch-package.mjs",
     "start": "node dist/index.mjs",
     "test": "vitest run",
     "debug": "pnpm run build && pnpx @modelcontextprotocol/inspector node ./dist/index.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@agentek/tools": "workspace:^"
   },
   "peerDependencies": {
-    "viem": "^2.33.2",
-    "zod": "^3.25.76",
-    "zrouter-sdk": "^0.0.27"
+    "viem": "2.33.2",
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^22.14.1",
-    "typescript": "^5.9.2",
-    "vitest": "^4.1.12"
+    "@types/node": "22.14.1",
+    "typescript": "5.9.2",
+    "vitest": "4.1.12"
   },
   "keywords": [
     "ai",

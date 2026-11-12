@@ -18,7 +18,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { createAgentekClient, SolanaExecutionError, type SolanaConfig, type AgentekClientConfig } from "../client.js";
-import { solanaTools } from "./index.js";
+import { solanaTools, createSolanaConfig } from "./index.js";
 import { intentTransferSolTool } from "./intents.js";
 import { decodeBase58, encodeBase58 } from "./base58.js";
 
@@ -45,7 +45,7 @@ const createClient = (solana: SolanaConfig, extra: Partial<AgentekClientConfig> 
     chains: [mainnet],
     accountOrAddress: privateKeyToAccount(generatePrivateKey()),
     tools: solanaTools(),
-    solana: { rpcUrl: RPC, ...solana },
+    solana: createSolanaConfig({ rpcUrl: RPC, ...solana }),
     ...extra,
   });
 
@@ -127,7 +127,7 @@ describe("Solana signing", () => {
         throw new Error("confirmation transport failed");
       }),
     };
-    (client as any).solanaConnection = connection;
+    (client as any).getSolanaRuntime().solanaConnection = connection;
 
     const result = await client.executeSolanaTransaction(
       transaction,
@@ -162,7 +162,7 @@ describe("Solana signing", () => {
       }),
       confirmTransaction: vi.fn(),
     };
-    (client as any).solanaConnection = connection;
+    (client as any).getSolanaRuntime().solanaConnection = connection;
 
     const result = await client.executeSolanaTransaction(
       transaction,
@@ -206,7 +206,7 @@ describe("Solana signing", () => {
       }),
       confirmTransaction: vi.fn(),
     };
-    (client as any).solanaConnection = connection;
+    (client as any).getSolanaRuntime().solanaConnection = connection;
 
     const result = await client.executeSolanaTransaction(transaction, blockhash, 123);
     expect(result).toEqual({ signature: encodeBase58(transaction.signatures[0]), confirmationStatus: "unknown" });
@@ -236,7 +236,7 @@ describe("Solana signing", () => {
       }),
       confirmTransaction: vi.fn(async () => ({ value: { err: null } })),
     };
-    (client as any).solanaConnection = connection;
+    (client as any).getSolanaRuntime().solanaConnection = connection;
     await expect(client.executeSolanaTransaction(transaction, blockhash, 123)).resolves.toMatchObject({ confirmationStatus: "confirmed" });
     expect(records.map(record => record.status)).toEqual(["signed", "unknown", "submitted", "confirmed"]);
   });
@@ -246,7 +246,7 @@ describe("Solana signing", () => {
     const transaction = new VersionedTransaction(new TransactionMessage({ payerKey: sender.publicKey, recentBlockhash: blockhash, instructions: [] }).compileToV0Message());
     const client = createClient({ privateKey: encodeBase58(sender.secretKey) }, { onSolanaExecutionUpdated: () => { throw new Error("persistence failed after write"); } });
     const connection = { getGenesisHash: vi.fn(async () => "devnet-fixture"), getFeeForMessage: vi.fn(async () => ({ value: 5000 })), sendRawTransaction: vi.fn() };
-    (client as any).solanaConnection = connection;
+    (client as any).getSolanaRuntime().solanaConnection = connection;
     await expect(client.executeSolanaTransaction(transaction, blockhash, 123)).rejects.toBeInstanceOf(SolanaExecutionError);
     await expect(client.executeSolanaTransaction(transaction, blockhash, 123)).rejects.toThrow(/Reconcile the earlier Solana signature/);
     expect(connection.sendRawTransaction).not.toHaveBeenCalled();
@@ -257,7 +257,7 @@ describe("Solana signing", () => {
     const transaction = new VersionedTransaction(new TransactionMessage({ payerKey: sender.publicKey, recentBlockhash: blockhash, instructions: [] }).compileToV0Message());
     const client = createClient({ privateKey: encodeBase58(sender.secretKey) });
     const connection = { getGenesisHash: vi.fn(), getFeeForMessage: vi.fn(), sendRawTransaction: vi.fn() };
-    (client as any).solanaConnection = connection;
+    (client as any).getSolanaRuntime().solanaConnection = connection;
     await expect(client.executeSolanaTransaction(transaction, recipient.publicKey.toBase58(), 123)).rejects.toThrow(/lifetime/);
     await expect(client.executeSolanaTransaction(transaction, blockhash, Number.MAX_SAFE_INTEGER + 1)).rejects.toThrow(/lifetime/);
     expect(transaction.signatures[0].every(byte => byte === 0)).toBe(true);
@@ -290,7 +290,7 @@ describe("Solana signing", () => {
           () => new Promise<never>(() => undefined),
         ),
       };
-      (client as any).solanaConnection = connection;
+      (client as any).getSolanaRuntime().solanaConnection = connection;
 
       const execution = client.executeSolanaTransaction(
         transaction,

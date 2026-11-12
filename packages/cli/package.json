@@ -20,17 +20,15 @@
     "skill"
   ],
   "scripts": {
-    "build": "pnpm typecheck && rm -rf dist && tsup",
-    "dev": "tsup --watch",
+    "build": "node ../../scripts/build-package.mjs",
+    "dev": "node ../../scripts/watch-package.mjs",
     "start": "node dist/index.mjs",
     "typecheck": "tsc -p tsconfig.check.json"
   },
   "dependencies": {
     "@agentek/tools": "workspace:*",
     "viem": "2.33.2",
-    "zod": "3.25.76",
-    "zod-to-json-schema": "3.25.1",
-    "zrouter-sdk": "0.0.27"
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/node": "22.14.1",
